@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎾 Tennis Match Confirmation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .confirmation-container {
+            background: white;
+            max-width: 500px;
+            width: 100%;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            color: white;
+            padding: 2rem;
+            text-align: center;
+        }
+
+        .tennis-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+        }
+
+        .header h1 {
+            font-size: 1.8rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1rem;
+        }
+
+        .match-details {
+            padding: 2rem;
+            background: #f8f9fa;
+        }
+
+        .opponent-info {
+            background: white;
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .opponent-name {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 0.5rem;
+        }
+
+        .opponent-skill {
+            display: inline-block;
+            background: #4CAF50;
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .match-info {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .info-item {
+            text-align: center;
+            padding: 1rem;
+            background: white;
+            border-radius: 10px;
+        }
+
+        .info-label {
+            font-size: 0.8rem;
+            color: #666;
+            margin-bottom: 0.25rem;
+        }
+
+        .info-value {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .actions {
+            padding: 2rem;
+            text-align: center;
+        }
+
+        .confirmation-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .btn {
+            padding: 1rem 2rem;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-confirm {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .btn-confirm:hover {
+            background: #45a049;
+            transform: translateY(-2px);
+        }
+
+        .btn-decline {
+            background: #f44336;
+            color: white;
+        }
+
+        .btn-decline:hover {
+            background: #da190b;
+            transform: translateY(-2px);
+        }
+
+        .contact-info {
+            background: #e3f2fd;
+            padding: 1rem;
+            border-radius: 10px;
+            margin-top: 1rem;
+        }
+
+        .contact-info h3 {
+            color: #1976d2;
+            margin-bottom: 0.5rem;
+            font-size: 1rem;
+        }
+
+        .contact-details {
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        .note {
+            font-size: 0.85rem;
+            color: #666;
+            text-align: center;
+            margin-top: 1rem;
+        }
+
+        @media (max-width: 600px) {
+            .confirmation-container {
+                margin: 10px;
+            }
+
+            .match-info {
+                grid-template-columns: 1fr;
+            }
+
+            .confirmation-buttons {
+                grid-template-columns: 1fr;
+            }
+
+            .header h1 {
+                font-size: 1.5rem;
+            }
+        }
+
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .tennis-ball {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            background: #C1FF72;
+            border-radius: 50%;
+            position: relative;
+            margin: 0 5px;
+            border: 2px solid #8BC34A;
+        }
+
+        .tennis-ball::before {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 2px;
+            background: white;
+            top: 50%;
+            left: 0;
+            transform: translateY(-50%) rotate(45deg);
+        }
+    </style>
+</head>
+<body>
+    <div class="confirmation-container">
+        <div class="header">
+            <div class="tennis-icon">🎾</div>
+            <h1>You've Got a Match!</h1>
+            <p>Ready to play some tennis?</p>
+        </div>
+
+        <div class="match-details">
+            <div class="opponent-info pulse">
+                <div class="opponent-name">John Martinez</div>
+                <div class="opponent-skill">Skill Level: 4.0</div>
+
+                <div class="match-info">
+                    <div class="info-item">
+                        <div class="info-label">📅 Date</div>
+                        <div class="info-value">Tomorrow</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">⏰ Suggested Time</div>
+                        <div class="info-value">6:00 PM</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">📍 Location</div>
+                        <div class="info-value">Beverly Hills</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">🏓 Match Type</div>
+                        <div class="info-value">Singles</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="actions">
+            <div class="confirmation-buttons">
+                <button class="btn btn-confirm" onclick="confirmMatch()">
+                    ✓ Confirm Match
+                </button>
+                <button class="btn btn-decline" onclick="declineMatch()">
+                    ✗ Can't Make It
+                </button>
+            </div>
+
+            <div class="contact-info" id="contactInfo" style="display: none;">
+                <h3>📞 Contact Information</h3>
+                <div class="contact-details">
+                    <strong>Phone:</strong> (310) 555-1234<br>
+                    <strong>Email:</strong> john@email.com<br>
+                    <strong>Message:</strong> "Hi! I'm your tennis match from Ashley's system. When works for you?"
+                </div>
+            </div>
+
+            <div class="note">
+                <span class="tennis-ball"></span>
+                <span class="tennis-ball"></span>
+                <span class="tennis-ball"></span><br>
+                Confirm to get contact details and start coordinating
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function confirmMatch() {
+            // Show contact info
+            document.getElementById('contactInfo').style.display = 'block';
+
+            // Update button state
+            document.querySelector('.btn-confirm').textContent = '✓ Confirmed!';
+            document.querySelector('.btn-confirm').disabled = true;
+            document.querySelector('.btn-confirm').style.opacity = '0.7';
+
+            // Send confirmation to server
+            fetch('/api/match/{{match_id}}/confirm', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    confirmed: true,
+                    player_id: '{{player_id}}'
+                })
+            }).then(response => response.json())
+            .then(data => {
+                console.log('Match confirmed:', data);
+            }).catch(error => {
+                console.error('Error confirming match:', error);
+            });
+
+            // Scroll to contact info
+            document.getElementById('contactInfo').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function declineMatch() {
+            // Send decline to server
+            fetch('/api/match/{{match_id}}/confirm', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    confirmed: false,
+                    player_id: '{{player_id}}'
+                })
+            }).then(response => response.json())
+            .then(data => {
+                console.log('Match declined:', data);
+            }).catch(error => {
+                console.error('Error declining match:', error);
+            });
+
+            // Update UI
+            document.querySelector('.btn-decline').textContent = '✗ Declined';
+            document.querySelector('.btn-decline').disabled = true;
+            document.querySelector('.btn-decline').style.opacity = '0.7';
+
+            // Show message
+            const note = document.querySelector('.note');
+            note.innerHTML = 'No problem! We\'ll find you another match soon.<br><span class="tennis-ball"></span><span class="tennis-ball"></span><span class="tennis-ball"></span>';
+        }
+
+        // Auto-save if they leave the page
+        window.addEventListener('beforeunload', function(e) {
+            const confirmed = document.querySelector('.btn-confirm').disabled;
+            const declined = document.querySelector('.btn-decline').disabled;
+
+            if (!confirmed && !declined) {
+                // Send "no response" status
+                fetch('/api/match/{{match_id}}/confirm', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        confirmed: null,
+                        player_id: '{{player_id}}'
+                    })
+                }).catch(() => {}); // Ignore errors on unload
+            }
+        });
+    </script>
+</body>
+</html>

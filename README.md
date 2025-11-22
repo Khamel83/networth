@@ -6,14 +6,14 @@ Built with the ONE_SHOT methodology - ask everything upfront, then execute auton
 
 ---
 
-## 📋 NEXT STEPS FOR ASHLEY
+## 📋 NEXT STEPS FOR ASHLEY KAUFMAN
 
 **What I need from you:**
 
 1. **Player Data** (CSV or Excel format):
    ```
    Name,Email,Phone,Skill Level,Zip Code,Preferred Days,Preferred Times
-   "Ashley Johnson","ashley@email.com","310-555-1234","3.5","90210","monday,wednesday","evening"
+   "Ashley Kaufman","ashley@email.com","310-555-1234","3.5","90210","monday,wednesday","evening"
    ```
 
 2. **Gmail Account** (for email notifications):
@@ -139,7 +139,7 @@ Game on! 🎾
 
 **No logging in, no browsing, no chatting. Just direct contact and play.**
 
-## 🔧 Ashley's Admin Tools
+## 🔧 Ashley Kaufman's Admin Tools
 
 ```bash
 # Add players
@@ -174,7 +174,7 @@ Once you buy a domain:
 ## 🎾 This Isn't A Product
 
 **This is a solution to a problem:**
-- Ashley wants people playing tennis
+- Ashley Kaufman wants people playing tennis
 - Players want partners, not another app
 - LA has tennis courts, not enough connections
 
