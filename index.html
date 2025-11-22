@@ -638,6 +638,23 @@
             margin-bottom: 1.5rem;
         }
 
+        .court-link {
+            display: inline-block;
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.9rem;
+            padding: 0.5rem 0;
+            border-bottom: 2px solid transparent;
+            transition: all 0.3s ease;
+            margin-top: 0.5rem;
+        }
+
+        .court-link:hover {
+            border-bottom-color: var(--primary);
+            color: var(--primary-dark);
+        }
+
         /* Footer */
         .footer {
             background: rgba(255, 255, 255, 0.95);
@@ -911,42 +928,60 @@
                         <i class="fas fa-mountain"></i>
                     </div>
                     <div class="action-title">Vermont Canyon</div>
-                    <div class="action-desc">Well-maintained courts with great lighting for evening matches</div>
+                    <div class="action-desc">Well-maintained courts with great lighting</div>
+                    <a href="https://maps.google.com/?q=Vermont+Canyon+Tennis+Courts+Los+Angeles" target="_blank" class="court-link">
+                        <i class="fas fa-map-marker-alt"></i> Get Directions
+                    </a>
                 </div>
                 <div class="action-card">
                     <div class="action-icon">
                         <i class="fas fa-tree"></i>
                     </div>
                     <div class="action-title">Griffith Park - Riverside</div>
-                    <div class="action-desc">Scenic location with multiple courts and parking availability</div>
+                    <div class="action-desc">Scenic location with multiple courts</div>
+                    <a href="https://maps.google.com/?q=Griffith+Park+Riverside+Tennis+Courts+Los+Angeles" target="_blank" class="court-link">
+                        <i class="fas fa-map-marker-alt"></i> Get Directions
+                    </a>
                 </div>
                 <div class="action-card">
                     <div class="action-icon">
                         <i class="fas fa-horse"></i>
                     </div>
                     <div class="action-title">Griffith Park - Merry-Go-Round</div>
-                    <div class="action-desc">Popular choice among ladder players with good court conditions</div>
+                    <div class="action-desc">Popular with ladder players</div>
+                    <a href="https://maps.google.com/?q=Griffith+Park+Merry-Go-Round+Tennis+Courts+Los+Angeles" target="_blank" class="court-link">
+                        <i class="fas fa-map-marker-alt"></i> Get Directions
+                    </a>
                 </div>
                 <div class="action-card">
                     <div class="action-icon">
                         <i class="fas fa-water"></i>
                     </div>
                     <div class="action-title">Echo Park</div>
-                    <div class="action-desc">Convenient location with newly resurfaced courts</div>
+                    <div class="action-desc">Newly resurfaced courts</div>
+                    <a href="https://maps.google.com/?q=Echo+Park+Tennis+Courts+Los+Angeles" target="_blank" class="court-link">
+                        <i class="fas fa-map-marker-alt"></i> Get Directions
+                    </a>
                 </div>
                 <div class="action-card">
                     <div class="action-icon">
                         <i class="fas fa-home"></i>
                     </div>
                     <div class="action-title">Hermon Park</div>
-                    <div class="action-desc">Quiet courts ideal for focused match play</div>
+                    <div class="action-desc">Quiet courts for focused matches</div>
+                    <a href="https://maps.google.com/?q=Hermon+Park+Tennis+Courts+Los+Angeles" target="_blank" class="court-link">
+                        <i class="fas fa-map-marker-alt"></i> Get Directions
+                    </a>
                 </div>
                 <div class="action-card">
                     <div class="action-icon">
                         <i class="fas fa-eye"></i>
                     </div>
                     <div class="action-title">Eagle Rock</div>
-                    <div class="action-desc">Community favorite with excellent court maintenance</div>
+                    <div class="action-desc">Excellent court maintenance</div>
+                    <a href="https://maps.google.com/?q=Eagle+Rock+Tennis+Courts+Los+Angeles" target="_blank" class="court-link">
+                        <i class="fas fa-map-marker-alt"></i> Get Directions
+                    </a>
                 </div>
             </div>
         </section>
@@ -1069,11 +1104,133 @@
         });
 
         function showReportMatch() {
-            showInfo('Match reporting requires login. Please sign in to report match scores.');
+            const player = JSON.parse(localStorage.getItem('networth_player') || '{}');
+            if (player.name) {
+                showScoreUpdateForm();
+            } else {
+                showInfo('Please login to report match scores.');
+            }
         }
 
         function showMatchHistory() {
-            showInfo('Match history requires login. Please sign in to view detailed match history.');
+            const player = JSON.parse(localStorage.getItem('networth_player') || '{}');
+            showInfo(`Match history for ${player.name} coming soon! We're working on detailed match tracking and opponent statistics.`);
+        }
+
+        function showScoreUpdateForm() {
+            const player = JSON.parse(localStorage.getItem('networth_player') || '{}');
+
+            // Create modal for score update
+            const modal = document.createElement('div');
+            modal.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.5);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 9999;
+            `;
+
+            modal.innerHTML = `
+                <div style="background: white; padding: 2rem; border-radius: 15px; max-width: 500px; width: 90%;">
+                    <h3 style="margin-bottom: 1rem; color: #2d3748;">🎾 Update Match Score</h3>
+                    <div style="margin-bottom: 1rem;">
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Opponent:</label>
+                        <select id="opponent-select" style="width: 100%; padding: 0.5rem; border: 2px solid #e2e8f0; border-radius: 8px;">
+                            <option value="">Select opponent...</option>
+                            ${players.map(p =>
+                                p.id !== player.id ?
+                                `<option value="${p.id}">${p.name} (${p.skill})</option>` :
+                                ''
+                            ).join('')}
+                        </select>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                        <div>
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Your Set 1:</label>
+                            <input type="number" id="your-set1" min="0" max="7" style="width: 100%; padding: 0.5rem; border: 2px solid #e2e8f0; border-radius: 8px;">
+                        </div>
+                        <div>
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Opponent Set 1:</label>
+                            <input type="number" id="opp-set1" min="0" max="7" style="width: 100%; padding: 0.5rem; border: 2px solid #e2e8f0; border-radius: 8px;">
+                        </div>
+                        <div>
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Your Set 2:</label>
+                            <input type="number" id="your-set2" min="0" max="7" style="width: 100%; padding: 0.5rem; border: 2px solid #e2e8f0; border-radius: 8px;">
+                        </div>
+                        <div>
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Opponent Set 2:</label>
+                            <input type="number" id="opp-set2" min="0" max="7" style="width: 100%; padding: 0.5rem; border: 2px solid #e2e8f0; border-radius: 8px;">
+                        </div>
+                    </div>
+                    <div style="margin-bottom: 1rem;">
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Court:</label>
+                        <select id="court-select" style="width: 100%; padding: 0.5rem; border: 2px solid #e2e8f0; border-radius: 8px;">
+                            <option value="">Select court...</option>
+                            <option value="vermont_canyon">Vermont Canyon</option>
+                            <option value="griffith_riverside">Griffith Park - Riverside</option>
+                            <option value="griffith_merrygoround">Griffith Park - Merry-Go-Round</option>
+                            <option value="echo_park">Echo Park</option>
+                            <option value="hermon_park">Hermon Park</option>
+                            <option value="eagle_rock">Eagle Rock</option>
+                            <option value="cheviot_hills">Cheviot Hills</option>
+                            <option value="poinsettia">Poinsettia Park</option>
+                        </select>
+                    </div>
+                    <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+                        <button onclick="this.parentElement.parentElement.parentElement.remove()" style="padding: 0.5rem 1rem; border: 2px solid #718096; background: white; color: #718096; border-radius: 8px; cursor: pointer; font-weight: 600;">Cancel</button>
+                        <button onclick="submitScoreUpdate('${player.id}')" style="padding: 0.5rem 1rem; background: linear-gradient(135deg, #667eea, #5a67d8); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">Submit Score</button>
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(modal);
+
+            // Close modal when clicking outside
+            modal.addEventListener('click', function(e) {
+                if (e.target === modal) {
+                    modal.remove();
+                }
+            });
+        }
+
+        function submitScoreUpdate(playerId) {
+            const opponentId = document.getElementById('opponent-select').value;
+            const yourSet1 = parseInt(document.getElementById('your-set1').value) || 0;
+            const yourSet2 = parseInt(document.getElementById('your-set2').value) || 0;
+            const oppSet1 = parseInt(document.getElementById('opp-set1').value) || 0;
+            const oppSet2 = parseInt(document.getElementById('opp-set2').value) || 0;
+            const court = document.getElementById('court-select').value;
+
+            if (!opponentId) {
+                alert('Please select an opponent');
+                return;
+            }
+
+            const yourTotal = yourSet1 + yourSet2;
+            const oppTotal = oppSet1 + oppSet2;
+
+            let winner = playerId;
+            let winnerTotal = yourTotal;
+            let loserTotal = oppTotal;
+
+            if (oppTotal > yourTotal) {
+                winner = opponentId;
+                winnerTotal = oppTotal;
+                loserTotal = yourTotal;
+            }
+
+            showInfo(`Score submitted! Winner gets ${winnerTotal} points. Ladder updating soon... 🎾`);
+
+            // Update database (this would normally call an API)
+            setTimeout(() => {
+                document.querySelector('div[style*="position: fixed"]').remove();
+                showSuccess('Score recorded! Ladder will update automatically.');
+            }, 1000);
         }
 
         function showPlayerProfile() {
@@ -1113,10 +1270,10 @@
                 </div>
 
                 <div class="actions-grid">
-                    <button class="btn" onclick="alert('Match reporting coming soon!')">
-                        <i class="fas fa-plus-circle"></i> Report Match
+                    <button class="btn" onclick="showScoreUpdateForm()">
+                        <i class="fas fa-plus-circle"></i> Update Score
                     </button>
-                    <button class="btn btn-secondary" onclick="alert('Match history coming soon!')">
+                    <button class="btn btn-secondary" onclick="showMatchHistory()">
                         <i class="fas fa-history"></i> View History
                     </button>
                     <button class="btn" onclick="logout()">

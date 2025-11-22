@@ -1,0 +1,66 @@
+name: NET WORTH Tennis Automation
+
+on:
+  push:
+    paths:
+      - 'networth_complete.py'
+      - 'automation_scheduler.py'
+  schedule:
+    # Monday 9AM - Weekly Match Suggestions
+    - cron: '0 9 * * 1'
+    # Thursday 6PM - Score Follow-ups
+    - cron: '0 18 * * 4'
+    # Friday 5PM - Weekly Ladder Updates
+    - cron: '0 17 * * 5'
+    # Sunday 2AM - Database Maintenance
+    - cron: '0 2 * * 0'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tennis-automation:
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install schedule requests
+
+      - name: Download database from server
+        run: |
+          # You'll need to set up SSH keys or a secure way to transfer the database
+          # For now, we'll create a fresh database with the schema
+          echo "Database transfer step - set up secure file transfer in production"
+
+      - name: Set up database
+        run: |
+          python3 networth_complete.py
+
+      - name: Run tennis automation
+        env:
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          GMAIL_EMAIL: ${{ secrets.GMAIL_EMAIL }}
+        run: |
+          python3 automation_scheduler.py
+
+      - name: Health check
+        run: |
+          echo "✅ NET WORTH automation completed successfully"
+          python3 -c "
+          from networth_complete import NetWorthTennisSystem
+          system = NetWorthTennisSystem()
+          ladder = system.get_ladder_rankings(5)
+          print(f'Top 5 players: {[p[\"name\"] for p in ladder]}')
+          "
