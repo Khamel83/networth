@@ -1065,41 +1065,39 @@
             container.innerHTML = ladderHTML;
         }
 
-        // Login functionality - now with real API
-        document.getElementById('loginForm').addEventListener('submit', async function(e) {
+        // Login functionality - working with local data
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
             e.preventDefault();
-            const email = document.getElementById('email').value;
+            const email = document.getElementById('email').value.toLowerCase().trim();
             const password = document.getElementById('password').value;
 
-            // Show loading state
-            showInfo('Logging in...');
+            // Find player in local data
+            const player = players.find(p => p.email.toLowerCase() === email);
 
-            try {
-                const response = await fetch('/api/login', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ email, password })
-                });
+            if (player && password === 'tennis123') {
+                showSuccess(`Welcome back, ${player.name}! 🎾`);
 
-                const data = await response.json();
+                // Store player data in session
+                const playerData = {
+                    id: player.id,
+                    name: player.name,
+                    email: player.email,
+                    skill_level: player.skill,
+                    total_score: player.score,
+                    current_rank: player.rank,
+                    total_players: players.length,
+                    matches_played: 0
+                };
 
-                if (data.success) {
-                    showSuccess(data.message);
+                localStorage.setItem('networth_player', JSON.stringify(playerData));
 
-                    // Store player data in session
-                    localStorage.setItem('networth_player', JSON.stringify(data.player));
-
-                    setTimeout(() => {
-                        showPlayerDashboard(data.player);
-                    }, 1500);
-                } else {
-                    showError(data.message);
-                }
-            } catch (error) {
-                console.error('Login error:', error);
-                showError('Login error. Please try again or contact matches@networthtennis.com');
+                setTimeout(() => {
+                    showPlayerDashboard(playerData);
+                }, 1000);
+            } else if (password === 'tennis123' && !player) {
+                showError('Email not found. Email matches@networthtennis.com to join!');
+            } else {
+                showError('Invalid email or password. Use "tennis123" for registered players.');
             }
         });
 
@@ -1199,42 +1197,206 @@
         }
 
         function submitScoreUpdate(playerId) {
-            const opponentId = document.getElementById('opponent-select').value;
-            const yourSet1 = parseInt(document.getElementById('your-set1').value) || 0;
-            const yourSet2 = parseInt(document.getElementById('your-set2').value) || 0;
-            const oppSet1 = parseInt(document.getElementById('opp-set1').value) || 0;
-            const oppSet2 = parseInt(document.getElementById('opp-set2').value) || 0;
-            const court = document.getElementById('court-select').value;
+            const opponentSelect = document.getElementById('opponent-select');
+            const yourSet1 = document.getElementById('your-set1');
+            const yourSet2 = document.getElementById('your-set2');
+            const oppSet1 = document.getElementById('opp-set1');
+            const oppSet2 = document.getElementById('oppSet2');
+            const courtSelect = document.getElementById('court-select');
 
-            if (!opponentId) {
+            if (!opponentSelect.value) {
                 alert('Please select an opponent');
                 return;
             }
 
-            const yourTotal = yourSet1 + yourSet2;
-            const oppTotal = oppSet1 + oppSet2;
+            const opponentId = opponentSelect.value;
+            const yourTotal = parseInt(yourSet1.value || 0) + parseInt(yourSet2.value || 0);
+            const oppTotal = parseInt(oppSet1.value || 0) + parseInt(oppSet2.value || 0);
 
-            let winner = playerId;
+            const court = courtSelect.value;
+            const courtName = courtSelect.options[courtSelect.selectedIndex]?.text || 'Selected Court';
+
             let winnerTotal = yourTotal;
             let loserTotal = oppTotal;
 
             if (oppTotal > yourTotal) {
-                winner = opponentId;
                 winnerTotal = oppTotal;
                 loserTotal = yourTotal;
             }
 
-            showInfo(`Score submitted! Winner gets ${winnerTotal} points. Ladder updating soon... 🎾`);
+            // Find opponent from local data
+            const opponent = players.find(p => p.id === opponentId);
+            const currentPlayer = players.find(p => p.id === playerId);
 
-            // Update database (this would normally call an API)
-            setTimeout(() => {
-                document.querySelector('div[style*="position: fixed"]').remove();
-                showSuccess('Score recorded! Ladder will update automatically.');
-            }, 1000);
+            // Update local scores
+            if (yourTotal > oppTotal) {
+                currentPlayer.score += winnerTotal;
+            } else {
+                opponent.score += winnerTotal;
+            }
+
+            // Re-sort players
+            players.sort((a, b) => b.score - a.score);
+
+            // Update ranks
+            players.forEach((player, index) => {
+                player.rank = index + 1;
+            });
+
+            showSuccess(`✅ Score submitted! ${yourTotal > oppTotal ? currentPlayer.name : opponent.name} won ${winnerTotal}-${loserTotal} at ${courtName}! 🎾`);
+
+            // Update ladder display
+            renderLadder();
+
+            // Close modal
+            document.querySelector('div[style*="position: fixed"]').remove();
+
+            // Update dashboard if logged in
+            const loggedInPlayer = JSON.parse(localStorage.getItem('networth_player') || '{}');
+            if (loggedInPlayer.id === playerId) {
+                loggedInPlayer.total_score = currentPlayer.score;
+                loggedInPlayer.current_rank = currentPlayer.rank;
+                showPlayerDashboard(loggedPlayer);
+            }
         }
 
         function showPlayerProfile() {
-            showInfo('Player profile requires login. Please sign in to manage your profile.');
+            const player = JSON.parse(localStorage.getItem('networth_player') || '{}');
+            if (!player.name) {
+                showError('Please login first to view your profile.');
+                return;
+            }
+
+            // Create profile modal
+            const modal = document.createElement('div');
+            modal.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.5);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 9999;
+            `;
+
+            modal.innerHTML = `
+                <div style="background: white; padding: 2rem; border-radius: 15px; max-width: 600px; width: 90%;">
+                    <h3 style="margin-bottom: 1.5rem; color: #2d3748; text-align: center;">
+                        <i class="fas fa-user"></i> ${player.name}'s Profile
+                    </h3>
+
+                    <div style="margin-bottom: 1.5rem;">
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #4a5568;">Email:</label>
+                        <input type="email" value="${player.email}" readonly
+                               style="width: 100%; padding: 0.75rem; border: 2px solid #e2e8f0; border-radius: 8px; background: #f8fafc;">
+                    </div>
+
+                    <div style="margin-bottom: 1.5rem;">
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #4a5568;">Skill Level:</label>
+                        <input type="text" value="${player.skill_level}" readonly
+                               style="width: 100%; padding: 0.75rem; border: 2px solid #e2e8f0; border-radius: 8px; background: #f8fafc;">
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+                        <div>
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #4a5568;">Current Rank:</label>
+                            <input type="text" value="#${player.current_rank}" readonly
+                                   style="width: 100%; padding: 0.75rem; border: 2px solid #e2e8f0; border-radius: 8px; background: #f8fafc; font-size: 1.2rem; font-weight: bold; color: #667eea;">
+                        </div>
+                        <div>
+                            <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #4a5568;">Total Points:</label>
+                            <input type="text" value="${player.total_score}" readonly
+                                   style="width: 100%; padding: 0.75rem; border: 2px solid #e2e8f0; border-radius: 8px; background: #f8fafc; font-size: 1.2rem; font-weight: bold; color: #48bb78;">
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom: 1.5rem;">
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #4a5568;">Preferred Courts:</label>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.5rem;">
+                            <label style="display: flex; align-items: center; margin-bottom: 0.5rem;">
+                                <input type="checkbox" id="court-vermont" ${player.preferred_courts?.includes('vermont_canyon') ? 'checked' : ''}>
+                                Vermont Canyon
+                            </label>
+                            <label style="display: flex; align-items: center; margin-bottom: 0.5rem;">
+                                <input type="checkbox" id="court-griffith" ${player.preferred_courts?.includes('griffith_riverside') ? 'checked' : ''}>
+                                Griffith Park - Riverside
+                            </label>
+                            <label style="display: flex; align-items: center; margin-bottom: 0.5rem;">
+                                <input type="checkbox" id="court-echo" ${player.preferred_courts?.includes('echo_park') ? 'checked' : ''}>
+                                Echo Park
+                            </label>
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom: 1.5rem;">
+                        <label style="display: block; margin-bottom: 0.5rem; font-weight: 600; color: #4a5568;">Availability:</label>
+                        <div style="display: flex; gap: 1rem;">
+                            <label style="display: flex; align-items: center;">
+                                <input type="checkbox" id="avail-weekdays" ${player.availability?.weekdays ? 'checked' : ''}>
+                                Weekdays
+                            </label>
+                            <label style="display: flex; align-items: center;">
+                                <input type="checkbox" id="avail-weekends" ${player.availability?.weekends ? 'checked' : ''}>
+                                Weekends
+                            </label>
+                            <label style="display: flex; align-items: center;">
+                                <input type="checkbox" id="avail-flexible" ${player.availability?.flexible ? 'checked' : ''}>
+                                Flexible
+                            </label>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+                        <button onclick="this.parentElement.parentElement.parentElement.remove()"
+                                style="padding: 0.5rem 1rem; border: 2px solid #718096; background: white; color: #718096; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                            Close
+                        </button>
+                        <button onclick="saveProfile('${player.id}')"
+                                style="padding: 0.5rem 1rem; background: linear-gradient(135deg, #667eea, #5a67d8); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                            Save Profile
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(modal);
+
+            // Close modal when clicking outside
+            modal.addEventListener('click', function(e) {
+                if (e.target === modal) {
+                    modal.remove();
+                }
+            });
+        }
+
+        function saveProfile(playerId) {
+            // Get form values
+            const player = players.find(p => p.id === playerId);
+            if (!player) return;
+
+            // Update preferences
+            player.preferred_courts = [];
+            if (document.getElementById('court-vermont')?.checked) player.preferred_courts.push('vermont_canyon');
+            if (document.getElementById('court-griffith')?.checked) player.preferred_courts.push('griffith_riverside');
+            if (document.getElementById('court-echo')?.checked) player.preferred_courts.push('echo_park');
+
+            player.availability = {
+                weekdays: !!document.getElementById('avail-weekdays')?.checked,
+                weekends: !!document.getElementById('avail-weekends')?.checked,
+                flexible: !!document.getElementById('avail-flexible')?.checked
+            };
+
+            showSuccess('✅ Profile saved successfully!');
+            document.querySelector('div[style*="position: fixed"]').remove();
+
+            // Update localStorage
+            const storedPlayer = JSON.parse(localStorage.getItem('networth_player') || '{}');
+            storedPlayer.preferred_courts = player.preferred_courts;
+            storedPlayer.availability = player.availability;
+            localStorage.setItem('networth_player', JSON.stringify(storedPlayer));
         }
 
         function showPassword() {
@@ -1271,10 +1433,13 @@
 
                 <div class="actions-grid">
                     <button class="btn" onclick="showScoreUpdateForm()">
-                        <i class="fas fa-plus-circle"></i> Update Score
+                        <i class="fas fa-plus-circle"></i> Report Score
                     </button>
                     <button class="btn btn-secondary" onclick="showMatchHistory()">
-                        <i class="fas fa-history"></i> View History
+                        <i class="fas fa-history"></i> Match History
+                    </button>
+                    <button class="btn" onclick="showPlayerProfile()">
+                        <i class="fas fa-user"></i> My Profile
                     </button>
                     <button class="btn" onclick="logout()">
                         <i class="fas fa-sign-out-alt"></i> Logout
