@@ -268,22 +268,39 @@ def main():
     import argparse
 
     parser = argparse.ArgumentParser(description='Ultra-Simple Tennis Matcher')
-    parser.add_argument('--add-player', nargs=6, metavar=('NAME', 'EMAIL', 'PHONE', 'SKILL', 'ZIP', 'TIMES'),
-                       help='Add a new player')
+    parser.add_argument('--add-player', nargs='+', metavar='PLAYER_INFO',
+                       help='Add a new player: "Name Email Phone Skill Zip Times"')
     parser.add_argument('--run-matching', action='store_true', help='Run daily matching')
     parser.add_argument('--list-players', action='store_true', help='List all players')
     parser.add_argument('--export', help='Export data to CSV file')
+    parser.add_argument('--import-data', help='Import players from file (CSV/Excel)')
+    parser.add_argument('--ashley-import', help='Ashley: Import any file format automatically')
 
     args = parser.parse_args()
 
     matcher = SimpleTennisMatcher()
 
     if args.add_player:
-        name, email, phone, skill, zip_code, times = args.add_player
+        # Handle flexible player addition
+        player_data = args.add_player
+        if len(player_data) == 1:
+            # Single string with commas
+            parts = [p.strip() for p in player_data[0].split(',')]
+        else:
+            parts = player_data
+
+        # Default values
+        name = parts[0] if len(parts) > 0 else "Unknown"
+        email = parts[1] if len(parts) > 1 else ""
+        phone = parts[2] if len(parts) > 2 else ""
+        skill = float(parts[3]) if len(parts) > 3 else 3.5
+        zip_code = parts[4] if len(parts) > 4 else "90210"
+        times = parts[5].split(',') if len(parts) > 5 else ["evening"]
+
         player_id = matcher.add_player(
             name=name, email=email, phone=phone,
-            skill_level=float(skill), location_zip=zip_code,
-            preferred_times=times.split(',')
+            skill_level=skill, location_zip=zip_code,
+            preferred_times=times
         )
         print(f"✅ Added player: {name} (ID: {player_id})")
 
@@ -319,12 +336,60 @@ def main():
         conn.close()
         print(f"✅ Exported data to {args.export}")
 
+    elif args.import_data:
+        # Basic CSV import
+        try:
+            import pandas as pd
+            df = pd.read_csv(args.import_data)
+
+            imported = 0
+            for _, row in df.iterrows():
+                try:
+                    matcher.add_player(
+                        name=str(row.get('name', 'Unknown')),
+                        email=str(row.get('email', '')),
+                        phone=str(row.get('phone', '')),
+                        skill_level=float(row.get('skill_level', 3.5)),
+                        location_zip=str(row.get('zip_code', '90210')),
+                        preferred_days=['monday', 'wednesday', 'saturday'],
+                        preferred_times=['evening']
+                    )
+                    imported += 1
+                except Exception as e:
+                    print(f"Error importing row: {e}")
+
+            print(f"✅ Imported {imported} players from {args.import_data}")
+        except Exception as e:
+            print(f"❌ Import failed: {e}")
+
+    elif args.ashley_import:
+        # Use Ashley's advanced import system
+        try:
+            from data_import import AshleyDataImporter
+            importer = AshleyDataImporter()
+            result = importer.import_csv_file(args.ashley_import)
+
+            print(f"\n✅ Ashley's Import Complete!")
+            print(f"📊 Total rows: {result.get('total_rows', 0)}")
+            print(f"✅ Successfully imported: {result.get('imported', 0)}")
+
+            if result.get('errors'):
+                print(f"\n⚠️ Some rows had errors:")
+                for error in result['errors'][:5]:
+                    print(f"   {error}")
+
+        except ImportError:
+            print("❌ Ashley's import system not available. Please ensure data_import.py exists.")
+        except Exception as e:
+            print(f"❌ Import failed: {e}")
+
     else:
         print("🎾 Ultra-Simple Tennis Matcher")
         print("Use --help for commands")
-        print("\nQuick start:")
-        print("1. python simple_matcher.py --run-matching")
-        print("2. python simple_matcher.py --list-players")
+        print("\nAshley's quick start:")
+        print("1. python simple_matcher.py --ashley-import players.csv")
+        print("2. python simple_matcher.py --run-matching")
+        print("3. python simple_matcher.py --list-players")
 
 if __name__ == "__main__":
     main()
