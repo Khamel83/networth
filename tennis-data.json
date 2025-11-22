@@ -1,0 +1,57 @@
+{
+  "ladder_name": "NET WORTH - East Side Tennis Ladder",
+  "players": [
+    {
+      "id": "player_1",
+      "name": "Kim Ndombe",
+      "email": "kimberly@ndombe.com",
+      "skill_level": "4.0+ (Advanced)",
+      "location": "LA East Side",
+      "total_score": 0,
+      "is_active": true
+    },
+    {
+      "id": "player_2",
+      "name": "Natalie Coffen",
+      "email": "nmcoffen@gmail.com",
+      "skill_level": "4.0+ (Advanced)",
+      "location": "LA East Side",
+      "total_score": 0,
+      "is_active": true
+    },
+    {
+      "id": "player_3",
+      "name": "Sara Chrisman",
+      "email": "Sara.Chrisman@gmail.com",
+      "skill_level": "4.0+ (Advanced)",
+      "location": "LA East Side",
+      "total_score": 0,
+      "is_active": true
+    },
+    {
+      "id": "player_4",
+      "name": "Arianna Hairston",
+      "email": "ariannahairston@gmail.com",
+      "skill_level": "4.0+ (Advanced)",
+      "location": "LA East Side",
+      "total_score": 0,
+      "is_active": true
+    },
+    {
+      "id": "player_5",
+      "name": "Alik Apelian",
+      "email": "aapelian@gmail.com",
+      "skill_level": "4.0+ (Advanced)",
+      "location": "LA East Side",
+      "total_score": 0,
+      "is_active": true
+    }
+  ],
+  "matches": [],
+  "settings": {
+    "scoring_system": "Total Games Won",
+    "match_format": "Best 2 out of 3 sets",
+    "update_frequency": "Weekly",
+    "contact_email": "admin@networthtennis.com"
+  }
+}
