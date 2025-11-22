@@ -1,0 +1,18 @@
+[Unit]
+Description=NET WORTH Tennis Ladder (Port 80)
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/dev/networth
+Environment=PATH=/home/ubuntu/.local/bin:/usr/bin:/bin
+Environment=PYTHONPATH=/home/ubuntu/dev/networth
+ExecStart=/usr/bin/python3 /home/ubuntu/dev/networth/app_simple.py --port 80
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
