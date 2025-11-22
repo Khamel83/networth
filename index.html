@@ -860,7 +860,9 @@
                 </button>
 
                 <div class="info-box">
-                    <p><strong>New to the ladder?</strong> Contact your team administrator to get registered and receive your login credentials.</p>
+                    <p><strong>🌟 New to NET WORTH?</strong> Want to join the East Side's most exciting women's tennis ladder?</p>
+                    <p>📧 Email us at <strong>matches@networthtennis.com</strong> to get started!</p>
+                    <p>We'll get you set up with a profile and find your first match!</p>
                 </div>
             </section>
         </div>
@@ -1028,23 +1030,41 @@
             container.innerHTML = ladderHTML;
         }
 
-        // Login functionality
-        document.getElementById('loginForm').addEventListener('submit', function(e) {
+        // Login functionality - now with real API
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
 
-            // Find player by email
-            const player = players.find(p => p.email === email);
+            // Show loading state
+            showInfo('Logging in...');
 
-            if (player && password === 'tennis123') {
-                showSuccess(`Welcome back, ${player.name}! Redirecting to your dashboard...`);
-                setTimeout(() => {
-                    // In a real app, this would redirect to dashboard
-                    alert(`Logged in as ${player.name} - Dashboard functionality coming soon!`);
-                }, 2000);
-            } else {
-                showError('Invalid email or password. Use tennis123 as password for registered players.');
+            try {
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showSuccess(data.message);
+
+                    // Store player data in session
+                    localStorage.setItem('networth_player', JSON.stringify(data.player));
+
+                    setTimeout(() => {
+                        showPlayerDashboard(data.player);
+                    }, 1500);
+                } else {
+                    showError(data.message);
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                showError('Login error. Please try again or contact matches@networthtennis.com');
             }
         });
 
@@ -1061,7 +1081,66 @@
         }
 
         function showPassword() {
-            showInfo('Password reset: Use "tennis123" for all registered players. Contact admin for new registrations.');
+            showInfo('Password reset: Use "tennis123" for all registered players. Contact matches@networthtennis.com for help!');
+        }
+
+        function showPlayerDashboard(player) {
+            // Replace login section with player dashboard
+            const loginSection = document.querySelector('.login-section');
+            loginSection.innerHTML = `
+                <div class="login-header">
+                    <h3><i class="fas fa-trophy"></i> Welcome back, ${player.name}!</h3>
+                    <p>Rank: #${player.current_rank} of ${player.total_players} • ${player.matches_played} matches played</p>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-number">${player.total_score}</div>
+                        <div class="stat-label">Total Points</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">#${player.current_rank}</div>
+                        <div class="stat-label">Current Rank</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">${player.matches_played}</div>
+                        <div class="stat-label">Matches</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">${player.skill_level}</div>
+                        <div class="stat-label">Skill Level</div>
+                    </div>
+                </div>
+
+                <div class="actions-grid">
+                    <button class="btn" onclick="alert('Match reporting coming soon!')">
+                        <i class="fas fa-plus-circle"></i> Report Match
+                    </button>
+                    <button class="btn btn-secondary" onclick="alert('Match history coming soon!')">
+                        <i class="fas fa-history"></i> View History
+                    </button>
+                    <button class="btn" onclick="logout()">
+                        <i class="fas fa-sign-out-alt"></i> Logout
+                    </button>
+                </div>
+
+                <div class="info-box">
+                    <p><strong>Your Recent Matches:</strong></p>
+                    ${player.recent_matches && player.recent_matches.length > 0 ?
+                        player.recent_matches.slice(0, 3).map(match =>
+                            `<p>vs ${match.opponent_name} - ${match.created_at ? new Date(match.created_at).toLocaleDateString() : 'Recent'}</p>`
+                        ).join('') :
+                        '<p>No recent matches. Time to get on the court! 🎾</p>'
+                    }
+                </div>
+            `;
+
+            showSuccess('Welcome to your dashboard! 🎾');
+        }
+
+        function logout() {
+            localStorage.removeItem('networth_player');
+            location.reload();
         }
 
         function showSuccess(message) {
