@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-ASHLEY KAFMAN'S FINAL TENNIS MATCHING SYSTEM
-ONE_SHOT methodology: Simple but pretty, maximum impact
+NET WORTH - LA East Side Tennis Ladder System
+Women's Tennis Matching for East Side LA
 """
 
 import sqlite3
@@ -17,7 +17,7 @@ class FinalTennisMatcher:
         self.db_path = db_path
         self.init_db()
         self.emails = PrettyTennisEmails()
-        self.web_url = "https://ashleytennis.club"  # Ashley updates this
+        self.web_url = "https://networthtennis.com"  # NET WORTH Tennis
 
     def init_db(self):
         """Simple database - only what we need"""
