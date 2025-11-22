@@ -1,0 +1,12 @@
+[Unit]
+Description=Daily Tennis Match Maintenance
+Description=Runs matching algorithm and backups daily at 2 AM
+Requires=tennis-match.service
+
+[Timer]
+OnCalendar=*-*-* 02:00:00
+Persistent=true
+RandomizedDelaySec=300  # Add some randomness to avoid exact timing
+
+[Install]
+WantedBy=timers.target
