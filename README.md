@@ -1,41 +1,51 @@
-# Tennis Match LA
+# Tennis Match LA - MORNING SETUP GUIDE
 
-🎾 **Professional Tennis Matching for LA Women**
+🎾 **Professional Tennis Matching - Ready in 10 Minutes**
 
-Connecting women 25-50 through tennis. Beautiful, intelligent, and effortless.
+## ⚡ IMMEDIATE SETUP - 3 Questions for Ashley (5 minutes)
 
-Built with the ONE_SHOT methodology - ask everything upfront, then execute autonomously.
+**Copy this and send to Ashley:**
+
+> Hey! I need just 3 things to get your tennis matching system running:
+>
+> **1. Domain Status:** Do you already own `networthtennis.club` or should I buy it for you? ($20/year)
+>
+> **2. Gmail App Password:** Can you generate a Gmail App Password? (2 minutes)
+> - Google "Gmail App Password"
+> - Select "Mail" → "Other device"
+> - Copy the 16-character code
+>
+> **3. Tennis Data:** Can you send me ANY tennis data you have?
+> - Player names/emails (Excel, CSV, emails, screenshots - anything works)
+> - Past match history (who played who, how it went)
+> - Notes about who works well together
+>
+> That's it! I'll have everything running by lunchtime. 🎾
 
 ---
 
-## 📋 NEXT STEPS FOR ASHLEY KAUFMAN
+## 🚀 YOUR SETUP - Once Ashley Responds (5 minutes)
 
-**What I need from you:**
+```bash
+# 1. Get the system
+git clone https://github.com/Khamel83/networth
+cd networth
 
-1. **Player Data** (CSV or Excel format):
-   ```
-   Name,Email,Phone,Skill Level,Zip Code,Preferred Days,Preferred Times
-   "Ashley Kaufman","ashley@email.com","310-555-1234","3.5","90210","monday,wednesday","evening"
-   ```
+# 2. Quick setup (2 minutes)
+echo "GMAIL_EMAIL=matches@networthtennis.club" > .env
+echo "GMAIL_PASSWORD=paste-her-app-password-here" >> .env
 
-2. **Gmail Account** (for email notifications):
-   - Create new Gmail: `ashley-tennis-club@gmail.com` (or similar)
-   - Enable 2-factor authentication
-   - Generate App Password (16-character code)
-   - Share the App Password with me
+# 3. Import her data (1 minute)
+python3 simple_final.py --ashley-import whatever-she-sent-you.csv
 
-3. **Domain Name** (optional):
-   - Buy any domain you like: `ashleytennis.com`, `latennis.club`, etc.
-   - I'll point it to the server
+# 4. Run matching (30 seconds)
+python3 simple_final.py --run-matching
 
-**Then I'll:**
-- Import all your players automatically
-- Set up email notifications
-- Configure daily matching
-- Point your custom domain
-- Handle all technical setup
+# 5. Schedule automatic daily matching (1 minute)
+echo "0 2 * * * cd $(pwd) && python3 simple_final.py --run-matching" | crontab -
+```
 
-**Result:** Tennis matches start flowing tomorrow! 🎾
+**Result:** Professional tennis matching service running forever!
 
 ---
 
