@@ -1,13 +1,15 @@
 {
   "version": 2,
-  "functions": {},
-  "routes": [
+  "builds": [
     {
-      "src": "/api/(.*)",
-      "dest": "api/server.py"
+      "src": "index.html",
+      "use": "@vercel/static"
     }
   ],
-  "env": {
-    "PYTHONPATH": "."
-  }
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
+    }
+  ]
 }
