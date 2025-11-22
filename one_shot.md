@@ -1,9 +1,10 @@
 # ONE_SHOT: AI-Powered Autonomous Project Builder
 
-**Version**: 1.0  
-**Philosophy**: Ask everything upfront, then execute autonomously  
-**Target**: OCI Always Free Tier + Tailscale + GitHub  
+**Version**: 1.2
+**Philosophy**: Ask everything upfront, then execute autonomously
+**Target**: OCI Always Free Tier + Tailscale + GitHub
 **Cost**: $0/month forever
+**Core Principles**: Validate Before Create, Dependency Awareness, WHY documentation
 
 ---
 
@@ -511,6 +512,12 @@ This PRD will include:
 - Create CLI/API (based on project type)
 - Write unit tests
 
+### Archon Integration (if applicable)
+- Set up Caddy for SSL/reverse proxy (if web service)
+- Implement microservices communication (HTTP APIs only)
+- Add health endpoints (`/health`) for all services
+- Set up proper logging and error handling
+
 ### Phase 2: Integration (1-3hrs)
 - End-to-end workflows
 - Integration tests
@@ -522,6 +529,17 @@ This PRD will include:
 - Configure Tailscale HTTPS (if chosen)
 - Create README with usage
 - Final testing
+
+### Caddy/Web Configuration (if applicable)
+```
+# Add domain to /etc/caddy/Caddyfile
+your-project.ts.net {
+    reverse_proxy localhost:8080
+    encode gzip
+}
+# Validate: sudo caddy validate --config /etc/caddy/Caddyfile
+# Reload: sudo systemctl reload caddy
+```
 
 ### Phase 4: Validation (15min)
 - Run all tests
@@ -557,8 +575,21 @@ pytest             # Run tests
 
 3. **Documentation**:
    - README.md with installation and usage
-   - ARCHITECTURE.md explaining design decisions
+   - ARCHITECTURE.md explaining design decisions (WHY not just HOW)
    - API.md (if library/web app)
+
+4. **Operations Guide**:
+   ```bash
+   # Standard Archon workflow
+   git add . && git commit -m "description" && git push
+   docker compose up --build -d  # if containerized
+   make dev  # if Makefile exists
+   ```
+
+5. **Troubleshooting Principles**:
+   - Isolate Layer → Check Dependencies → Analyze Logs → Verify Health
+   - Always check `/health` endpoints before debugging code
+   - Use systematic debugging patterns
 
 4. **Next steps guide**:
    - How to extend
@@ -717,15 +748,32 @@ Aim for 80% coverage, focus on import/export
 
 ---
 
-## PHILOSOPHY OF ONE_SHOT
+## PHILOSOPHY OF ONE_SHOT + ARCHON INTEGRATION
 
-This file embodies a specific philosophy:
+This file embodies a specific philosophy enhanced with Archon principles:
 
 ### Front-Load All Decisions
 - No "we'll figure it out later"
 - No "TBD" or "TODO"
 - All architectural decisions made upfront
 - All questions asked before building
+
+### Document the WHY, Not Just the HOW
+- WHY this database choice (not just HOW to use it)
+- WHY this architecture pattern (not just HOW to implement)
+- HOW changes, WHY remains constant
+
+### Validate Before Create
+- Always check task validity before creation
+- Dependency awareness and resolution
+- Circular dependency prevention
+- Environment validation before building
+
+### Microservices When Appropriate
+- Single responsibility per module
+- Independent scaling possible
+- HTTP communication between services (no direct imports)
+- True separation of concerns
 
 ### Trust the Builder
 - You provide vision and constraints
@@ -753,7 +801,13 @@ This file embodies a specific philosophy:
 
 ---
 
-## TROUBLESHOOTING
+## TROUBLESHOOTING (Archon Systematic Approach)
+
+**Core Debugging Methodology**:
+1. **Isolate Layer**: Test each component independently (network → app → database)
+2. **Check Dependencies**: Verify required services are running before testing
+3. **Analyze Logs**: Always check logs before code changes
+4. **Verify Health**: Use `/health` endpoints to verify service status
 
 **If validation fails:**
 
@@ -779,6 +833,9 @@ sudo tailscale up
 # Check what's running
 ps aux | grep python
 
+# Archon: Check service status
+systemctl status caddy docker tailscale
+
 # See recent commits
 cd ~/[project]
 git log --oneline -10
@@ -786,8 +843,15 @@ git log --oneline -10
 # Check tests
 pytest -v
 
-# View logs
+# Check logs (systematic approach)
+journalctl -u [service-name] --since "1 hour ago"
 tail -100 [project].log
+
+# Port conflicts
+lsof -i :PORT
+
+# Docker issues
+docker compose logs -f [service-name]
 ```
 
 **If you need to restart:**
@@ -798,21 +862,112 @@ tail -100 [project].log
 
 ---
 
-## ANTI-PATTERNS TO AVOID
+## ANTI-PATTERNS TO AVOID (Archon Enhanced)
 
 **Don't:**
 - Answer questions vaguely ("make it configurable")
 - Skip the validation step
 - Change requirements mid-build
 - Over-scope v1 (keep it simple)
+- Implement services without health endpoints
+- Create tight coupling between modules
+- Ignore the WHY (focus only on HOW)
 
 **Do:**
 - Be specific in answers
 - Provide concrete examples
 - Start small (can expand later)
 - Trust the autonomous process
+- Add `/health` endpoints to all services
+- Document WHY choices were made
+- Follow Validate Before Create principle
 
 ---
+
+## ADVANCED PATTERNS (Archon Integration)
+
+### Microservices Communication
+```python
+# Service A (example)
+import requests
+
+def call_service_b(data):
+    response = requests.post("http://localhost:8052/api/process", json=data)
+    return response.json()
+```
+
+### Health Endpoint Pattern
+```python
+from fastapi import FastAPI
+app = FastAPI()
+
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy", "timestamp": datetime.utcnow()}
+```
+
+### Caddy Configuration Templates
+```caddy
+# API service
+api.project.ts.net {
+    reverse_proxy localhost:8000
+    encode gzip
+}
+
+# Static site
+project.ts.net {
+    root * /path/to/files
+    file_server
+    encode gzip
+}
+
+# Mixed (API + Static)
+app.project.ts.net {
+    handle /api/* {
+        reverse_proxy localhost:8000
+    }
+    handle /* {
+        root * /path/to/app
+        file_server
+        try_files {path} /index.html
+    }
+    encode gzip
+}
+```
+
+### Docker Compose Structure
+```yaml
+services:
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://...
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+```
+
+### Error Handling Pattern
+```python
+import logging
+
+logger = logging.getLogger(__name__)
+
+def process_data(data):
+    try:
+        # Main logic
+        result = transform(data)
+        logger.info(f"Successfully processed {len(data)} items")
+        return result
+    except Exception as e:
+        logger.error(f"Processing failed: {e}")
+        # Always log before raising
+        raise
+```
 
 ## NEXT STEPS AFTER FIRST PROJECT
 
@@ -852,9 +1007,10 @@ tail -100 [project].log
 ---
 
 **Version History**
+- v1.2 (2024-11-21): Complete Archon integration - systematic debugging, health endpoints, microservices patterns, Caddy templates, Docker best practices
 - v1.1 (2024-11-21): Added Archon methodology integration - Validate Before Create, Dependency Awareness, WHY documentation
 - v1.0 (2024-11-21): Initial ONE_SHOT framework based on RelayQ, OOS, FrugalOS patterns
 
 ---
 
-*This is ONE_SHOT: One file. One workflow. Infinite projects.*
+*This is ONE_SHOT + ARCHON: One file. One workflow. Infinite projects. Systematic excellence.*
