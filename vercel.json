@@ -1,0 +1,13 @@
+{
+  "version": 2,
+  "functions": {},
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "api/server.py"
+    }
+  ],
+  "env": {
+    "PYTHONPATH": "."
+  }
+}

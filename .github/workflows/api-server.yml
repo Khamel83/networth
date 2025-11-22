@@ -1,0 +1,45 @@
+name: Deploy API Server
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-api:
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to server
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            cd /home/ubuntu/dev/networth
+
+            # Kill existing API server
+            pkill -f "api/login.py" || true
+
+            # Install dependencies
+            pip3 install flask requests
+
+            # Start API server in background
+            nohup python3 api/login.py > api.log 2>&1 &
+
+            # Verify it's running
+            sleep 3
+            if pgrep -f "api/login.py" > /dev/null; then
+              echo "✅ API server started successfully"
+            else
+              echo "❌ API server failed to start"
+              exit 1
+            fi

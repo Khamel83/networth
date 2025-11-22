@@ -49,7 +49,7 @@ def login():
 
         cursor.execute('''
             SELECT * FROM players
-            WHERE email = ? AND is_active = 1
+            WHERE LOWER(email) = LOWER(?) AND is_active = 1
         ''', (email,))
 
         player = cursor.fetchone()
