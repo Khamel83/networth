@@ -2,6 +2,39 @@
 
 🎾 **Professional Tennis Matching - Ready in 10 Minutes**
 
+---
+
+## 🎨 **LIVE DEMO - Show Ashley Right Now!**
+
+**Want to see the beautiful mockup site with fake data? Run this one command:**
+
+```bash
+./run_demo.sh
+```
+
+Then open your browser to **http://localhost:8000**
+
+### 👥 Demo Login Credentials (Fake Sample Data)
+```
+Email: john@tennis.com   | Password: password123
+Email: jane@tennis.com   | Password: password123
+Email: mike@tennis.com   | Password: password123
+Email: sarah@tennis.com  | Password: password123
+Email: tom@tennis.com    | Password: password123
+```
+
+### ✨ What You'll See:
+- 🎨 **Professional Design**: Clean, modern interface that looks polished
+- 📱 **Mobile-Friendly**: Works perfectly on any device
+- 🎾 **Sample Matches**: Pre-populated with fake players and matches
+- 📊 **Player Dashboard**: See upcoming matches, match history, stats
+- ⚙️ **Preferences Page**: Configure skill level, availability, location
+- 👑 **Admin Dashboard**: View all players and matches at `/admin/dashboard`
+
+**Perfect for showing Ashley what the final product looks like!** All sample data uses fake names and information - nothing real.
+
+---
+
 ## ⚡ IMMEDIATE SETUP - 3 Questions for Ashley (5 minutes)
 
 **Copy this and send to Ashley:**
