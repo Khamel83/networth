@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: tennis-match-la-demo
+    env: python
+    region: oregon
+    plan: free
+    branch: claude/create-mockup-site-01N5DCXhjDgtyZ8kTAhhfHf5
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ADMIN_EMAIL
+        value: demo@tennismatchla.com

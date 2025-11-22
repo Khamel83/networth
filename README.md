@@ -6,7 +6,22 @@
 
 ## 🎨 **LIVE DEMO - Show Ashley Right Now!**
 
-**Want to see the beautiful mockup site with fake data? Run this one command:**
+### 🌐 Get a Public URL (No Installation!)
+
+**Deploy to free hosting and get a public URL Ashley can access from anywhere:**
+
+👉 **[See DEPLOY_DEMO.md](DEPLOY_DEMO.md)** for one-click deployment instructions
+
+**Services Available:**
+- **Render.com** ← Recommended (5-minute setup, auto-deploy)
+- **Railway.app** (Also super easy)
+- **Fly.io** (More control)
+
+**Result:** Get a URL like `https://tennis-match-la-demo.onrender.com` that works immediately!
+
+### 💻 Or Run Locally
+
+**Want to see it on your own computer? Run this one command:**
 
 ```bash
 ./run_demo.sh
