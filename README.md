@@ -37,26 +37,66 @@ Built with the ONE_SHOT methodology - ask everything upfront, then execute auton
 
 ---
 
-## 🚀 Quick Start
+## 🚀 ASHLEY'S QUICK START
 
-### Ultra-Simple Version (Recommended)
+### Clone and Go (Ready Tomorrow)
+
 ```bash
-# Just run the simple matcher
-python3 simple_matcher.py --run-matching
-
-# Add players
-python3 simple_matcher.py --add-player "Name" "[redacted-email]" "555-1234" "3.5" "90210" "evening"
+# 1. Clone the repository
+git clone https://github.com/Khamel83/networth
+cd networth
 ```
 
-### Full Web Version
+### Setup Environment (5 minutes)
 ```bash
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-python -m uvicorn main:app --reload
+# 2. Set up environment (create .env file)
+echo "GMAIL_EMAIL=[redacted-email]" > .env
+echo "GMAIL_PASSWORD=your-app-password" >> .env
+
+# 3. Install requirements (pip install if needed)
+pip install sqlite3
+
+# 4. Test the system
+python3 simple_final.py --run-matching
+python3 simple_final.py --add-player "Test User" "[redacted-email]" "555-1234" "3.5" "90210"
 ```
 
-Visit http://localhost:8000
+### Import Your Data (Tomorrow)
+```bash
+# 5. Import all your player data
+python3 simple_final.py --ashley-import tennis_players.csv
+
+# 6. Run matching every day
+python3 simple_final.py --run-matching
+
+# 7. Check your players
+python3 simple_final.py --list-players
+```
+
+### ONE COMMAND DEPLOYMENT
+```bash
+# Everything in one command!
+python3 simple_final.py --run-matching && python3 simple_final.py --list-players
+```
+
+**That's it!** 🎾
+
+- ✅ No complex setup
+- ✅ No web server required
+- ✅ Works with any data format
+- ✅ Beautiful email notifications
+- ✅ Automatic daily matching
+
+### Import Any Data Format
+The system handles ANY format Ashley provides:
+- ✅ Excel files (.xlsx, .xls)
+- ✅ CSV files
+- ✅ Google Sheets (share link)
+- ✅ Handwritten lists (photo + transcription)
+- ✅ Random files and data
+- ✅ Email pasted data
+
+**Just send the data and it works!** 📊
 
 ## 🎯 What This Does
 
