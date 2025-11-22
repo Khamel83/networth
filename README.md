@@ -1,6 +1,8 @@
 # Tennis Match LA
 
-🎾 **Zero-maintenance tennis player matching system for Los Angeles**
+🎾 **Professional Tennis Matching for LA Women**
+
+Connecting women 25-50 through tennis. Beautiful, intelligent, and effortless.
 
 Built with the ONE_SHOT methodology - ask everything upfront, then execute autonomously.
 
@@ -154,30 +156,34 @@ I can handle any format you have:
 
 ## 🎮 Player Experience
 
-### Step 1: Sign Up (One time)
-- Name, email, skill level, location, preferences
-- Takes 2 minutes
+### Step 1: Welcome (One time)
+- Professional welcome email from matches@networthtennis.club
+- No signup required - already in the system
+- Takes 30 seconds to read
 
-### Step 2: Wait for Match (Automatic)
-- System runs daily at 2 AM
-- Compatible partners matched automatically
-- Direct email/SMS notification
+### Step 2: Match Notification (Automatic)
+- Beautiful email with match details
+- Professional design, mobile-friendly
+- One-click confirmation or decline
+- Privacy-protected until both confirm
 
 ### Step 3: Contact & Play (Direct)
 ```
 🎾 TENNIS MATCH FOUND!
 
-You've been matched with John!
+You've been matched with Sarah!
 
-📞 Contact: 555-1234
-⭐ Skill Level: 4.0
-📍 Location: Central LA
-📅 Suggested: Tomorrow
+⭐ Skill Level: 3.5 | 📍 Beverly Hills | 📅 Tomorrow
+✅ Both players interested - perfect match!
+
+📞 Contact Info Shared
+📱 Sarah's email & phone
+💬 Coordinate directly and enjoy playing!
 
 Game on! 🎾
 ```
 
-**No logging in, no browsing, no chatting. Just direct contact and play.**
+**Professional, approachable, and respectful. Designed for busy women who want to play tennis, not browse profiles.**
 
 ## 🔧 Ashley Kaufman's Admin Tools
 
