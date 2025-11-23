@@ -711,6 +711,10 @@ def initialize_database():
         except Exception as e:
             print(f"❌ Error initializing database: {e}")
 
+# Initialize database on import for Railway/gunicorn deployment
+print("🔧 NET WORTH Tennis Ladder - Starting up...")
+initialize_database()
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     debug = os.environ.get('DEBUG', 'False').lower() == 'true'
