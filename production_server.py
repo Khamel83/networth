@@ -728,9 +728,6 @@ if __name__ == '__main__':
         print(f"📊 Database: SQLite")
         print(f"📁 Path: {DB_PATH}")
 
-        # Initialize SQLite database if needed
-        initialize_database()
-
     print(f"🔐 Admin: {ADMIN_EMAIL}")
 
     app.run(host='0.0.0.0', port=port, debug=debug)
