@@ -706,8 +706,15 @@ def ensure_database_exists():
     """Create database if it doesn't exist (lazy initialization)"""
     if not USE_POSTGRES and not os.path.exists(DB_PATH):
         try:
+            # Ensure the directory exists
+            db_dir = os.path.dirname(DB_PATH)
+            if db_dir and not os.path.exists(db_dir):
+                os.makedirs(db_dir, exist_ok=True)
+                print(f"📁 Created database directory: {db_dir}")
+
             import init_database
             init_database.initialize_sqlite(DB_PATH)
+            print(f"✅ Database created: {DB_PATH}")
             return True
         except Exception as e:
             print(f"❌ Database creation failed: {e}")
