@@ -158,6 +158,11 @@ def login():
         flash('Incorrect password.', 'danger')
         return render_template('login.html', email=email)
 
+    # Ensure database exists
+    if not ensure_database_exists():
+        flash('Database setup failed. Please try again.', 'danger')
+        return render_template('login.html', email=email)
+
     # Find player
     conn = get_db()
     cursor = conn.cursor()
@@ -697,31 +702,17 @@ def api_get_players():
             'message': str(e)
         }), 500
 
-def initialize_database():
-    """Initialize database if not exists"""
+def ensure_database_exists():
+    """Create database if it doesn't exist (lazy initialization)"""
     if not USE_POSTGRES and not os.path.exists(DB_PATH):
-        print(f"📁 Database not found. Creating: {DB_PATH}")
-
-        # Get directory path, handle case where DB_PATH has no directory
-        db_dir = os.path.dirname(DB_PATH)
-        if db_dir:  # Only create directory if there is one
-            os.makedirs(db_dir, exist_ok=True)
-
-        # Import and run init_database
         try:
             import init_database
             init_database.initialize_sqlite(DB_PATH)
-            print("✅ Database initialized successfully")
+            return True
         except Exception as e:
-            print(f"❌ Error initializing database: {e}")
-
-# Initialize database on import for Railway/gunicorn deployment
-try:
-    print("🔧 NET WORTH Tennis Ladder - Starting up...")
-    initialize_database()
-except Exception as e:
-    print(f"⚠️ Warning: Database initialization failed: {e}")
-    print("⚠️ App will continue, but login may not work")
+            print(f"❌ Database creation failed: {e}")
+            return False
+    return True
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))

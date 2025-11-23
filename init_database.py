@@ -13,9 +13,6 @@ def initialize_sqlite(db_path='networth_tennis.db'):
     """Initialize SQLite database with schema only (for production)"""
 
     print(f"📁 Database not found. Creating: {db_path}")
-    db_dir = os.path.dirname(db_path)
-    if db_dir:  # Only create directory if there is one
-        os.makedirs(db_dir, exist_ok=True)
 
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
