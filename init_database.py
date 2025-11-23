@@ -9,6 +9,109 @@ import uuid
 from datetime import datetime
 import os
 
+def initialize_sqlite(db_path='networth_tennis.db'):
+    """Initialize SQLite database with schema only (for production)"""
+
+    print(f"📁 Database not found. Creating: {db_path}")
+    os.makedirs(os.path.dirname(db_path), exist_ok=True)
+
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+
+    # Create tables
+    print("Creating tables...")
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS players (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            email TEXT UNIQUE NOT NULL,
+            skill_level REAL NOT NULL,
+            is_active INTEGER DEFAULT 1,
+            total_score INTEGER DEFAULT 1000,
+            wins INTEGER DEFAULT 0,
+            losses INTEGER DEFAULT 0,
+            created_at TEXT,
+            updated_at TEXT
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS match_reports (
+            id TEXT PRIMARY KEY,
+            winner_id TEXT NOT NULL,
+            loser_id TEXT NOT NULL,
+            winner_sets INTEGER NOT NULL,
+            loser_sets INTEGER NOT NULL,
+            winner_games INTEGER,
+            loser_games INTEGER,
+            match_date TEXT NOT NULL,
+            status TEXT DEFAULT 'pending',
+            submitted_by TEXT,
+            notes TEXT,
+            created_at TEXT,
+            updated_at TEXT,
+            FOREIGN KEY (winner_id) REFERENCES players(id),
+            FOREIGN KEY (loser_id) REFERENCES players(id)
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS match_history (
+            id TEXT PRIMARY KEY,
+            winner_id TEXT NOT NULL,
+            loser_id TEXT NOT NULL,
+            winner_sets INTEGER NOT NULL,
+            loser_sets INTEGER NOT NULL,
+            winner_games INTEGER,
+            loser_games INTEGER,
+            match_date TEXT NOT NULL,
+            confirmed_by TEXT,
+            created_at TEXT,
+            FOREIGN KEY (winner_id) REFERENCES players(id),
+            FOREIGN KEY (loser_id) REFERENCES players(id)
+        )
+    ''')
+
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS monthly_matches (
+            id TEXT PRIMARY KEY,
+            player_id TEXT NOT NULL,
+            month TEXT NOT NULL,
+            year INTEGER NOT NULL,
+            matches_played INTEGER DEFAULT 0,
+            created_at TEXT,
+            updated_at TEXT,
+            FOREIGN KEY (player_id) REFERENCES players(id),
+            UNIQUE(player_id, month, year)
+        )
+    ''')
+
+    conn.commit()
+
+    # Add admin player if no players exist
+    cursor.execute("SELECT COUNT(*) FROM players")
+    if cursor.fetchone()[0] == 0:
+        print("Adding admin player...")
+        cursor.execute('''
+            INSERT INTO players (id, name, email, skill_level, is_active, total_score, wins, losses, created_at, updated_at)
+            VALUES (?, ?, ?, ?, 1, ?, ?, ?, ?, ?)
+        ''', (
+            str(uuid.uuid4()),
+            'Admin User',
+            'admin@networthtennis.com',
+            4.0,
+            1200,
+            0,
+            0,
+            datetime.now().isoformat(),
+            datetime.now().isoformat()
+        ))
+        print("✅ Admin player added")
+
+    conn.commit()
+    conn.close()
+    print("✅ Database tables created successfully")
+
 def init_database(db_path='networth_tennis.db', force=False):
     """Initialize database with schema and sample data"""
 
