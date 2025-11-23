@@ -8,7 +8,7 @@ Everything (frontend + backend + database) runs on **Railway.app** for FREE.
 
 ## What You're Deploying
 
-✅ Tennis ladder with 40 real players
+✅ Tennis ladder with 16 real players
 ✅ Public pages (ladder, privacy, rules, support)
 ✅ Login system (email + password)
 ✅ Score reporting
@@ -29,7 +29,7 @@ Everything (frontend + backend + database) runs on **Railway.app** for FREE.
 - Select "Deploy from GitHub repo"
 - Configure GitHub app (authorize Railway)
 - Select repository: `Khamel83/networth`
-- Select branch: `claude/complete-site-links-019PGcB4YSVqTYBZWjyYoHVY`
+- Select branch: `master`
 - Railway starts building (wait 2 minutes)
 
 ### 3. Add Volume for Database (2 min)
@@ -96,7 +96,7 @@ curl https://yourapp.railway.app/api/health
 ```bash
 curl -X POST https://yourapp.railway.app/api/login \
   -H "Content-Type: application/json" \
-  -d '{"email":"aapelian@gmail.com","password":"tennis123"}'
+  -d '{"email":"kimberly@ndombe.com","password":"tennis123"}'
 ```
 
 ---
@@ -112,13 +112,13 @@ Your site is now live at `https://yourapp.railway.app`
 **Password:** `tennis123` (same for everyone)
 
 **Test with any of these emails:**
-- aapelian@gmail.com
-- Allison.n.dunne@gmail.com
-- Alyssa.j.perry@gmail.com
-- ariannahairston@gmail.com
-- Ashleybrooke.kaufman@gmail.com
+- kimberly@ndombe.com (Kim Ndombe - #1 ranked)
+- nmcoffen@gmail.com (Natalie Coffen - #2 ranked)
+- Sara.Chrisman@gmail.com (Sara Chrisman - #3 ranked)
+- aapelian@gmail.com (Alik Apelian - #6 ranked)
+- Allison.n.dunne@gmail.com (Allison Dunne - #9 ranked)
 
-(You have 40 total players - see `RAILWAY_LOGIN_GUIDE.md` for full list)
+(You have 16 total players - all use the same password)
 
 ---
 
