@@ -1,1 +1,1 @@
-web: gunicorn production_server:app
+web: python production_server.py
