@@ -24,23 +24,52 @@
 - Select branch: `claude/complete-site-links-019PGcB4YSVqTYBZWjyYoHVY`
 - Wait 2 minutes (Railway builds)
 
-### 3. Add Environment Variables
+### 3. Add a Volume for Database Persistence
+
+**CRITICAL:** You need this so scores don't get lost on redeploy!
+
+1. **Click "Data" tab** (or "Volumes")
+2. **Click "+ New Volume"**
+3. **Configure:**
+   - Mount Path: `/app/data`
+   - Click "Add"
+
+### 4. Add Environment Variables
 Click your service → "Variables" tab → Add:
 
 | Variable Name | Value |
 |--------------|-------|
-| `DATABASE_PATH` | `networth_tennis.db` |
+| `DATABASE_PATH` | `/app/data/networth_tennis.db` |
 | `PLAYER_PASSWORD` | `tennis123` |
 
 Railway redeploys automatically (30 seconds)
 
-### 4. Generate Railway Domain (Temporary)
+### 5. Copy Database to Volume (One-Time Setup)
+
+You need to get your database file into the volume:
+
+**Install Railway CLI:**
+```bash
+npm i -g @railway/cli
+```
+
+**Upload database:**
+```bash
+cd /home/user/networth
+railway login
+railway link    # Select your project
+railway run cp networth_tennis.db /app/data/networth_tennis.db
+```
+
+Or see `RAILWAY_VOLUME_SETUP.md` for alternative methods.
+
+### 6. Generate Railway Domain (Temporary)
 - Click "Settings" tab
 - Scroll to "Networking"
 - Click "Generate Domain"
 - You get: `https://yourapp.railway.app`
 
-### 5. Test It Works
+### 7. Test It Works
 Visit `https://yourapp.railway.app`
 
 Should see your tennis ladder! ✅
@@ -56,7 +85,7 @@ Should return: `{"success": true, "players": 40}`
 
 ## PART 2: Point networthtennis.com to Railway (5 minutes)
 
-### 6. Add Custom Domain in Railway
+### 8. Add Custom Domain in Railway
 
 Still in Railway dashboard:
 
@@ -80,7 +109,7 @@ CNAME Record:
   Value: yourapp.railway.app
 ```
 
-### 7. Update DNS at Your Domain Registrar
+### 9. Update DNS at Your Domain Registrar
 
 **Where is networthtennis.com registered?**
 - GoDaddy?
