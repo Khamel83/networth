@@ -70,9 +70,14 @@ Step-by-step guide to deploy to Railway in 15 minutes:
 
 ### I Want To... Test Locally First
 
-**→ Follow [`LOCAL_TESTING.md`](LOCAL_TESTING.md)**
+**→ Follow [`LOCAL_TESTING.md`](LOCAL_TESTING.md)** or use quick-start:
 
-Run the complete platform on your computer:
+**One-command setup:**
+```bash
+./quick-start.sh
+```
+
+**Manual setup:**
 ```bash
 pip3 install -r requirements_backend.txt
 python3 init_database.py --force
@@ -109,6 +114,31 @@ Upgrade from SQLite to production-grade PostgreSQL (30-45 min).
 ### For Operations
 - **[CRITICAL_CONSIDERATIONS.md](CRITICAL_CONSIDERATIONS.md)** - Important issues to know
 - **[SITE_STATUS.md](SITE_STATUS.md)** - What requires backend vs frontend
+- **[CLEANUP_GUIDE.md](CLEANUP_GUIDE.md)** - Remove old/unused files
+- **[DOCS_INDEX.md](DOCS_INDEX.md)** - Complete documentation index
+
+### Helpful Scripts
+
+- **`quick-start.sh`** - One-command local testing setup
+  ```bash
+  ./quick-start.sh  # Installs deps, inits DB, starts server
+  ```
+
+- **`validate.py`** - Pre-deployment validation (runs 46 checks)
+  ```bash
+  python3 validate.py  # Check if ready to deploy
+  ```
+
+- **`import_players.py`** - Import player data from CSV
+  ```bash
+  python3 import_players.py --template    # Create CSV template
+  python3 import_players.py players.csv   # Import players
+  ```
+
+- **`.env.template`** - Environment variable template
+  ```bash
+  cp .env.template .env  # Copy and edit for local testing
+  ```
 
 ---
 
