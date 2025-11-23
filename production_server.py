@@ -15,6 +15,14 @@ import hashlib
 import secrets
 import uuid
 
+# PostgreSQL support (optional)
+try:
+    import psycopg2
+    from psycopg2.extras import RealDictCursor
+    POSTGRES_AVAILABLE = True
+except ImportError:
+    POSTGRES_AVAILABLE = False
+
 app = Flask(__name__, template_folder='templates')
 CORS(app)
 
@@ -26,16 +34,34 @@ app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)
 
 # Environment configuration
-DB_PATH = os.environ.get('DATABASE_PATH', 'networth_tennis.db')
+DATABASE_URL = os.environ.get('DATABASE_URL')  # PostgreSQL URL from Railway
+DB_PATH = os.environ.get('DATABASE_PATH', 'networth_tennis.db')  # SQLite fallback
 DEFAULT_PASSWORD = os.environ.get('PLAYER_PASSWORD', 'tennis123')
 ADMIN_EMAIL = os.environ.get('ADMIN_EMAIL', 'admin@networthtennis.com')
 
+# Detect database type
+USE_POSTGRES = DATABASE_URL and DATABASE_URL.startswith('postgres') and POSTGRES_AVAILABLE
+
 def get_db():
-    """Get database connection"""
-    db_path = DB_PATH if os.path.isabs(DB_PATH) else os.path.join(os.path.dirname(__file__), DB_PATH)
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
-    return conn
+    """
+    Get database connection - supports both SQLite and PostgreSQL
+    Returns connection with dict-like row access
+    """
+    if USE_POSTGRES:
+        # PostgreSQL connection
+        conn = psycopg2.connect(DATABASE_URL)
+        conn.cursor_factory = RealDictCursor
+        return conn
+    else:
+        # SQLite connection
+        db_path = DB_PATH if os.path.isabs(DB_PATH) else os.path.join(os.path.dirname(__file__), DB_PATH)
+        conn = sqlite3.connect(db_path)
+        conn.row_factory = sqlite3.Row
+        return conn
+
+def db_param():
+    """Return the correct parameter placeholder for the current database"""
+    return '%s' if USE_POSTGRES else '?'
 
 def login_required(f):
     """Decorator to require login"""
@@ -670,7 +696,14 @@ if __name__ == '__main__':
 
     print(f"🎾 NET WORTH Tennis Ladder")
     print(f"🚀 Starting server on port {port}...")
-    print(f"📊 Database: {DB_PATH}")
+
+    if USE_POSTGRES:
+        print(f"📊 Database: PostgreSQL (Railway)")
+        print(f"🔗 Connection: {DATABASE_URL[:50]}...")
+    else:
+        print(f"📊 Database: SQLite")
+        print(f"📁 Path: {DB_PATH}")
+
     print(f"🔐 Admin: {ADMIN_EMAIL}")
 
     app.run(host='0.0.0.0', port=port, debug=debug)
