@@ -101,21 +101,22 @@ Upgrade from SQLite to production-grade PostgreSQL (30-45 min).
 
 ## Documentation
 
-### For Deployment
-- **[START_HERE.md](START_HERE.md)** - Main deployment guide (Railway)
+**All Guides:**
+- **[START_HERE.md](START_HERE.md)** - Deploy to Railway (15 minutes)
+- **[LOCAL_TESTING.md](LOCAL_TESTING.md)** - Test locally before deploying
+- **[PRE_DEPLOYMENT_CHECKLIST.md](PRE_DEPLOYMENT_CHECKLIST.md)** - Check deployment readiness
 - **[DEPLOY_TO_NETWORTHTENNIS.md](DEPLOY_TO_NETWORTHTENNIS.md)** - Custom domain setup
-- **[POSTGRESQL_MIGRATION.md](POSTGRESQL_MIGRATION.md)** - Database upgrade guide
+- **[POSTGRESQL_MIGRATION.md](POSTGRESQL_MIGRATION.md)** - Database upgrade (recommended)
+- **[CRITICAL_CONSIDERATIONS.md](CRITICAL_CONSIDERATIONS.md)** - Important issues & best practices
 
-### For Development
-- **[LOCAL_TESTING.md](LOCAL_TESTING.md)** - Test before deploying
-- **[BUILD_SPEC.md](BUILD_SPEC.md)** - Original build specification
-- **[PLATFORM_COMPLETE.md](PLATFORM_COMPLETE.md)** - Platform overview
+**Quick Reference:**
+- Want to deploy now? → `START_HERE.md`
+- Want to test first? → `LOCAL_TESTING.md` or `./quick-start.sh`
+- Ready to deploy? → `PRE_DEPLOYMENT_CHECKLIST.md` then `START_HERE.md`
+- Need PostgreSQL? → `POSTGRESQL_MIGRATION.md`
+- Custom domain? → `DEPLOY_TO_NETWORTHTENNIS.md`
 
-### For Operations
-- **[CRITICAL_CONSIDERATIONS.md](CRITICAL_CONSIDERATIONS.md)** - Important issues to know
-- **[SITE_STATUS.md](SITE_STATUS.md)** - What requires backend vs frontend
-- **[CLEANUP_GUIDE.md](CLEANUP_GUIDE.md)** - Remove old/unused files
-- **[DOCS_INDEX.md](DOCS_INDEX.md)** - Complete documentation index
+---
 
 ### Helpful Scripts
 
@@ -207,16 +208,14 @@ networth/
 ├── railway.json                  # Railway settings
 ├── vercel.json                   # Static file routing
 │
-└── Documentation
-    ├── README.md                 # This file
-    ├── START_HERE.md
-    ├── LOCAL_TESTING.md
-    ├── DEPLOY_TO_NETWORTHTENNIS.md
-    ├── POSTGRESQL_MIGRATION.md
-    ├── BUILD_SPEC.md
-    ├── PLATFORM_COMPLETE.md
-    ├── CRITICAL_CONSIDERATIONS.md
-    └── SITE_STATUS.md
+└── Documentation (6 essential guides)
+    ├── README.md                      # This file
+    ├── START_HERE.md                  # Railway deployment
+    ├── LOCAL_TESTING.md               # Local testing
+    ├── PRE_DEPLOYMENT_CHECKLIST.md    # Deployment readiness
+    ├── DEPLOY_TO_NETWORTHTENNIS.md    # Custom domain
+    ├── POSTGRESQL_MIGRATION.md        # PostgreSQL upgrade
+    └── CRITICAL_CONSIDERATIONS.md     # Important issues
 ```
 
 ---
