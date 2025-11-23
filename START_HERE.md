@@ -1,0 +1,137 @@
+# ⚡ START HERE - Deploy in 15 Minutes
+
+## ONE Path, NO Confusion
+
+Everything (frontend + backend + database) runs on **Railway.app** for FREE.
+
+---
+
+## What You're Deploying
+
+✅ Tennis ladder with 40 real players
+✅ Public pages (ladder, privacy, rules, support)
+✅ Login system (email + password)
+✅ Score reporting
+✅ Dynamic rankings
+✅ Database included (already in git)
+
+---
+
+## The ONLY Steps You Need
+
+### 1. Go to Railway (2 min)
+- Visit: **https://railway.app**
+- Click "Login"
+- Sign in with GitHub
+
+### 2. Deploy This Repo (3 min)
+- Click "New Project"
+- Select "Deploy from GitHub repo"
+- Configure GitHub app (authorize Railway)
+- Select repository: `Khamel83/networth`
+- Select branch: `claude/complete-site-links-019PGcB4YSVqTYBZWjyYoHVY`
+- Railway starts building (wait 2 minutes)
+
+### 3. Add Environment Variables (2 min)
+Click on your service → Variables tab → Add these:
+
+| Variable | Value |
+|----------|-------|
+| `DATABASE_PATH` | `networth_tennis.db` |
+| `PLAYER_PASSWORD` | `tennis123` |
+
+Railway auto-redeploys (wait 30 seconds)
+
+### 4. Generate Domain (1 min)
+- Click "Settings" tab
+- Scroll to "Networking"
+- Click "Generate Domain"
+- Copy your URL: `https://yourapp.railway.app`
+
+### 5. Test Everything (2 min)
+
+**Visit your site:**
+```
+https://yourapp.railway.app
+```
+
+**Test the health check:**
+```bash
+curl https://yourapp.railway.app/api/health
+```
+
+**Test login:**
+```bash
+curl -X POST https://yourapp.railway.app/api/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"aapelian@gmail.com","password":"tennis123"}'
+```
+
+---
+
+## ✅ DONE!
+
+Your site is now live at `https://yourapp.railway.app`
+
+---
+
+## How to Login
+
+**Password:** `tennis123` (same for everyone)
+
+**Test with any of these emails:**
+- aapelian@gmail.com
+- Allison.n.dunne@gmail.com
+- Alyssa.j.perry@gmail.com
+- ariannahairston@gmail.com
+- Ashleybrooke.kaufman@gmail.com
+
+(You have 40 total players - see `RAILWAY_LOGIN_GUIDE.md` for full list)
+
+---
+
+## Pages That Work
+
+- `https://yourapp.railway.app/` - Main ladder ✅
+- `https://yourapp.railway.app/privacy.html` - Privacy ✅
+- `https://yourapp.railway.app/rules.html` - Rules ✅
+- `https://yourapp.railway.app/support.html` - Support ✅
+- `https://yourapp.railway.app/api/health` - Health check ✅
+- `https://yourapp.railway.app/api/ladder` - API ✅
+- `https://yourapp.railway.app/api/login` - Login ✅
+
+---
+
+## Detailed Guides (If You Need Them)
+
+- **`RAILWAY_COMPLETE_GUIDE.md`** - Full step-by-step with screenshots
+- **`RAILWAY_LOGIN_GUIDE.md`** - How to login, all player emails, API docs
+
+---
+
+## Questions?
+
+### Where's the database?
+✅ Already in git at `networth_tennis.db` - Railway deploys it automatically
+
+### Where's the frontend?
+✅ `production_server.py` serves all HTML files (index.html, privacy.html, etc.)
+
+### Where's the backend?
+✅ Same `production_server.py` - it's one unified Flask app
+
+### Do I need Vercel?
+❌ NO - everything runs on Railway
+
+### Cost?
+**$0** - Railway free tier includes 500 hours/month (way more than you need)
+
+---
+
+## That's It!
+
+No Vercel. No confusion. No future effort.
+
+**Everything runs on Railway.**
+
+Go to https://railway.app and follow the 5 steps above. See you in 15 minutes! 🎾
