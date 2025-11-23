@@ -8,4 +8,4 @@ cmds = [
 ]
 
 [start]
-cmd = ". /opt/venv/bin/activate && python production_server.py"
+cmd = ". /opt/venv/bin/activate && python production_server.py --port $PORT"
