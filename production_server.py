@@ -42,7 +42,7 @@ app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)
 
 # Environment configuration
 DATABASE_URL = os.environ.get('DATABASE_URL')  # PostgreSQL URL from Railway
-DB_PATH = os.environ.get('DATABASE_PATH', 'networth_tennis.db')  # SQLite fallback
+DB_PATH = os.environ.get('DATABASE_PATH', '/app/data/networth_tennis.db')  # Railway volume
 DEFAULT_PASSWORD = os.environ.get('PLAYER_PASSWORD', 'tennis123')
 ADMIN_EMAIL = os.environ.get('ADMIN_EMAIL', 'admin@networthtennis.com')
 
