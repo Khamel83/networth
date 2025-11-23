@@ -124,6 +124,15 @@ def index():
     """Serve public ladder page"""
     return send_from_directory('.', 'index.html')
 
+@app.route('/api/health')
+def health_check():
+    """Health check endpoint"""
+    return jsonify({
+        "status": "ok",
+        "message": "NET WORTH Tennis Ladder is running",
+        "timestamp": datetime.now().isoformat()
+    })
+
 @app.route('/<path:filename>')
 def static_files(filename):
     """Serve static files (HTML, CSS, etc.)"""
