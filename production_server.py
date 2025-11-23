@@ -701,7 +701,11 @@ def initialize_database():
     """Initialize database if not exists"""
     if not USE_POSTGRES and not os.path.exists(DB_PATH):
         print(f"📁 Database not found. Creating: {DB_PATH}")
-        os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+
+        # Get directory path, handle case where DB_PATH has no directory
+        db_dir = os.path.dirname(DB_PATH)
+        if db_dir:  # Only create directory if there is one
+            os.makedirs(db_dir, exist_ok=True)
 
         # Import and run init_database
         try:
