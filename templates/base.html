@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}NET WORTH Tennis Ladder{% endblock %}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #667eea;
+            --primary-dark: #5a67d8;
+            --secondary: #48bb78;
+            --danger: #f56565;
+            --warning: #ed8936;
+            --info: #4299e1;
+            --dark: #2d3748;
+            --gray: #718096;
+            --light-gray: #e2e8f0;
+            --light: #f7fafc;
+            --white: #ffffff;
+            --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.1);
+            --gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--gradient);
+            min-height: 100vh;
+            color: var(--dark);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header.navbar {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            padding: 1rem 2rem;
+            box-shadow: var(--shadow-lg);
+            margin-bottom: 2rem;
+            border-radius: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .navbar .logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        .navbar nav {
+            display: flex;
+            gap: 1.5rem;
+            align-items: center;
+        }
+
+        .navbar a {
+            color: var(--dark);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+
+        .navbar a:hover {
+            color: var(--primary);
+        }
+
+        .navbar .user-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            border: none;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+
+        .btn-secondary {
+            background: var(--light-gray);
+            color: var(--dark);
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .btn-success {
+            background: var(--secondary);
+            color: white;
+        }
+
+        .card {
+            background: white;
+            padding: 2rem;
+            border-radius: 16px;
+            box-shadow: var(--shadow-lg);
+            margin-bottom: 2rem;
+        }
+
+        .alert {
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .alert-success {
+            background: #c6f6d5;
+            color: #22543d;
+        }
+
+        .alert-danger {
+            background: #fed7d7;
+            color: #742a2a;
+        }
+
+        .alert-warning {
+            background: #feebc8;
+            color: #7c2d12;
+        }
+
+        .alert-info {
+            background: #bee3f8;
+            color: #2c5282;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            color: var(--dark);
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 2px solid var(--light-gray);
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead {
+            background: var(--light);
+        }
+
+        th, td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--light-gray);
+        }
+
+        th {
+            font-weight: 600;
+            color: var(--dark);
+        }
+
+        tbody tr:hover {
+            background: var(--light);
+        }
+
+        {% block extra_styles %}{% endblock %}
+    </style>
+</head>
+<body>
+    {% if session.player_id %}
+    <div class="container">
+        <header class="navbar">
+            <a href="/" class="logo">NET WORTH</a>
+            <nav>
+                <a href="/dashboard">Dashboard</a>
+                <a href="/report-score">Report Score</a>
+                <a href="/history">History</a>
+                {% if session.is_admin %}
+                <a href="/admin">Admin</a>
+                {% endif %}
+            </nav>
+            <div class="user-info">
+                <span>{{ session.player_name }}</span>
+                <a href="/logout" class="btn btn-secondary">Logout</a>
+            </div>
+        </header>
+    </div>
+    {% endif %}
+
+    <div class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">
+                        <i class="fas fa-{% if category == 'success' %}check-circle{% elif category == 'danger' %}exclamation-circle{% elif category == 'warning' %}exclamation-triangle{% else %}info-circle{% endif %}"></i>
+                        <span>{{ message }}</span>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </div>
+
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>
