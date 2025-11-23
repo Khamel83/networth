@@ -26,6 +26,13 @@ except ImportError:
 app = Flask(__name__, template_folder='templates')
 CORS(app)
 
+# Fix for gunicorn - create app object
+def create_app():
+    return app
+
+# For gunicorn compatibility
+application = app
+
 # Session configuration
 app.secret_key = os.environ.get('SECRET_KEY', secrets.token_hex(32))
 app.config['SESSION_COOKIE_SECURE'] = True  # HTTPS only
@@ -690,6 +697,20 @@ def api_get_players():
             'message': str(e)
         }), 500
 
+def initialize_database():
+    """Initialize database if not exists"""
+    if not USE_POSTGRES and not os.path.exists(DB_PATH):
+        print(f"📁 Database not found. Creating: {DB_PATH}")
+        os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+
+        # Import and run init_database
+        try:
+            import init_database
+            init_database.initialize_sqlite(DB_PATH)
+            print("✅ Database initialized successfully")
+        except Exception as e:
+            print(f"❌ Error initializing database: {e}")
+
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     debug = os.environ.get('DEBUG', 'False').lower() == 'true'
@@ -703,6 +724,9 @@ if __name__ == '__main__':
     else:
         print(f"📊 Database: SQLite")
         print(f"📁 Path: {DB_PATH}")
+
+        # Initialize SQLite database if needed
+        initialize_database()
 
     print(f"🔐 Admin: {ADMIN_EMAIL}")
 
