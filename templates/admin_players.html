@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Manage Players - NET WORTH Admin{% endblock %}
+{% block content %}
+<h1><i class="fas fa-users"></i> Manage Players</h1>
+
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+        <form method="GET" style="flex: 1; max-width: 500px; display: flex; gap: 1rem;">
+            <input type="text" class="form-control" name="search" placeholder="Search by name or email..." value="{{ search }}">
+            <button type="submit" class="btn btn-primary">Search</button>
+        </form>
+        <a href="/admin/players/add" class="btn btn-success"><i class="fas fa-plus"></i> Add Player</a>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Rank</th>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Skill</th>
+                <th>Record</th>
+                <th>Score</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for player in players %}
+            <tr>
+                <td>#{{ player.rank }}</td>
+                <td>{{ player.name }}</td>
+                <td>{{ player.email }}</td>
+                <td>{{ player.skill_level }}</td>
+                <td>{{ player.wins }}-{{ player.losses }}</td>
+                <td>{{ player.total_score }}</td>
+                <td>
+                    <a href="/admin/players/edit/{{ player.id }}" class="btn btn-secondary" style="padding: 0.5rem 1rem;">Edit</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
