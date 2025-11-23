@@ -1,4 +1,4 @@
-# ⚡ START HERE - Deploy in 15 Minutes
+# ⚡ START HERE - Deploy in 20 Minutes
 
 ## ONE Path, NO Confusion
 
@@ -32,17 +32,45 @@ Everything (frontend + backend + database) runs on **Railway.app** for FREE.
 - Select branch: `claude/complete-site-links-019PGcB4YSVqTYBZWjyYoHVY`
 - Railway starts building (wait 2 minutes)
 
-### 3. Add Environment Variables (2 min)
+### 3. Add Volume for Database (2 min)
+
+**CRITICAL:** So scores don't get lost when you redeploy!
+
+- Click "Data" tab (or "Volumes")
+- Click "+ New Volume"
+- Mount Path: `/app/data`
+- Click "Add"
+
+### 4. Add Environment Variables (2 min)
 Click on your service → Variables tab → Add these:
 
 | Variable | Value |
 |----------|-------|
-| `DATABASE_PATH` | `networth_tennis.db` |
+| `DATABASE_PATH` | `/app/data/networth_tennis.db` |
 | `PLAYER_PASSWORD` | `tennis123` |
 
 Railway auto-redeploys (wait 30 seconds)
 
-### 4. Generate Domain (1 min)
+### 5. Upload Database to Volume (3 min)
+
+**One-time:** Copy your database file to the persistent volume
+
+```bash
+# Install Railway CLI
+npm i -g @railway/cli
+
+# Login and link to your project
+railway login
+cd /home/user/networth
+railway link
+
+# Copy database to volume
+railway run cp networth_tennis.db /app/data/networth_tennis.db
+```
+
+See `RAILWAY_VOLUME_SETUP.md` for alternative upload methods.
+
+### 6. Generate Domain (1 min)
 - Click "Settings" tab
 - Scroll to "Networking"
 - Click "Generate Domain"
@@ -52,7 +80,7 @@ Railway auto-redeploys (wait 30 seconds)
 - See: `DEPLOY_TO_NETWORTHTENNIS.md`
 - Takes 5 extra minutes + DNS propagation time
 
-### 5. Test Everything (2 min)
+### 7. Test Everything (2 min)
 
 **Visit your site:**
 ```
@@ -138,4 +166,15 @@ No Vercel. No confusion. No future effort.
 
 **Everything runs on Railway.**
 
-Go to https://railway.app and follow the 5 steps above. See you in 15 minutes! 🎾
+Go to https://railway.app and follow the 7 steps above. See you in 20 minutes! 🎾
+
+---
+
+## ⚡ What Happens After Setup?
+
+**100% AUTOMATIC** - see `WHATS_AUTOMATIC.md` for full details:
+- ✅ Push code → Auto-deploys
+- ✅ SSL renews automatically
+- ✅ Database persists forever
+- ✅ Runs 24/7 with zero maintenance
+- ✅ No deployment management needed
