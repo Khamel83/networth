@@ -48,6 +48,10 @@ Railway auto-redeploys (wait 30 seconds)
 - Click "Generate Domain"
 - Copy your URL: `https://yourapp.railway.app`
 
+**Want to use networthtennis.com instead?**
+- See: `DEPLOY_TO_NETWORTHTENNIS.md`
+- Takes 5 extra minutes + DNS propagation time
+
 ### 5. Test Everything (2 min)
 
 **Visit your site:**
