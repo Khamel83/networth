@@ -627,30 +627,6 @@ def admin_reject_score(report_id):
     return redirect(url_for('admin_scores'))
 
 # ============================================================================
-# API ROUTES (for backward compatibility)
-# ============================================================================
-
-@app.route('/api/health', methods=['GET'])
-def health_check():
-    """Health check endpoint"""
-    try:
-        conn = get_db()
-        cursor = conn.cursor()
-        cursor.execute('SELECT COUNT(*) as count FROM players')
-        player_count = cursor.fetchone()['count']
-        conn.close()
-
-        return jsonify({
-            'success': True,
-            'message': 'NET WORTH API is running!',
-            'timestamp': datetime.now().isoformat(),
-            'players': player_count
-        })
-    except Exception as e:
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
 
 @app.route('/api/ladder', methods=['GET'])
 def api_get_ladder():
