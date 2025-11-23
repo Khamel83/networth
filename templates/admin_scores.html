@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Review Scores - NET WORTH Admin{% endblock %}
+{% block content %}
+<h1><i class="fas fa-clipboard-check"></i> Review Pending Scores</h1>
+
+<div class="card">
+    {% if pending_scores %}
+    {% for score in pending_scores %}
+    <div style="padding: 1.5rem; margin-bottom: 1.5rem; border: 2px solid var(--warning); border-radius: 12px; background: #fffbf0;">
+        <h3>{{ score.player1_name }} vs {{ score.player2_name }}</h3>
+        <p><strong>Date:</strong> {{ score.match_date }}</p>
+        <p><strong>Reported by:</strong> {{ score.reporter_name }}</p>
+        <p><strong>Score:</strong> {{ score.player1_set1 }}-{{ score.player2_set1 }}, {{ score.player1_set2 }}-{{ score.player2_set2 }}</p>
+        <p><strong>Winner:</strong> {% if score.player1_total > score.player2_total %}{{ score.player1_name }}{% else %}{{ score.player2_name }}{% endif %}</p>
+        {% if score.notes %}
+        <p><strong>Notes:</strong> {{ score.notes }}</p>
+        {% endif %}
+        <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+            <form method="POST" action="/admin/scores/approve/{{ score.id }}" style="display: inline;">
+                <button type="submit" class="btn btn-success">✓ Approve</button>
+            </form>
+            <form method="POST" action="/admin/scores/reject/{{ score.id }}" style="display: inline;">
+                <button type="submit" class="btn btn-danger">✗ Reject</button>
+            </form>
+        </div>
+    </div>
+    {% endfor %}
+    {% else %}
+    <p>No pending scores to review.</p>
+    {% endif %}
+</div>
+{% endblock %}

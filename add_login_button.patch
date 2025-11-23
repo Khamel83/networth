@@ -1,0 +1,15 @@
+--- a/index.html
++++ b/index.html
+@@ -805,6 +805,11 @@
+     <div class="container">
+         <header>
+             <div class="logo"><i class="fas fa-tennis-ball"></i> NET WORTH</div>
+             <div class="subtitle">East Side Women's Tennis Ladder - Competitive Excellence</div>
++            <div style="margin-top: 1.5rem;">
++                <a href="/login" class="btn" style="padding: 1rem 2rem; font-size: 1.1rem; background: var(--primary); color: white; text-decoration: none; display: inline-block;">
++                    <i class="fas fa-sign-in-alt"></i> Player Login
++                </a>
++            </div>
+         </header>
+ 
+         <!-- Stats Grid -->
