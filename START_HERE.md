@@ -8,7 +8,7 @@ Everything (frontend + backend + database) runs on **Railway.app** for FREE.
 
 ## What You're Deploying
 
-✅ Tennis ladder with 40 real players
+✅ Tennis ladder with 16 real players
 ✅ Public pages (ladder, privacy, rules, support)
 ✅ Login system (email + password)
 ✅ Score reporting
@@ -29,7 +29,7 @@ Everything (frontend + backend + database) runs on **Railway.app** for FREE.
 - Select "Deploy from GitHub repo"
 - Configure GitHub app (authorize Railway)
 - Select repository: `Khamel83/networth`
-- Select branch: `claude/complete-site-links-019PGcB4YSVqTYBZWjyYoHVY`
+- Select branch: `master`
 - Railway starts building (wait 2 minutes)
 
 ### 3. Add Volume for Database (2 min)
@@ -112,13 +112,13 @@ Your site is now live at `https://yourapp.railway.app`
 **Password:** `tennis123` (same for everyone)
 
 **Test with any of these emails:**
-- [redacted-email]
-- [redacted-email]
-- [redacted-email]
-- [redacted-email]
-- Ashleybrooke.kaufman@gmail.com
+- [redacted-email] (Kim Ndombe - #1 ranked)
+- nmcoffen@gmail.com (Natalie Coffen - #2 ranked)
+- [redacted-email] (Sara Chrisman - #3 ranked)
+- [redacted-email] (Alik Apelian - #6 ranked)
+- [redacted-email] (Allison Dunne - #9 ranked)
 
-(You have 40 total players - see `RAILWAY_LOGIN_GUIDE.md` for full list)
+(You have 16 total players - all use the same password)
 
 ---
 
