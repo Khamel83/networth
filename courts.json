@@ -1,0 +1,50 @@
+{
+  "metadata": {
+    "generated_at": "2025-11-29T18:12:53.237785Z",
+    "total_courts": 6
+  },
+  "courts": [
+    {
+      "id": "vermont_canyon",
+      "name": "Vermont Canyon",
+      "city": "Los Angeles",
+      "notes": "Well-maintained courts with great lighting",
+      "google_maps_url": "https://maps.google.com/?q=Vermont+Canyon+Tennis+Courts+Los+Angeles"
+    },
+    {
+      "id": "griffith_riverside",
+      "name": "Griffith Park - Riverside",
+      "city": "Los Angeles",
+      "notes": "Scenic riverside courts with mountain views",
+      "google_maps_url": "https://maps.google.com/?q=Griffith+Park+Riverside+Tennis+Courts"
+    },
+    {
+      "id": "griffith_merrygoround",
+      "name": "Griffith Park - Merry-Go-Round",
+      "city": "Los Angeles",
+      "notes": "Family-friendly area with accessible courts",
+      "google_maps_url": "https://maps.google.com/?q=Griffith+Park+Merry+Go+Round+Tennis+Courts"
+    },
+    {
+      "id": "echo_park",
+      "name": "Echo Park",
+      "city": "Los Angeles",
+      "notes": "Urban courts with downtown LA views",
+      "google_maps_url": "https://maps.google.com/?q=Echo+Park+Tennis+Courts"
+    },
+    {
+      "id": "hermon_park",
+      "name": "Hermon Park",
+      "city": "Los Angeles",
+      "notes": "Quiet neighborhood courts, good parking",
+      "google_maps_url": "https://maps.google.com/?q=Hermon+Park+Tennis+Courts"
+    },
+    {
+      "id": "eagle_rock",
+      "name": "Eagle Rock",
+      "city": "Los Angeles",
+      "notes": "Community courts with regular player traffic",
+      "google_maps_url": "https://maps.google.com/?q=Eagle+Rock+Tennis+Courts"
+    }
+  ]
+}

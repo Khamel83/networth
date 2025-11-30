@@ -1,0 +1,23 @@
+# Requirements for SOPS (Secrets Operations) integration
+# SOPS is an editor of encrypted files that supports YAML, JSON, ENV, INI and BINARY formats
+
+# SOPS dependencies
+# SOPS can be installed via GitHub Actions or downloaded directly
+# For local development:
+# - wget https://github.com/mozilla/sops/releases/download/v3.8.1/sops-v3.8.1-linux.amd64
+# - sudo mv sops-v3.8.1-linux.amd64 /usr/local/bin/sops
+# - sudo chmod +x /usr/local/bin/sops
+
+# Age (modern encryption tool)
+# - wget https://github.com/FiloSottile/age/releases/download/v1.1.1/age-v1.1.1-linux-amd64.tar.gz
+# - tar -xvf age-v1.1.1-linux-amd64.tar.gz
+# - sudo mv age/age /usr/local/bin/
+# - sudo mv age/age-keygen /usr/local/bin/
+
+# For optional GPG support:
+# gpg --version  # Should be installed on most systems
+
+# SOPS Configuration
+# Create .sops.yaml in project root for encryption rules
+# Store age public keys for team members
+# Optionally store GPG key fingerprints
