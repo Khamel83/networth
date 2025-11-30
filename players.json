@@ -1,0 +1,136 @@
+{
+  "metadata": {
+    "generated_at": "2025-11-29T18:12:53.237187Z",
+    "total_players": 16
+  },
+  "players": [
+    {
+      "id": "3a46e5c4-602b-4b85-b85b-a5dc15eb4392",
+      "name": "Kim Ndombe",
+      "rating": 1510,
+      "matches_played": 0,
+      "wins": 18,
+      "losses": 0
+    },
+    {
+      "id": "0bc6d28f-b551-4cf4-97f2-df88ff58bbf6",
+      "name": "Natalie Coffen",
+      "rating": 1500,
+      "matches_played": 0,
+      "wins": 16,
+      "losses": 1
+    },
+    {
+      "id": "55be9b8a-85ca-40bb-b7f3-f4bccdce2ebb",
+      "name": "Sara Chrisman",
+      "rating": 1490,
+      "matches_played": 0,
+      "wins": 14,
+      "losses": 2
+    },
+    {
+      "id": "3da19bd9-10a4-47c4-88e9-a19ebc72c59d",
+      "name": "Arianna Hairston",
+      "rating": 1480,
+      "matches_played": 0,
+      "wins": 12,
+      "losses": 3
+    },
+    {
+      "id": "2ed6d7ca-7251-4dda-ae96-8888e9b4efbd",
+      "name": "Hannah Shin",
+      "rating": 1450,
+      "matches_played": 0,
+      "wins": 10,
+      "losses": 4
+    },
+    {
+      "id": "e22d5b0b-83b7-413b-9b6c-61d30df45f97",
+      "name": "Alik Apelian",
+      "rating": 1450,
+      "matches_played": 0,
+      "wins": 8,
+      "losses": 5
+    },
+    {
+      "id": "641b2700-2356-4f9e-9ba2-dcea739d5eb2",
+      "name": "Hanna Pavlova",
+      "rating": 1410,
+      "matches_played": 0,
+      "wins": 6,
+      "losses": 6
+    },
+    {
+      "id": "8f5674eb-c211-4396-8111-08377dacef45",
+      "name": "Maddy Whitby",
+      "rating": 1380,
+      "matches_played": 0,
+      "wins": 4,
+      "losses": 7
+    },
+    {
+      "id": "c8dda832-6188-4bac-998a-037ff9776a7e",
+      "name": "Allison Dunne",
+      "rating": 1370,
+      "matches_played": 0,
+      "wins": 2,
+      "losses": 8
+    },
+    {
+      "id": "e3bb4a07-b8f7-4838-bcda-5d39c89fdd1f",
+      "name": "Ashley Brooke Kaufman",
+      "rating": 1330,
+      "matches_played": 0,
+      "wins": 0,
+      "losses": 9
+    },
+    {
+      "id": "6046cdf8-4e5b-4b06-a7f5-8ea28350cc7f",
+      "name": "Kaitlin Kelly",
+      "rating": 1320,
+      "matches_played": 0,
+      "wins": 0,
+      "losses": 10
+    },
+    {
+      "id": "cc70547d-653d-4885-a12e-aebc0479bd90",
+      "name": "Page Eaton",
+      "rating": 1300,
+      "matches_played": 0,
+      "wins": 0,
+      "losses": 11
+    },
+    {
+      "id": "4262160c-784b-4d23-8d62-cda2b58d5ca9",
+      "name": "Sarah Yun",
+      "rating": 1290,
+      "matches_played": 0,
+      "wins": 0,
+      "losses": 12
+    },
+    {
+      "id": "0f3126c7-0d75-4bdf-9158-eb4ec1b6b4e5",
+      "name": "Laurie Berger",
+      "rating": 1260,
+      "matches_played": 0,
+      "wins": 0,
+      "losses": 13
+    },
+    {
+      "id": "dd7ad59c-2dc1-4a44-836d-6b1f06a221ac",
+      "name": "Katie Morey",
+      "rating": 1240,
+      "matches_played": 0,
+      "wins": 0,
+      "losses": 14
+    },
+    {
+      "id": "b2cc663a-5eb6-4d98-8009-6eede0d0af0c",
+      "name": "Alyssa Perry",
+      "rating": 1200,
+      "matches_played": 0,
+      "wins": 0,
+      "losses": 15
+    }
+  ]
+}

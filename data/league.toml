@@ -1,0 +1,12 @@
+[league]
+name = "NET WORTH"
+city = "Los Angeles"
+timezone = "America/Los_Angeles"
+
+[schedule]
+matching_frequency = "weekly"
+matching_run_day = "sunday"
+matching_run_hour = 17
+
+[email]
+from_address = "matches@networthtennis.com"
