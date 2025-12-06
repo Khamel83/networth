@@ -1,27 +1,58 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
   "version": 2,
-  "builds": [
-    {
-      "src": "*.html",
-      "use": "@vercel/static"
+  "buildCommand": "pip install -r requirements-vercel.txt",
+  "outputDirectory": "public",
+  "functions": {
+    "api/*.py": {
+      "runtime": "python3.11"
     }
+  },
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/$1" }
   ],
   "routes": [
     {
-      "src": "/privacy.html",
+      "src": "/api/(.*)",
+      "dest": "/api/$1"
+    },
+    {
+      "src": "/privacy",
       "dest": "/privacy.html"
     },
     {
-      "src": "/rules.html",
+      "src": "/rules",
       "dest": "/rules.html"
     },
     {
-      "src": "/support.html",
+      "src": "/support",
       "dest": "/support.html"
+    },
+    {
+      "src": "/login",
+      "dest": "/login.html"
+    },
+    {
+      "src": "/join",
+      "dest": "/join.html"
+    },
+    {
+      "src": "/dashboard",
+      "dest": "/dashboard.html"
     },
     {
       "src": "/(.*)",
       "dest": "/index.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "Access-Control-Allow-Origin", "value": "*" },
+        { "key": "Access-Control-Allow-Methods", "value": "GET,POST,PUT,DELETE,OPTIONS" },
+        { "key": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization" }
+      ]
     }
   ]
 }
