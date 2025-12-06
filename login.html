@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login | NET WORTH Tennis</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700;800;900&family=IBM+Plex+Mono:wght@300;400;500;600;700&family=Cormorant+Garamond:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --gold: #D4AF37;
+            --gold-bright: #FFD700;
+            --tennis-ball: #CCFF00;
+            --terminal-black: #0a0a0a;
+            --terminal-dark: #121212;
+            --terminal-gray: #1a1a1a;
+            --terminal-border: #2a2a2a;
+            --power-red: #DC143C;
+            --court-green: #228B22;
+            --text-primary: #e8e8e8;
+            --text-secondary: #888888;
+            --text-muted: #555555;
+            --font-display: 'Playfair Display', Georgia, serif;
+            --font-mono: 'IBM Plex Mono', 'Courier New', monospace;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        html {
+            cursor: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="%23CCFF00" stroke="%23228B22" stroke-width="1"/><path d="M12 2 Q6 12 12 22" fill="none" stroke="%23228B22" stroke-width="1.5"/><path d="M12 2 Q18 12 12 22" fill="none" stroke="%23228B22" stroke-width="1.5"/></svg>') 12 12, auto;
+        }
+
+        a, button, input[type="submit"] {
+            cursor: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28"><circle cx="14" cy="14" r="12" fill="%23FFD700" stroke="%23228B22" stroke-width="2"/><path d="M14 2 Q6 14 14 26" fill="none" stroke="%23228B22" stroke-width="2"/><path d="M14 2 Q22 14 14 26" fill="none" stroke="%23228B22" stroke-width="2"/></svg>') 14 14, pointer;
+        }
+
+        body {
+            font-family: var(--font-mono);
+            background: var(--terminal-black);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px);
+            pointer-events: none;
+            z-index: 9999;
+        }
+
+        body::after {
+            content: '';
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-image:
+                linear-gradient(rgba(212, 175, 55, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(212, 175, 55, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .login-container {
+            width: 100%;
+            max-width: 420px;
+            padding: 2rem;
+        }
+
+        .login-card {
+            background: var(--terminal-dark);
+            border: 1px solid var(--terminal-border);
+            padding: 3rem;
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 2.5rem;
+        }
+
+        .login-logo {
+            font-family: var(--font-display);
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--gold);
+            margin-bottom: 0.5rem;
+            letter-spacing: 0.1em;
+        }
+
+        .login-subtitle {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.2em;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            display: block;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            color: var(--text-muted);
+            margin-bottom: 0.5rem;
+        }
+
+        input[type="email"],
+        input[type="password"] {
+            width: 100%;
+            padding: 1rem;
+            background: var(--terminal-gray);
+            border: 1px solid var(--terminal-border);
+            color: var(--text-primary);
+            font-family: var(--font-mono);
+            font-size: 0.9rem;
+            transition: border-color 0.3s ease;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: var(--gold);
+        }
+
+        input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .btn-login {
+            width: 100%;
+            padding: 1rem;
+            background: var(--gold);
+            border: none;
+            color: var(--terminal-black);
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            transition: all 0.3s ease;
+        }
+
+        .btn-login:hover {
+            background: var(--gold-bright);
+        }
+
+        .btn-login:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .error-message {
+            background: rgba(220, 20, 60, 0.1);
+            border: 1px solid var(--power-red);
+            color: var(--power-red);
+            padding: 0.75rem;
+            font-size: 0.8rem;
+            margin-bottom: 1.5rem;
+            display: none;
+        }
+
+        .error-message.show {
+            display: block;
+        }
+
+        .login-footer {
+            margin-top: 2rem;
+            text-align: center;
+        }
+
+        .login-footer a {
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        .login-footer a:hover {
+            color: var(--gold);
+        }
+
+        .divider {
+            display: flex;
+            align-items: center;
+            margin: 1.5rem 0;
+        }
+
+        .divider::before,
+        .divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--terminal-border);
+        }
+
+        .divider span {
+            padding: 0 1rem;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.75rem;
+            margin-bottom: 2rem;
+            transition: color 0.3s ease;
+        }
+
+        .back-link:hover {
+            color: var(--gold);
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <a href="/" class="back-link">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M19 12H5M12 19l-7-7 7-7"/>
+            </svg>
+            Back to Ladder
+        </a>
+
+        <div class="login-card">
+            <div class="login-header">
+                <h1 class="login-logo">NET WORTH</h1>
+                <p class="login-subtitle">Player Login</p>
+            </div>
+
+            <div id="error-message" class="error-message"></div>
+
+            <form id="login-form">
+                <div class="form-group">
+                    <label for="email">Email Address</label>
+                    <input type="email" id="email" name="email" placeholder="your@email.com" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" placeholder="Enter password" required>
+                </div>
+
+                <button type="submit" class="btn-login" id="submit-btn">
+                    Sign In
+                </button>
+            </form>
+
+            <div class="divider">
+                <span>or</span>
+            </div>
+
+            <div class="login-footer">
+                <a href="/join">New player? Join the ladder</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('login-form');
+        const errorEl = document.getElementById('error-message');
+        const submitBtn = document.getElementById('submit-btn');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            errorEl.classList.remove('show');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Signing in...';
+
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            try {
+                const response = await fetch('/api/auth', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'login', email, password })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    localStorage.setItem('networth_token', data.token);
+                    localStorage.setItem('networth_player', JSON.stringify(data.player));
+                    window.location.href = '/dashboard';
+                } else {
+                    throw new Error(data.error || 'Invalid credentials');
+                }
+            } catch (err) {
+                errorEl.textContent = err.message;
+                errorEl.classList.add('show');
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Sign In';
+            }
+        });
+    </script>
+</body>
+</html>
