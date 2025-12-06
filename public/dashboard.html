@@ -277,7 +277,23 @@
             border: 1px solid var(--terminal-border);
             color: var(--text-primary);
             font-family: var(--font-mono);
-            font-size: 1rem;
+            font-size: 16px; /* Prevents iOS zoom on focus */
+            -webkit-appearance: none;
+            -moz-appearance: textfield;
+            border-radius: 0;
+        }
+
+        .score-input:focus {
+            outline: none;
+            border-color: var(--gold);
+            background: var(--terminal-dark);
+        }
+
+        /* Hide number spinner on inputs */
+        .score-input::-webkit-outer-spin-button,
+        .score-input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
         }
 
         /* Toggle/Checkbox */
@@ -402,10 +418,12 @@
             bottom: 0;
             background: rgba(0,0,0,0.8);
             display: flex;
-            align-items: center;
+            align-items: flex-start;
             justify-content: center;
             z-index: 1000;
             padding: 1rem;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
         }
 
         .modal {
@@ -413,8 +431,8 @@
             border: 1px solid var(--terminal-border);
             max-width: 500px;
             width: 100%;
-            max-height: 90vh;
-            overflow-y: auto;
+            margin: 2rem auto;
+            position: relative;
         }
 
         .modal-header {
@@ -423,6 +441,10 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            position: sticky;
+            top: 0;
+            background: var(--terminal-dark);
+            z-index: 1;
         }
 
         .modal-title {
@@ -436,6 +458,8 @@
             color: var(--text-muted);
             font-size: 1.5rem;
             cursor: pointer;
+            padding: 0.5rem;
+            line-height: 1;
         }
 
         .modal-body {
@@ -970,23 +994,32 @@
         }
 
         async function submitScore() {
-            const set1Me = parseInt(document.getElementById('set1-me').value) || 0;
-            const set1Them = parseInt(document.getElementById('set1-them').value) || 0;
-            const set2Me = parseInt(document.getElementById('set2-me').value) || 0;
-            const set2Them = parseInt(document.getElementById('set2-them').value) || 0;
-            const set3Me = parseInt(document.getElementById('set3-me').value) || null;
-            const set3Them = parseInt(document.getElementById('set3-them').value) || null;
+            const set1MeVal = document.getElementById('set1-me').value;
+            const set1ThemVal = document.getElementById('set1-them').value;
+            const set2MeVal = document.getElementById('set2-me').value;
+            const set2ThemVal = document.getElementById('set2-them').value;
+            const set3MeVal = document.getElementById('set3-me').value;
+            const set3ThemVal = document.getElementById('set3-them').value;
             const court = document.getElementById('court-select').value;
             const wouldPlayAgain = document.querySelector('input[name="would-play-again"]:checked').value === 'true';
 
-            if (set1Me === 0 && set1Them === 0) {
+            // Validate Set 1
+            if (set1MeVal === '' || set1ThemVal === '') {
                 showMessage('Please enter Set 1 score', 'error');
                 return;
             }
-            if (set2Me === 0 && set2Them === 0) {
+            // Validate Set 2
+            if (set2MeVal === '' || set2ThemVal === '') {
                 showMessage('Please enter Set 2 score', 'error');
                 return;
             }
+
+            const set1Me = parseInt(set1MeVal);
+            const set1Them = parseInt(set1ThemVal);
+            const set2Me = parseInt(set2MeVal);
+            const set2Them = parseInt(set2ThemVal);
+            const set3Me = set3MeVal ? parseInt(set3MeVal) : null;
+            const set3Them = set3ThemVal ? parseInt(set3ThemVal) : null;
 
             const matchData = {
                 assignment_id: currentAssignment.id,
