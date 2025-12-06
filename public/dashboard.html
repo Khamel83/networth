@@ -459,18 +459,19 @@
     <script>
         // Check auth (bypass for testing with ?test in URL)
         const urlParams = new URLSearchParams(window.location.search);
-        const isTestMode = urlParams.has('test');
+        const isTestMode = urlParams.has('test') || window.location.search.includes('test');
 
-        let token = localStorage.getItem('networth_token');
-        let player = JSON.parse(localStorage.getItem('networth_player') || '{}');
+        let token, player;
 
         if (isTestMode) {
             token = 'test-token';
             player = {id: 'test', name: 'Test Player', rank: 10, total_games: 25, matches_played: 3};
-        }
-
-        if (!token && !isTestMode) {
-            window.location.href = '/login';
+        } else {
+            token = localStorage.getItem('networth_token');
+            player = JSON.parse(localStorage.getItem('networth_player') || '{}');
+            if (!token) {
+                window.location.href = '/login';
+            }
         }
 
         // Update UI with player info
