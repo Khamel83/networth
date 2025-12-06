@@ -22,9 +22,11 @@ def get_supabase_client():
 
 
 SAMPLE_MATCHES = [
-    {"id": 1, "winner": {"name": "Kim Ndombe"}, "loser": {"name": "Sarah Kaplan"}, "winner_score": "6-4, 6-3", "loser_score": "4-6, 3-6", "played_at": "2024-12-01T14:00:00Z", "court": "Vermont Canyon"},
-    {"id": 2, "winner": {"name": "Sarah Kaplan"}, "loser": {"name": "Jessica Chen"}, "winner_score": "7-5, 6-4", "loser_score": "5-7, 4-6", "played_at": "2024-11-28T10:00:00Z", "court": "Griffith Park"},
-    {"id": 3, "winner": {"name": "Jessica Chen"}, "loser": {"name": "Maria Rodriguez"}, "winner_score": "6-2, 6-4", "loser_score": "2-6, 4-6", "played_at": "2024-11-25T16:00:00Z", "court": "Echo Park"},
+    {"id": 1, "winner": {"name": "Kim Ndombe"}, "loser": {"name": "Natalie Coffen"}, "winner_score": "6-4, 6-3", "loser_score": "4-6, 3-6", "played_at": "2025-01-05T14:00:00Z", "court": "Vermont Canyon"},
+    {"id": 2, "winner": {"name": "Sara Chrisman"}, "loser": {"name": "Arianna Hairston"}, "winner_score": "7-5, 6-4", "loser_score": "5-7, 4-6", "played_at": "2025-01-03T10:00:00Z", "court": "Griffith Park"},
+    {"id": 3, "winner": {"name": "Kim Ndombe"}, "loser": {"name": "Hannah Shin"}, "winner_score": "6-2, 6-4", "loser_score": "2-6, 4-6", "played_at": "2025-01-01T16:00:00Z", "court": "Echo Park"},
+    {"id": 4, "winner": {"name": "Natalie Coffen"}, "loser": {"name": "Alik Apelian"}, "winner_score": "6-3, 6-2", "loser_score": "3-6, 2-6", "played_at": "2024-12-28T11:00:00Z", "court": "Silver Lake"},
+    {"id": 5, "winner": {"name": "Hannah Shin"}, "loser": {"name": "Hanna Pavlova"}, "winner_score": "6-4, 7-5", "loser_score": "4-6, 5-7", "played_at": "2024-12-22T15:00:00Z", "court": "Los Feliz"},
 ]
 
 

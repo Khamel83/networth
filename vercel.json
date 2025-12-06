@@ -33,6 +33,10 @@
     {
       "src": "/support",
       "dest": "/support.html"
+    },
+    {
+      "src": "/join",
+      "dest": "/login.html"
     }
   ]
 }
