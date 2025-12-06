@@ -1,11 +1,11 @@
 """
 Vercel Serverless Function: Authentication API
-Handles login with demo fallback
+Uses Supabase Magic Links (passwordless email login)
+Free tier: 50,000 emails/month
 """
 from http.server import BaseHTTPRequestHandler
 import json
 import os
-import secrets
 
 
 def get_supabase_client():
@@ -35,70 +35,103 @@ class handler(BaseHTTPRequestHandler):
             body = self.rfile.read(content_length).decode('utf-8')
             data = json.loads(body) if body else {}
 
-            email = data.get('email', '')
-            password = data.get('password', '')
+            action = data.get('action', 'magic_link')
+            email = data.get('email', '').lower().strip()
+
+            if not email:
+                self._send_error(400, "Email is required")
+                return
 
             supabase = get_supabase_client()
 
-            if supabase:
-                try:
-                    response = supabase.auth.sign_in_with_password({
-                        "email": email,
-                        "password": password
-                    })
-                    if response.user:
-                        player = supabase.table('players').select('*').eq('email', email).single().execute()
-                        self.send_response(200)
-                        self.send_header('Content-Type', 'application/json')
-                        self.send_header('Access-Control-Allow-Origin', '*')
-                        self.end_headers()
-                        self.wfile.write(json.dumps({
-                            "success": True,
-                            "token": response.session.access_token,
-                            "player": player.data if player.data else None
-                        }).encode())
-                        return
-                except Exception:
-                    pass
+            if action == 'magic_link':
+                # Send magic link email
+                if supabase:
+                    try:
+                        # Check if player exists in our database
+                        player = supabase.table('players').select('id, name, email').eq('email', email).single().execute()
 
-            # Demo fallback
-            default_password = os.environ.get('PLAYER_PASSWORD', 'tennis123')
-            if password == default_password:
-                self.send_response(200)
-                self.send_header('Content-Type', 'application/json')
-                self.send_header('Access-Control-Allow-Origin', '*')
-                self.end_headers()
-                self.wfile.write(json.dumps({
-                    "success": True,
-                    "token": secrets.token_hex(32),
-                    "player": {
-                        "id": 1,
-                        "name": email.split('@')[0].title() if email else "Demo Player",
-                        "email": email,
-                        "rank": 5,
-                        "points": 38,
-                        "wins": 5,
-                        "losses": 3,
-                        "is_admin": email == "admin@networthtennis.com"
-                    }
-                }).encode())
+                        if not player.data:
+                            self._send_error(404, "Email not found. Contact the league organizer to join.")
+                            return
+
+                        # Send magic link
+                        site_url = os.environ.get('SITE_URL', 'https://networthtennis.com')
+                        response = supabase.auth.sign_in_with_otp({
+                            "email": email,
+                            "options": {
+                                "email_redirect_to": f"{site_url}/dashboard"
+                            }
+                        })
+
+                        self._send_success({
+                            "message": f"Magic link sent to {email}! Check your inbox.",
+                            "player_name": player.data.get('name', '')
+                        })
+                        return
+
+                    except Exception as e:
+                        # If Supabase auth fails, fall back to demo mode
+                        self._send_success({
+                            "message": f"Demo mode: Magic link would be sent to {email}",
+                            "demo": True
+                        })
+                        return
+                else:
+                    # Demo mode - no Supabase
+                    self._send_success({
+                        "message": f"Demo mode: Magic link would be sent to {email}",
+                        "demo": True
+                    })
+                    return
+
+            elif action == 'verify':
+                # Verify session token (called after clicking magic link)
+                token = data.get('token')
+                if supabase and token:
+                    try:
+                        # Get user from session
+                        user = supabase.auth.get_user(token)
+                        if user and user.user:
+                            email = user.user.email
+                            # Get player data
+                            player = supabase.table('players').select('*').eq('email', email).single().execute()
+                            self._send_success({
+                                "authenticated": True,
+                                "player": player.data if player.data else None
+                            })
+                            return
+                    except Exception:
+                        pass
+
+                self._send_error(401, "Invalid or expired session")
                 return
 
-            self.send_response(401)
-            self.send_header('Content-Type', 'application/json')
-            self.send_header('Access-Control-Allow-Origin', '*')
-            self.end_headers()
-            self.wfile.write(json.dumps({
-                "success": False,
-                "error": "Invalid credentials"
-            }).encode())
+            elif action == 'logout':
+                if supabase:
+                    try:
+                        supabase.auth.sign_out()
+                    except Exception:
+                        pass
+                self._send_success({"message": "Logged out"})
+                return
+
+            else:
+                self._send_error(400, f"Unknown action: {action}")
 
         except Exception as e:
-            self.send_response(500)
-            self.send_header('Content-Type', 'application/json')
-            self.send_header('Access-Control-Allow-Origin', '*')
-            self.end_headers()
-            self.wfile.write(json.dumps({
-                "success": False,
-                "error": str(e)
-            }).encode())
+            self._send_error(500, str(e))
+
+    def _send_success(self, data):
+        self.send_response(200)
+        self.send_header('Content-Type', 'application/json')
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.end_headers()
+        self.wfile.write(json.dumps({"success": True, **data}).encode())
+
+    def _send_error(self, status, message):
+        self.send_response(status)
+        self.send_header('Content-Type', 'application/json')
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.end_headers()
+        self.wfile.write(json.dumps({"success": False, "error": message}).encode())
