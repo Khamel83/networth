@@ -9,7 +9,29 @@ DROP TABLE IF EXISTS match_feedback CASCADE;
 DROP TABLE IF EXISTS matches CASCADE;
 DROP TABLE IF EXISTS player_availability CASCADE;
 DROP TABLE IF EXISTS player_court_preferences CASCADE;
+DROP TABLE IF EXISTS league_settings CASCADE;
 DROP TABLE IF EXISTS players CASCADE;
+
+-- =============================================================
+-- LEAGUE SETTINGS (configurable per league)
+-- =============================================================
+CREATE TABLE league_settings (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    league_name VARCHAR(255) NOT NULL DEFAULT 'NET WORTH East Side LA',
+    -- Match frequency: weekly, biweekly, monthly, quarterly
+    match_frequency VARCHAR(20) NOT NULL DEFAULT 'monthly',
+    -- Number of sets per match (1, 2, or 3)
+    sets_per_match INTEGER NOT NULL DEFAULT 2,
+    -- Max games per set (typically 6, but could be 4 for short sets)
+    games_per_set INTEGER NOT NULL DEFAULT 6,
+    -- Tiebreak at 6-6? If true, max 7 games per set
+    tiebreak_enabled BOOLEAN DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Insert default league settings
+INSERT INTO league_settings (league_name, match_frequency, sets_per_match, games_per_set, tiebreak_enabled)
+VALUES ('NET WORTH East Side LA', 'monthly', 2, 6, true);
 
 -- =============================================================
 -- PLAYERS TABLE
@@ -27,7 +49,7 @@ CREATE TABLE players (
     is_active BOOLEAN DEFAULT true,
     is_admin BOOLEAN DEFAULT false,
     -- Matching preferences
-    preferred_match_frequency VARCHAR(20) DEFAULT 'monthly', -- weekly, biweekly, monthly
+    preferred_match_frequency VARCHAR(20) DEFAULT 'monthly', -- weekly, biweekly, monthly, quarterly
     max_travel_minutes INTEGER DEFAULT 30,
     notes TEXT, -- any special notes (injuries, etc)
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -59,23 +81,28 @@ CREATE TABLE player_court_preferences (
 
 -- =============================================================
 -- MATCHES TABLE (detailed score tracking)
+-- 2 sets per match = max 12 games each (6-0, 6-0)
+-- With tiebreaks = max 13 games each (7-6, 6-0)
 -- =============================================================
 CREATE TABLE matches (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     player1_id UUID REFERENCES players(id) ON DELETE SET NULL,
     player2_id UUID REFERENCES players(id) ON DELETE SET NULL,
-    -- Score details
-    player1_games INTEGER NOT NULL,
-    player2_games INTEGER NOT NULL,
-    set1_p1 INTEGER, -- Player 1 games in set 1
-    set1_p2 INTEGER, -- Player 2 games in set 1
-    set2_p1 INTEGER, -- Player 1 games in set 2
-    set2_p2 INTEGER, -- Player 2 games in set 2
+    -- Score details (each value 0-7, where 7 = tiebreak win)
+    player1_games INTEGER NOT NULL, -- Total games won (0-13 for 2 sets)
+    player2_games INTEGER NOT NULL, -- Total games won (0-13 for 2 sets)
+    set1_p1 INTEGER CHECK (set1_p1 >= 0 AND set1_p1 <= 7), -- Player 1 games in set 1
+    set1_p2 INTEGER CHECK (set1_p2 >= 0 AND set1_p2 <= 7), -- Player 2 games in set 1
+    set2_p1 INTEGER CHECK (set2_p1 >= 0 AND set2_p1 <= 7), -- Player 1 games in set 2
+    set2_p2 INTEGER CHECK (set2_p2 >= 0 AND set2_p2 <= 7), -- Player 2 games in set 2
+    -- Period info (flexible: week, month, quarter)
+    period_type VARCHAR(20) NOT NULL DEFAULT 'month', -- 'week', 'month', 'quarter'
+    period_label VARCHAR(30) NOT NULL, -- "January 2025", "Week 1 2025", "Q1 2025"
     -- Match info
-    month VARCHAR(20) NOT NULL, -- "January 2025"
     court VARCHAR(255),
     match_date DATE,
     match_time VARCHAR(20), -- 'morning', 'afternoon', 'evening'
+    is_forfeit BOOLEAN DEFAULT false, -- If true, winner gets 6 games, loser gets 0
     -- Tracking
     reported_by UUID REFERENCES players(id),
     confirmed_by UUID REFERENCES players(id), -- Other player confirms
@@ -86,19 +113,17 @@ CREATE TABLE matches (
 
 -- =============================================================
 -- MATCH FEEDBACK (how was the match experience?)
+-- Minimal data: just "would you play again?" required
 -- =============================================================
 CREATE TABLE match_feedback (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     match_id UUID REFERENCES matches(id) ON DELETE CASCADE,
     from_player_id UUID REFERENCES players(id) ON DELETE CASCADE,
     about_player_id UUID REFERENCES players(id) ON DELETE CASCADE,
-    -- Simple feedback
-    had_fun BOOLEAN, -- thumbs up/down
-    competitive_match BOOLEAN, -- was skill level similar?
-    would_play_again BOOLEAN,
-    -- Optional details (all optional to keep it quick)
-    punctuality INTEGER, -- 1-5 (5=on time)
-    sportsmanship INTEGER, -- 1-5 (5=great)
+    -- THE KEY FIELD - used for silent blocking
+    would_play_again BOOLEAN NOT NULL,
+    -- Optional: was it competitive?
+    competitive_match BOOLEAN,
     -- Private note (only visible to admin)
     private_note TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -110,11 +135,12 @@ CREATE TABLE match_feedback (
 -- =============================================================
 CREATE INDEX idx_players_rank ON players(rank) WHERE is_active = true;
 CREATE INDEX idx_players_email ON players(email);
-CREATE INDEX idx_matches_month ON matches(month);
+CREATE INDEX idx_matches_period ON matches(period_type, period_label);
 CREATE INDEX idx_matches_players ON matches(player1_id, player2_id);
 CREATE INDEX idx_availability_player ON player_availability(player_id);
 CREATE INDEX idx_feedback_match ON match_feedback(match_id);
 CREATE INDEX idx_feedback_about ON match_feedback(about_player_id);
+CREATE INDEX idx_feedback_would_play ON match_feedback(about_player_id, would_play_again);
 
 -- =============================================================
 -- ROW LEVEL SECURITY
@@ -124,10 +150,12 @@ ALTER TABLE matches ENABLE ROW LEVEL SECURITY;
 ALTER TABLE player_availability ENABLE ROW LEVEL SECURITY;
 ALTER TABLE player_court_preferences ENABLE ROW LEVEL SECURITY;
 ALTER TABLE match_feedback ENABLE ROW LEVEL SECURITY;
+ALTER TABLE league_settings ENABLE ROW LEVEL SECURITY;
 
 -- Policies
 CREATE POLICY "Players viewable by all" ON players FOR SELECT USING (true);
 CREATE POLICY "Players updatable" ON players FOR UPDATE USING (true);
+CREATE POLICY "Players insertable" ON players FOR INSERT WITH CHECK (true);
 CREATE POLICY "Matches viewable by all" ON matches FOR SELECT USING (true);
 CREATE POLICY "Matches insertable" ON matches FOR INSERT WITH CHECK (true);
 CREATE POLICY "Availability viewable" ON player_availability FOR SELECT USING (true);
@@ -136,9 +164,11 @@ CREATE POLICY "Court prefs viewable" ON player_court_preferences FOR SELECT USIN
 CREATE POLICY "Court prefs manageable" ON player_court_preferences FOR ALL USING (true);
 CREATE POLICY "Feedback insertable" ON match_feedback FOR INSERT WITH CHECK (true);
 CREATE POLICY "Feedback viewable by admin" ON match_feedback FOR SELECT USING (true);
+CREATE POLICY "League settings viewable" ON league_settings FOR SELECT USING (true);
 
 -- =============================================================
 -- INSERT ALL 42 PLAYERS WITH REAL DATA
+-- Games won accumulated from March-November 2024
 -- =============================================================
 INSERT INTO players (email, name, phone, skill_level, rank, total_games, matches_played, is_active) VALUES
 ('kimberly@ndombe.com', 'Kim Ndombe', '603-264-2486', '4.5 Advanced+', 1, 51, 5, true),
@@ -189,12 +219,6 @@ INSERT INTO players (email, name, skill_level, rank, total_games, is_active, is_
 VALUES ('admin@networthtennis.com', 'Admin', 'Admin', 99, 0, true, true);
 
 -- =============================================================
--- APPROVED COURTS (for preferences dropdown)
--- =============================================================
--- Players can select preference 1-5 for each court
--- This is just reference data, stored in player_court_preferences
-
--- =============================================================
 -- FUNCTIONS FOR RANKING & MATCHING
 -- =============================================================
 
@@ -218,18 +242,33 @@ $$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION update_player_games()
 RETURNS TRIGGER AS $$
 BEGIN
-    -- Add games to both players
-    UPDATE players SET
-        total_games = total_games + NEW.player1_games,
-        matches_played = matches_played + 1,
-        updated_at = NOW()
-    WHERE id = NEW.player1_id;
+    -- Handle forfeits: winner gets 6, loser gets 0
+    IF NEW.is_forfeit THEN
+        -- player1 is winner for forfeits
+        UPDATE players SET
+            total_games = total_games + 6,
+            matches_played = matches_played + 1,
+            updated_at = NOW()
+        WHERE id = NEW.player1_id;
 
-    UPDATE players SET
-        total_games = total_games + NEW.player2_games,
-        matches_played = matches_played + 1,
-        updated_at = NOW()
-    WHERE id = NEW.player2_id;
+        UPDATE players SET
+            matches_played = matches_played + 1,
+            updated_at = NOW()
+        WHERE id = NEW.player2_id;
+    ELSE
+        -- Normal match: add actual games won
+        UPDATE players SET
+            total_games = total_games + NEW.player1_games,
+            matches_played = matches_played + 1,
+            updated_at = NOW()
+        WHERE id = NEW.player1_id;
+
+        UPDATE players SET
+            total_games = total_games + NEW.player2_games,
+            matches_played = matches_played + 1,
+            updated_at = NOW()
+        WHERE id = NEW.player2_id;
+    END IF;
 
     -- Recalculate rankings
     PERFORM recalculate_rankings();
@@ -243,14 +282,24 @@ CREATE TRIGGER trigger_update_games
     EXECUTE FUNCTION update_player_games();
 
 -- =============================================================
+-- SILENT BLOCK CHECK VIEW
+-- Returns pairs where at least one player blocked the other
+-- Used to EXCLUDE from matching
+-- =============================================================
+CREATE OR REPLACE VIEW blocked_pairs AS
+SELECT DISTINCT
+    LEAST(from_player_id, about_player_id) as player_a,
+    GREATEST(from_player_id, about_player_id) as player_b
+FROM match_feedback
+WHERE would_play_again = false;
+
+-- =============================================================
 -- MATCHING ALGORITHM HELPER VIEW
 -- Get player compatibility score based on:
 -- 1. Similar skill level (within 0.5)
--- 2. Overlapping availability
--- 3. Shared court preferences
--- 4. Past match feedback (would_play_again)
+-- 2. Not blocked by either player
+-- 3. Past match feedback
 -- =============================================================
-
 CREATE OR REPLACE VIEW player_match_compatibility AS
 SELECT
     p1.id as player1_id,
@@ -279,13 +328,11 @@ SELECT
      WHERE (m.player1_id = p1.id AND m.player2_id = p2.id)
         OR (m.player1_id = p2.id AND m.player2_id = p1.id)
     ) as times_played,
-    -- Average "would play again" from past matches
-    (SELECT AVG(CASE WHEN would_play_again THEN 1.0 ELSE 0.0 END)
-     FROM match_feedback mf
-     JOIN matches m ON mf.match_id = m.id
-     WHERE mf.about_player_id = p2.id
-       AND ((m.player1_id = p1.id) OR (m.player2_id = p1.id))
-    ) as avg_would_play_again
+    -- Is this pair blocked?
+    EXISTS (
+        SELECT 1 FROM blocked_pairs bp
+        WHERE (bp.player_a = LEAST(p1.id, p2.id) AND bp.player_b = GREATEST(p1.id, p2.id))
+    ) as is_blocked
 FROM players p1
 CROSS JOIN players p2
 WHERE p1.id < p2.id  -- Avoid duplicates

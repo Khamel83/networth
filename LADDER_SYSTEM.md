@@ -9,8 +9,13 @@ A women's tennis ladder for East Side LA. One match per month, ranked by total g
 ### Match Format
 - **Two sets** (no third set)
 - **Ranking based on total games won**, not match wins
-- **Tiebreaker at 6-6**: Play until someone wins by 2 (7-5, 8-6, etc.) or record as 6-6 draw
-- **Max 14 games possible per match** (7-5, 7-5)
+- **Tiebreaker at 6-6**: Tiebreak (recorded as 7-6)
+- **Max 13 games possible per match** (7-6, 6-0 or 6-0, 7-6)
+- **Min 0 games possible** (0-6, 0-6 = bagel match)
+
+### Match Frequency
+- Default: **Monthly** (one match per month)
+- Configurable per league: weekly, biweekly, monthly, quarterly
 
 ### Score Recording Examples
 ```
@@ -145,6 +150,11 @@ For other cities/groups:
 ### Tables
 
 ```
+league_settings
+  - league_name, match_frequency (weekly/biweekly/monthly/quarterly)
+  - sets_per_match (default 2), games_per_set (default 6)
+  - tiebreak_enabled (default true)
+
 players
   - id, email, name, phone
   - skill_level, rank, total_games, matches_played
@@ -159,15 +169,20 @@ player_court_preferences
 
 matches
   - player1_id, player2_id
-  - set1_p1, set1_p2, set2_p1, set2_p2 (individual set scores)
-  - player1_games, player2_games (totals)
-  - month, court, match_date
-  - status (reported/confirmed)
+  - set1_p1, set1_p2, set2_p1, set2_p2 (0-7 each, 7=tiebreak win)
+  - player1_games, player2_games (totals: 0-13 for 2 sets)
+  - period_type (week/month/quarter), period_label ("January 2025")
+  - court, match_date, is_forfeit
+  - status (reported/confirmed/disputed)
 
 match_feedback
   - match_id, from_player_id, about_player_id
-  - would_play_again (BOOLEAN) -- the key field
+  - would_play_again (BOOLEAN NOT NULL) -- the key field
+  - competitive_match (optional)
   - private_note (admin only)
+
+blocked_pairs (VIEW)
+  - player_a, player_b -- derived from would_play_again=false
 ```
 
 ### Automatic Triggers
