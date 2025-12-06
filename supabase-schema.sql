@@ -129,19 +129,25 @@ CREATE POLICY "Authenticated users can report matches"
     ON matches FOR INSERT
     WITH CHECK (auth.role() = 'authenticated');
 
--- Insert sample data
+-- Insert real player data from NET WORTH Tennis East Side LA
 INSERT INTO players (email, name, skill_level, rank, points, wins, losses, trend, is_active)
 VALUES
-    ('kim@example.com', 'Kim Ndombe', '4.0+ Advanced', 1, 51, 8, 1, 'neutral', true),
-    ('sarah@example.com', 'Sarah Kaplan', '4.0 Advanced', 2, 47, 7, 2, 'up', true),
-    ('jessica@example.com', 'Jessica Chen', '3.5-4.0 Int-Adv', 3, 43, 6, 2, 'up', true),
-    ('maria@example.com', 'Maria Rodriguez', '4.0 Advanced', 4, 41, 6, 3, 'down', true),
-    ('emily@example.com', 'Emily Watson', '3.5 Intermediate+', 5, 38, 5, 3, 'neutral', true),
-    ('lisa@example.com', 'Lisa Park', '3.5-4.0 Int-Adv', 6, 35, 5, 4, 'up', true),
-    ('anna@example.com', 'Anna Thompson', '3.5 Intermediate+', 7, 32, 4, 4, 'neutral', true),
-    ('rachel@example.com', 'Rachel Kim', '3.0-3.5 Intermediate', 8, 28, 4, 5, 'down', true),
-    ('diana@example.com', 'Diana Lee', '3.5 Intermediate+', 9, 25, 3, 5, 'up', true),
-    ('michelle@example.com', 'Michelle Brown', '3.0-3.5 Intermediate', 10, 22, 3, 6, 'neutral', true),
+    ('kimberly@ndombe.com', 'Kim Ndombe', '4.5 Advanced+', 1, 1510, 18, 0, 'up', true),
+    ('nmcoffen@gmail.com', 'Natalie Coffen', '4.5 Advanced+', 2, 1500, 16, 1, 'up', true),
+    ('Sara.Chrisman@gmail.com', 'Sara Chrisman', '4.5 Advanced+', 3, 1490, 14, 2, 'neutral', true),
+    ('ariannahairston@gmail.com', 'Arianna Hairston', '4.5 Advanced+', 4, 1480, 12, 3, 'neutral', true),
+    ('hannah.shin4@gmail.com', 'Hannah Shin', '4.5 Advanced+', 5, 1450, 10, 4, 'up', true),
+    ('aapelian@gmail.com', 'Alik Apelian', '4.5 Advanced+', 6, 1450, 8, 5, 'neutral', true),
+    ('sayhellotohanna@gmail.com', 'Hanna Pavlova', '4.2 Advanced', 7, 1410, 6, 6, 'down', true),
+    ('Madeline.whitby@gmail.com', 'Maddy Whitby', '4.1 Advanced', 8, 1380, 4, 7, 'neutral', true),
+    ('Allison.n.dunne@gmail.com', 'Allison Dunne', '4.0 Advanced', 9, 1370, 2, 8, 'up', true),
+    ('Ashleybrooke.kaufman@gmail.com', 'Ashley Brooke Kaufman', '4.0 Advanced', 10, 1330, 0, 9, 'neutral', true),
+    ('kaitlinmariekelly@gmail.com', 'Kaitlin Kelly', '4.0 Advanced', 11, 1320, 0, 10, 'neutral', true),
+    ('Pagek.eaton@gmail.com', 'Page Eaton', '4.0 Advanced', 12, 1300, 0, 11, 'neutral', true),
+    ('BySarahYun@gmail.com', 'Sarah Yun', '3.8 Intermediate+', 13, 1290, 0, 12, 'neutral', true),
+    ('Laurenjaneberger@gmail.com', 'Laurie Berger', '3.7 Intermediate+', 14, 1260, 0, 13, 'neutral', true),
+    ('Katelinmorey@gmail.com', 'Katie Morey', '3.6 Intermediate', 15, 1240, 0, 14, 'neutral', true),
+    ('Alyssa.j.perry@gmail.com', 'Alyssa Perry', '3.5 Intermediate', 16, 1200, 0, 15, 'neutral', true),
     ('admin@networthtennis.com', 'Admin', '4.0+ Advanced', 99, 0, 0, 0, 'neutral', true)
 ON CONFLICT (email) DO NOTHING;
 

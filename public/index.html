@@ -794,30 +794,29 @@
             <div class="ticker-content">
                 <div class="ticker-item">
                     <span class="ticker-label">Active Players</span>
-                    <span class="ticker-value" id="player-count">15</span>
+                    <span class="ticker-value" id="player-count">16</span>
                 </div>
                 <div class="ticker-item">
-                    <span class="ticker-label">Matches This Month</span>
-                    <span class="ticker-value" id="match-count">23</span>
-                    <span class="ticker-change up">+12%</span>
+                    <span class="ticker-label">Season 2025</span>
+                    <span class="ticker-value">ACTIVE</span>
+                    <span class="ticker-change up">OPEN</span>
                 </div>
                 <div class="ticker-item">
-                    <span class="ticker-label">Top Mover</span>
-                    <span class="ticker-value" id="top-mover">Sarah K.</span>
-                    <span class="ticker-change up">+3</span>
+                    <span class="ticker-label">Ladder Leader</span>
+                    <span class="ticker-value" id="top-mover">Kim N.</span>
+                    <span class="ticker-change up">18-0</span>
                 </div>
                 <div class="ticker-item">
-                    <span class="ticker-label">Avg Match Score</span>
-                    <span class="ticker-value">6-4, 6-3</span>
+                    <span class="ticker-label">Total Matches</span>
+                    <span class="ticker-value">91</span>
                 </div>
                 <div class="ticker-item">
                     <span class="ticker-label">Active Players</span>
-                    <span class="ticker-value">15</span>
+                    <span class="ticker-value">16</span>
                 </div>
                 <div class="ticker-item">
-                    <span class="ticker-label">Matches This Month</span>
-                    <span class="ticker-value">23</span>
-                    <span class="ticker-change up">+12%</span>
+                    <span class="ticker-label">Skill Range</span>
+                    <span class="ticker-value">3.5 - 4.5</span>
                 </div>
             </div>
         </div>
@@ -955,23 +954,23 @@
                 <a href="/privacy" class="footer-link">Privacy</a>
                 <a href="/support" class="footer-link">Support</a>
             </nav>
-            <p class="footer-copy">&copy; 2024 Net Worth Tennis. East Side LA.</p>
+            <p class="footer-copy">&copy; 2025 Net Worth Tennis. East Side LA.</p>
         </div>
     </footer>
 
     <script>
-        // Sample ladder data - will be replaced with Supabase fetch
+        // Real player data from NET WORTH Tennis Ladder
         const samplePlayers = [
-            { rank: 1, name: "Kim Ndombe", level: "4.0+ Advanced", points: 51, wins: 8, losses: 1, trend: "neutral" },
-            { rank: 2, name: "Sarah Kaplan", level: "4.0 Advanced", points: 47, wins: 7, losses: 2, trend: "up" },
-            { rank: 3, name: "Jessica Chen", level: "3.5-4.0 Int-Adv", points: 43, wins: 6, losses: 2, trend: "up" },
-            { rank: 4, name: "Maria Rodriguez", level: "4.0 Advanced", points: 41, wins: 6, losses: 3, trend: "down" },
-            { rank: 5, name: "Emily Watson", level: "3.5 Intermediate+", points: 38, wins: 5, losses: 3, trend: "neutral" },
-            { rank: 6, name: "Lisa Park", level: "3.5-4.0 Int-Adv", points: 35, wins: 5, losses: 4, trend: "up" },
-            { rank: 7, name: "Anna Thompson", level: "3.5 Intermediate+", points: 32, wins: 4, losses: 4, trend: "neutral" },
-            { rank: 8, name: "Rachel Kim", level: "3.0-3.5 Intermediate", points: 28, wins: 4, losses: 5, trend: "down" },
-            { rank: 9, name: "Diana Lee", level: "3.5 Intermediate+", points: 25, wins: 3, losses: 5, trend: "up" },
-            { rank: 10, name: "Michelle Brown", level: "3.0-3.5 Intermediate", points: 22, wins: 3, losses: 6, trend: "neutral" },
+            { rank: 1, name: "Kim Ndombe", level: "4.5 Advanced+", points: 1510, wins: 18, losses: 0, trend: "up" },
+            { rank: 2, name: "Natalie Coffen", level: "4.5 Advanced+", points: 1500, wins: 16, losses: 1, trend: "up" },
+            { rank: 3, name: "Sara Chrisman", level: "4.5 Advanced+", points: 1490, wins: 14, losses: 2, trend: "neutral" },
+            { rank: 4, name: "Arianna Hairston", level: "4.5 Advanced+", points: 1480, wins: 12, losses: 3, trend: "neutral" },
+            { rank: 5, name: "Hannah Shin", level: "4.5 Advanced+", points: 1450, wins: 10, losses: 4, trend: "up" },
+            { rank: 6, name: "Alik Apelian", level: "4.5 Advanced+", points: 1450, wins: 8, losses: 5, trend: "neutral" },
+            { rank: 7, name: "Hanna Pavlova", level: "4.2 Advanced", points: 1410, wins: 6, losses: 6, trend: "down" },
+            { rank: 8, name: "Maddy Whitby", level: "4.1 Advanced", points: 1380, wins: 4, losses: 7, trend: "neutral" },
+            { rank: 9, name: "Allison Dunne", level: "4.0 Advanced", points: 1370, wins: 2, losses: 8, trend: "up" },
+            { rank: 10, name: "Ashley Brooke Kaufman", level: "4.0 Advanced", points: 1330, wins: 0, losses: 9, trend: "neutral" },
         ];
 
         function renderLadder(players) {
