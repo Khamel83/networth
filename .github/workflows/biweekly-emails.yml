@@ -1,0 +1,114 @@
+# Bi-Weekly Email Cadence
+# ======================
+# Replaces: monthly-pairings.yml, mid-month-reminder.yml, end-month-reminder.yml
+#
+# Schedule:
+# - 1st of month: Generate pairings + send new match emails + remind about past month
+# - 15th of month: Mid-month check-in + remind about past month outstanding matches
+#
+# This simplified cadence:
+# - Every ~2 weeks there's an email
+# - Beginning of month: "New matches + did you finish last month?"
+# - Mid-month: "Check-in on this month + any outstanding from before?"
+
+name: Bi-Weekly Tennis Emails
+
+on:
+  schedule:
+    # 1st of month at 9am PT (5pm UTC) - New pairings
+    - cron: '0 17 1 * *'
+    # 15th of month at 9am PT (5pm UTC) - Mid-month check-in
+    - cron: '0 17 15 * *'
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Which email action to run'
+        required: true
+        default: 'first_of_month'
+        type: choice
+        options:
+          - first_of_month
+          - mid_month
+
+jobs:
+  determine-action:
+    runs-on: ubuntu-latest
+    outputs:
+      action: ${{ steps.set-action.outputs.action }}
+    steps:
+      - name: Determine which action to run
+        id: set-action
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "action=${{ github.event.inputs.action }}" >> $GITHUB_OUTPUT
+          else
+            # Determine from date
+            DAY=$(date +%d)
+            if [ "$DAY" -le "7" ]; then
+              echo "action=first_of_month" >> $GITHUB_OUTPUT
+            else
+              echo "action=mid_month" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+  first-of-month:
+    needs: determine-action
+    if: needs.determine-action.outputs.action == 'first_of_month'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Log action
+        run: |
+          echo "Running: FIRST OF MONTH emails"
+          echo "This will:"
+          echo "  1. Generate new pairings for this month"
+          echo "  2. Send pairing emails with availability info"
+          echo "  3. Send reminder about any outstanding matches from last month"
+          echo ""
+          echo "EMAIL_ENABLED must be 'true' in Vercel env vars for emails to actually send"
+
+      - name: Generate pairings and send notifications
+        run: |
+          # Generate new pairings for current month
+          curl -X POST "${{ secrets.SITE_URL }}/api/cron/monthly" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json"
+
+      - name: Send outstanding match reminders
+        run: |
+          # Remind about any incomplete matches from previous months
+          curl -X POST "${{ secrets.SITE_URL }}/api/email" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            -d '{"action": "send_outstanding_reminders"}'
+
+      - name: Log completion
+        run: echo "First of month emails completed"
+
+  mid-month:
+    needs: determine-action
+    if: needs.determine-action.outputs.action == 'mid_month'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Log action
+        run: |
+          echo "Running: MID-MONTH emails"
+          echo "This will:"
+          echo "  1. Send check-in reminder for this month's match"
+          echo "  2. Send reminder about any outstanding matches from previous months"
+
+      - name: Send mid-month reminders
+        run: |
+          curl -X POST "${{ secrets.SITE_URL }}/api/email" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            -d '{"action": "send_reminders"}'
+
+      - name: Send outstanding match reminders
+        run: |
+          curl -X POST "${{ secrets.SITE_URL }}/api/email" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            -d '{"action": "send_outstanding_reminders"}'
+
+      - name: Log completion
+        run: echo "Mid-month emails completed"

@@ -115,8 +115,7 @@
             margin-bottom: 0.5rem;
         }
 
-        input[type="email"],
-        input[type="password"] {
+        input[type="email"] {
             width: 100%;
             padding: 1rem;
             background: var(--terminal-gray);
@@ -159,18 +158,27 @@
             cursor: not-allowed;
         }
 
-        .error-message {
-            background: rgba(220, 20, 60, 0.1);
-            border: 1px solid var(--power-red);
-            color: var(--power-red);
+        .message {
             padding: 0.75rem;
             font-size: 0.8rem;
             margin-bottom: 1.5rem;
             display: none;
         }
 
-        .error-message.show {
+        .message.show {
             display: block;
+        }
+
+        .message.error {
+            background: rgba(220, 20, 60, 0.1);
+            border: 1px solid var(--power-red);
+            color: var(--power-red);
+        }
+
+        .message.success {
+            background: rgba(34, 139, 34, 0.1);
+            border: 1px solid var(--court-green);
+            color: var(--court-green);
         }
 
         .login-footer {
@@ -178,36 +186,24 @@
             text-align: center;
         }
 
-        .login-footer a {
+        .login-footer p {
             color: var(--text-muted);
             font-size: 0.75rem;
-            text-decoration: none;
-            transition: color 0.3s ease;
+            line-height: 1.6;
         }
 
-        .login-footer a:hover {
+        .login-info {
+            margin-top: 1.5rem;
+            padding: 1rem;
+            background: rgba(212, 175, 55, 0.05);
+            border: 1px solid var(--terminal-border);
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            text-align: center;
+        }
+
+        .login-info strong {
             color: var(--gold);
-        }
-
-        .divider {
-            display: flex;
-            align-items: center;
-            margin: 1.5rem 0;
-        }
-
-        .divider::before,
-        .divider::after {
-            content: '';
-            flex: 1;
-            height: 1px;
-            background: var(--terminal-border);
-        }
-
-        .divider span {
-            padding: 0 1rem;
-            font-size: 0.7rem;
-            color: var(--text-muted);
-            text-transform: uppercase;
         }
 
         .back-link {
@@ -224,6 +220,37 @@
         .back-link:hover {
             color: var(--gold);
         }
+
+        /* Success state */
+        .check-email {
+            text-align: center;
+            padding: 2rem 0;
+        }
+
+        .check-email svg {
+            width: 64px;
+            height: 64px;
+            color: var(--court-green);
+            margin-bottom: 1.5rem;
+        }
+
+        .check-email h2 {
+            font-family: var(--font-display);
+            font-size: 1.5rem;
+            color: var(--text-primary);
+            margin-bottom: 1rem;
+        }
+
+        .check-email p {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            line-height: 1.6;
+        }
+
+        .check-email .email-sent {
+            color: var(--gold);
+            font-weight: 600;
+        }
     </style>
 </head>
 <body>
@@ -236,74 +263,89 @@
         </a>
 
         <div class="login-card">
-            <div class="login-header">
-                <h1 class="login-logo">NET WORTH</h1>
-                <p class="login-subtitle">Player Login</p>
-            </div>
-
-            <div id="error-message" class="error-message"></div>
-
-            <form id="login-form">
-                <div class="form-group">
-                    <label for="email">Email Address</label>
-                    <input type="email" id="email" name="email" placeholder="your@email.com" required>
+            <div id="login-form-section">
+                <div class="login-header">
+                    <h1 class="login-logo">NET WORTH</h1>
+                    <p class="login-subtitle">Player Login</p>
                 </div>
 
-                <div class="form-group">
-                    <label for="password">Password</label>
-                    <input type="password" id="password" name="password" placeholder="Enter password" required>
+                <div id="message" class="message"></div>
+
+                <form id="login-form">
+                    <div class="form-group">
+                        <label for="email">Email Address</label>
+                        <input type="email" id="email" name="email" placeholder="your@email.com" required autocomplete="email">
+                    </div>
+
+                    <button type="submit" class="btn-login" id="submit-btn">
+                        Send Login Link
+                    </button>
+                </form>
+
+                <div class="login-info">
+                    <strong>No password needed!</strong><br>
+                    We'll email you a secure login link.
                 </div>
 
-                <button type="submit" class="btn-login" id="submit-btn">
-                    Sign In
-                </button>
-            </form>
-
-            <div class="divider">
-                <span>or</span>
+                <div class="login-footer">
+                    <p>Not in the league yet?<br>Contact the organizer to get added.</p>
+                </div>
             </div>
 
-            <div class="login-footer">
-                <a href="/join">New player? Join the ladder</a>
+            <!-- Success state after sending magic link -->
+            <div id="success-section" style="display: none;">
+                <div class="check-email">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 6c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6zm-2 0l-8 5-8-5h16zm0 12H4V8l8 5 8-5v10z"/>
+                    </svg>
+                    <h2>Check Your Email!</h2>
+                    <p>We sent a login link to<br><span class="email-sent" id="sent-email"></span></p>
+                    <p style="margin-top: 1rem; font-size: 0.75rem; color: var(--text-muted);">
+                        Click the link in your email to sign in.<br>
+                        Link expires in 1 hour.
+                    </p>
+                </div>
             </div>
         </div>
     </div>
 
     <script>
         const form = document.getElementById('login-form');
-        const errorEl = document.getElementById('error-message');
+        const messageEl = document.getElementById('message');
         const submitBtn = document.getElementById('submit-btn');
+        const formSection = document.getElementById('login-form-section');
+        const successSection = document.getElementById('success-section');
 
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
-            errorEl.classList.remove('show');
+            messageEl.className = 'message';
             submitBtn.disabled = true;
-            submitBtn.textContent = 'Signing in...';
+            submitBtn.textContent = 'Sending...';
 
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
+            const email = document.getElementById('email').value.trim().toLowerCase();
 
             try {
                 const response = await fetch('/api/auth', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'login', email, password })
+                    body: JSON.stringify({ action: 'magic_link', email })
                 });
 
                 const data = await response.json();
 
                 if (data.success) {
-                    localStorage.setItem('networth_token', data.token);
-                    localStorage.setItem('networth_player', JSON.stringify(data.player));
-                    window.location.href = '/dashboard';
+                    // Show success state
+                    document.getElementById('sent-email').textContent = email;
+                    formSection.style.display = 'none';
+                    successSection.style.display = 'block';
                 } else {
-                    throw new Error(data.error || 'Invalid credentials');
+                    throw new Error(data.error || 'Something went wrong');
                 }
             } catch (err) {
-                errorEl.textContent = err.message;
-                errorEl.classList.add('show');
+                messageEl.textContent = err.message;
+                messageEl.className = 'message error show';
                 submitBtn.disabled = false;
-                submitBtn.textContent = 'Sign In';
+                submitBtn.textContent = 'Send Login Link';
             }
         });
     </script>

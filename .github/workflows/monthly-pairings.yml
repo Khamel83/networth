@@ -1,0 +1,30 @@
+# Monthly Pairing Generation
+# Runs on 1st of each month at 9am PT (5pm UTC)
+# FREE - uses GitHub Actions instead of Vercel Pro
+
+name: Monthly Pairings
+
+on:
+  schedule:
+    # 1st of month at 9am PT (5pm UTC)
+    - cron: '0 17 1 * *'
+  workflow_dispatch:  # Allow manual trigger for testing
+
+jobs:
+  generate-pairings:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check if enabled
+        run: |
+          echo "⚠️ EMAIL_ENABLED must be 'true' in Vercel env vars for emails to send"
+          echo "Current run is for: $(date +'%B %Y')"
+
+      - name: Generate pairings and send notifications
+        run: |
+          curl -X POST "${{ secrets.SITE_URL }}/api/cron/monthly" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json"
+
+      - name: Log result
+        run: echo "Monthly pairings job completed"
