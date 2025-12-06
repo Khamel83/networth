@@ -804,11 +804,11 @@
                 <div class="ticker-item">
                     <span class="ticker-label">Ladder Leader</span>
                     <span class="ticker-value" id="top-mover">Kim N.</span>
-                    <span class="ticker-change up">18-0</span>
+                    <span class="ticker-change up" id="top-games">51 games</span>
                 </div>
                 <div class="ticker-item">
                     <span class="ticker-label">Total Matches</span>
-                    <span class="ticker-value">91</span>
+                    <span class="ticker-value" id="total-matches">91</span>
                 </div>
                 <div class="ticker-item">
                     <span class="ticker-label">Active Players</span>
@@ -836,8 +836,8 @@
             <div class="ladder-header">
                 <span>Rank</span>
                 <span>Player</span>
-                <span>Points</span>
-                <span>W-L</span>
+                <span>Games Won</span>
+                <span>Matches</span>
                 <span>Trend</span>
             </div>
             <div id="ladder-rows">
@@ -961,9 +961,9 @@
     <script>
         // Fallback data in case API fails
         const fallbackPlayers = [
-            { rank: 1, name: "Kim Ndombe", skill_level: "4.5 Advanced+", points: 1510, wins: 18, losses: 0, trend: "up" },
-            { rank: 2, name: "Natalie Coffen", skill_level: "4.5 Advanced+", points: 1500, wins: 16, losses: 1, trend: "up" },
-            { rank: 3, name: "Sara Chrisman", skill_level: "4.5 Advanced+", points: 1490, wins: 14, losses: 2, trend: "neutral" },
+            { rank: 1, name: "Kim Ndombe", skill_level: "4.5 Advanced+", total_games: 51, matches_played: 5, trend: "up" },
+            { rank: 2, name: "Natalie Coffen", skill_level: "4.5 Advanced+", total_games: 50, matches_played: 6, trend: "up" },
+            { rank: 3, name: "Sara Chrisman", skill_level: "4.5 Advanced+", total_games: 49, matches_played: 5, trend: "neutral" },
         ];
 
         function renderLadder(players) {
@@ -975,8 +975,8 @@
                         <span class="player-name">${player.name}</span>
                         <span class="player-level">${player.skill_level || player.level || ''}</span>
                     </div>
-                    <span class="player-points">${player.points} pts</span>
-                    <span class="player-record">${player.wins}-${player.losses}</span>
+                    <span class="player-points">${player.total_games || 0}</span>
+                    <span class="player-record">${player.matches_played || 0}</span>
                     <span class="player-trend trend-${player.trend || 'neutral'}">
                         ${player.trend === 'up' ? '&#9650;' : player.trend === 'down' ? '&#9660;' : '&#8212;'}
                     </span>
@@ -1000,7 +1000,11 @@
                     document.getElementById('player-count').textContent = activePlayers.length;
                     if (activePlayers[0]) {
                         document.getElementById('top-mover').textContent = activePlayers[0].name.split(' ')[0] + ' ' + activePlayers[0].name.split(' ')[1]?.charAt(0) + '.';
+                        document.getElementById('top-games').textContent = activePlayers[0].total_games + ' games';
                     }
+                    // Calculate total matches
+                    const totalMatches = activePlayers.reduce((sum, p) => sum + (p.matches_played || 0), 0) / 2;
+                    document.getElementById('total-matches').textContent = Math.round(totalMatches);
 
                     console.log('Loaded', activePlayers.length, 'players from', data.source);
                 } else {

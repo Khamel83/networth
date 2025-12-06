@@ -21,12 +21,23 @@ def get_supabase_client():
     return None
 
 
+# Sample matches using new schema (set scores, games won per player)
 SAMPLE_MATCHES = [
-    {"id": 1, "winner": {"name": "Kim Ndombe"}, "loser": {"name": "Natalie Coffen"}, "winner_score": "6-4, 6-3", "loser_score": "4-6, 3-6", "played_at": "2025-01-05T14:00:00Z", "court": "Vermont Canyon"},
-    {"id": 2, "winner": {"name": "Sara Chrisman"}, "loser": {"name": "Arianna Hairston"}, "winner_score": "7-5, 6-4", "loser_score": "5-7, 4-6", "played_at": "2025-01-03T10:00:00Z", "court": "Griffith Park"},
-    {"id": 3, "winner": {"name": "Kim Ndombe"}, "loser": {"name": "Hannah Shin"}, "winner_score": "6-2, 6-4", "loser_score": "2-6, 4-6", "played_at": "2025-01-01T16:00:00Z", "court": "Echo Park"},
-    {"id": 4, "winner": {"name": "Natalie Coffen"}, "loser": {"name": "Alik Apelian"}, "winner_score": "6-3, 6-2", "loser_score": "3-6, 2-6", "played_at": "2024-12-28T11:00:00Z", "court": "Silver Lake"},
-    {"id": 5, "winner": {"name": "Hannah Shin"}, "loser": {"name": "Hanna Pavlova"}, "winner_score": "6-4, 7-5", "loser_score": "4-6, 5-7", "played_at": "2024-12-22T15:00:00Z", "court": "Los Feliz"},
+    {"id": 1, "player1": {"name": "Kim Ndombe"}, "player2": {"name": "Natalie Coffen"},
+     "set1_p1": 6, "set1_p2": 4, "set2_p1": 6, "set2_p2": 3,
+     "player1_games": 12, "player2_games": 7, "period_label": "January 2025", "court": "Vermont Canyon"},
+    {"id": 2, "player1": {"name": "Sara Chrisman"}, "player2": {"name": "Arianna Hairston"},
+     "set1_p1": 7, "set1_p2": 5, "set2_p1": 6, "set2_p2": 4,
+     "player1_games": 13, "player2_games": 9, "period_label": "January 2025", "court": "Griffith Park"},
+    {"id": 3, "player1": {"name": "Kim Ndombe"}, "player2": {"name": "Hannah Shin"},
+     "set1_p1": 6, "set1_p2": 2, "set2_p1": 6, "set2_p2": 4,
+     "player1_games": 12, "player2_games": 6, "period_label": "December 2024", "court": "Echo Park"},
+    {"id": 4, "player1": {"name": "Natalie Coffen"}, "player2": {"name": "Alik Apelian"},
+     "set1_p1": 6, "set1_p2": 3, "set2_p1": 6, "set2_p2": 2,
+     "player1_games": 12, "player2_games": 5, "period_label": "December 2024", "court": "Silver Lake"},
+    {"id": 5, "player1": {"name": "Hannah Shin"}, "player2": {"name": "Hanna Pavlova"},
+     "set1_p1": 6, "set1_p2": 4, "set2_p1": 7, "set2_p2": 5,
+     "player1_games": 13, "player2_games": 9, "period_label": "December 2024", "court": "Los Feliz"},
 ]
 
 
@@ -42,7 +53,7 @@ class handler(BaseHTTPRequestHandler):
         try:
             supabase = get_supabase_client()
             if supabase:
-                response = supabase.table('matches').select('*, winner:players!winner_id(*), loser:players!loser_id(*)').order('played_at', desc=True).limit(20).execute()
+                response = supabase.table('matches').select('*, player1:players!player1_id(*), player2:players!player2_id(*)').order('created_at', desc=True).limit(20).execute()
                 matches = response.data
                 source = "supabase"
             else:
@@ -79,13 +90,26 @@ class handler(BaseHTTPRequestHandler):
 
             supabase = get_supabase_client()
             if supabase:
+                # Calculate total games from set scores
+                set1_p1 = int(data.get('set1_p1', 0))
+                set1_p2 = int(data.get('set1_p2', 0))
+                set2_p1 = int(data.get('set2_p1', 0))
+                set2_p2 = int(data.get('set2_p2', 0))
+
                 match_data = {
-                    "winner_id": data['winner_id'],
-                    "loser_id": data['loser_id'],
-                    "winner_score": data['winner_score'],
-                    "loser_score": data['loser_score'],
+                    "player1_id": data['player1_id'],
+                    "player2_id": data['player2_id'],
+                    "set1_p1": set1_p1,
+                    "set1_p2": set1_p2,
+                    "set2_p1": set2_p1,
+                    "set2_p2": set2_p2,
+                    "player1_games": set1_p1 + set2_p1,
+                    "player2_games": set1_p2 + set2_p2,
+                    "period_type": data.get('period_type', 'month'),
+                    "period_label": data.get('period_label', datetime.now().strftime('%B %Y')),
                     "court": data.get('court', 'Unknown'),
-                    "played_at": data.get('played_at', datetime.now(timezone.utc).isoformat())
+                    "match_date": data.get('match_date'),
+                    "is_forfeit": data.get('is_forfeit', False)
                 }
                 response = supabase.table('matches').insert(match_data).execute()
 

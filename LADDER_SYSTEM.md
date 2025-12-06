@@ -101,6 +101,13 @@ IF 3+ forfeits this season: -50 points
 - Only admin can see block data
 - Blocks are one-directional (A blocks B, but B might not block A)
 
+### Declined Match Rematching
+- When a player declines a match, they get ONE rematch attempt
+- After 2 declines total, player is flagged for admin review
+- NO reason required for declining (that's prying)
+- System tracks: WHO declined, HOW MANY times - that's it
+- Chronic decliners (3+) get "needs_attention" status for admin
+
 ---
 
 ## Approved Courts
@@ -181,8 +188,18 @@ match_feedback
   - competitive_match (optional)
   - private_note (admin only)
 
+match_assignments
+  - player1_id, player2_id
+  - period_type, period_label
+  - status (pending/accepted/declined/completed/expired)
+  - declined_by, decline_count (0-2)
+  - is_rematch, original_assignment_id
+
 blocked_pairs (VIEW)
   - player_a, player_b -- derived from would_play_again=false
+
+player_decline_stats (VIEW)
+  - times_declined, decline_rate, status (ok/warning/needs_attention)
 ```
 
 ### Automatic Triggers

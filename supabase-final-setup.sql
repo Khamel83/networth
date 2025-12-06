@@ -112,6 +112,33 @@ CREATE TABLE matches (
 );
 
 -- =============================================================
+-- MATCH ASSIGNMENTS (pairings sent each period)
+-- Track who was paired, who declined, rematch attempts
+-- =============================================================
+CREATE TABLE match_assignments (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    player1_id UUID REFERENCES players(id) ON DELETE CASCADE,
+    player2_id UUID REFERENCES players(id) ON DELETE CASCADE,
+    period_type VARCHAR(20) NOT NULL DEFAULT 'month',
+    period_label VARCHAR(30) NOT NULL, -- "January 2025"
+    -- Status tracking
+    status VARCHAR(20) DEFAULT 'pending', -- pending, accepted, declined, completed, expired
+    declined_by UUID REFERENCES players(id), -- Who declined (if any)
+    decline_count INTEGER DEFAULT 0, -- How many times this pair declined (0, 1, 2 max)
+    -- Rematch logic: if declined, try rematch up to 2x total
+    is_rematch BOOLEAN DEFAULT false,
+    original_assignment_id UUID REFERENCES match_assignments(id), -- Link to original if this is a rematch
+    -- Timestamps
+    assigned_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    responded_at TIMESTAMP WITH TIME ZONE,
+    UNIQUE(player1_id, player2_id, period_label) -- One pairing per period
+);
+
+-- Index for finding pending assignments
+CREATE INDEX idx_assignments_pending ON match_assignments(status, period_label);
+CREATE INDEX idx_assignments_player ON match_assignments(player1_id, player2_id);
+
+-- =============================================================
 -- MATCH FEEDBACK (how was the match experience?)
 -- Minimal data: just "would you play again?" required
 -- =============================================================
@@ -150,6 +177,7 @@ ALTER TABLE matches ENABLE ROW LEVEL SECURITY;
 ALTER TABLE player_availability ENABLE ROW LEVEL SECURITY;
 ALTER TABLE player_court_preferences ENABLE ROW LEVEL SECURITY;
 ALTER TABLE match_feedback ENABLE ROW LEVEL SECURITY;
+ALTER TABLE match_assignments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE league_settings ENABLE ROW LEVEL SECURITY;
 
 -- Policies
@@ -164,6 +192,8 @@ CREATE POLICY "Court prefs viewable" ON player_court_preferences FOR SELECT USIN
 CREATE POLICY "Court prefs manageable" ON player_court_preferences FOR ALL USING (true);
 CREATE POLICY "Feedback insertable" ON match_feedback FOR INSERT WITH CHECK (true);
 CREATE POLICY "Feedback viewable by admin" ON match_feedback FOR SELECT USING (true);
+CREATE POLICY "Assignments viewable" ON match_assignments FOR SELECT USING (true);
+CREATE POLICY "Assignments manageable" ON match_assignments FOR ALL USING (true);
 CREATE POLICY "League settings viewable" ON league_settings FOR SELECT USING (true);
 
 -- =============================================================
@@ -340,6 +370,31 @@ WHERE p1.id < p2.id  -- Avoid duplicates
   AND p2.is_active = true
   AND p1.is_admin = false
   AND p2.is_admin = false;
+
+-- =============================================================
+-- DECLINE TRACKING VIEW (admin only)
+-- Players who decline too often get flagged
+-- =============================================================
+CREATE OR REPLACE VIEW player_decline_stats AS
+SELECT
+    p.id,
+    p.name,
+    COUNT(ma.id) as total_assignments,
+    COUNT(CASE WHEN ma.declined_by = p.id THEN 1 END) as times_declined,
+    ROUND(
+        COUNT(CASE WHEN ma.declined_by = p.id THEN 1 END)::numeric /
+        NULLIF(COUNT(ma.id), 0) * 100, 1
+    ) as decline_rate,
+    -- Flag if declined 3+ times in last 3 months
+    CASE
+        WHEN COUNT(CASE WHEN ma.declined_by = p.id THEN 1 END) >= 3 THEN 'needs_attention'
+        WHEN COUNT(CASE WHEN ma.declined_by = p.id THEN 1 END) >= 2 THEN 'warning'
+        ELSE 'ok'
+    END as status
+FROM players p
+LEFT JOIN match_assignments ma ON (ma.player1_id = p.id OR ma.player2_id = p.id)
+WHERE p.is_admin = false
+GROUP BY p.id, p.name;
 
 -- =============================================================
 -- VERIFY SETUP
