@@ -1,177 +1,108 @@
 # NET WORTH Tennis Ladder
 
-> *"Greed, for lack of a better word, is good. Greed for wins. Greed for ranking points. Greed for that number one spot."*
+East Side LA Women's Tennis - Monthly pairings, games-won ranking.
 
-**An 80s Wall Street-themed competitive women's tennis ladder for East Side Los Angeles.**
+## Live Site
 
-![Version](https://img.shields.io/badge/version-2.0.0-gold)
-![Platform](https://img.shields.io/badge/platform-Vercel-black)
-![Database](https://img.shields.io/badge/database-Supabase-green)
+**[networthtennis.com](https://networthtennis.com)**
 
-## Features
+## How It Works
 
-- **Real-time ladder rankings** with Bloomberg-style ticker
-- **80s Wall Street aesthetic** - Gordon Gekko meets tennis
-- **Tennis ball cursor** - custom SVG cursor throughout
-- **Tyler McGillivary-style centered navigation**
-- **Player dashboard** with match history and score reporting
-- **Responsive design** - works on mobile and desktop
-- **Serverless API** - Vercel Python functions
-- **Supabase database** - PostgreSQL with real-time capabilities
+1. **Monthly Pairings** - On the 1st, players get paired by skill level
+2. **Play 2 Sets** - Coordinate via email, play at any approved court
+3. **Report Score** - Log results on dashboard, games won count toward ranking
+4. **Climb the Ladder** - Rankings based on total games won, not match wins
 
-## Quick Start
+## Tech Stack
 
-### Local Development
+- **Frontend**: Static HTML/CSS/JS on Vercel
+- **Backend**: Vercel Python serverless functions
+- **Database**: Supabase (PostgreSQL)
+- **Email**: Resend API
+- **Auth**: Magic links (no passwords)
 
-```bash
-# Clone the repository
-git clone https://github.com/Khamel83/networth.git
-cd networth
-
-# Start local server
-python serve.py
-
-# Open http://localhost:3000
-# Demo login: any email + password "tennis123"
-```
-
-### Deploy to Vercel
-
-1. **Set up Supabase**
-   - Create project at [supabase.com](https://supabase.com)
-   - Run `supabase-schema.sql` in SQL Editor
-   - Copy URL and anon key
-
-2. **Deploy to Vercel**
-   ```bash
-   # Install Vercel CLI
-   npm i -g vercel
-
-   # Deploy
-   vercel
-
-   # Add environment variables
-   vercel env add SUPABASE_URL
-   vercel env add SUPABASE_ANON_KEY
-   ```
-
-3. **Configure custom domain** (optional)
-   - Add `networthtennis.com` in Vercel dashboard
-
-## Environment Variables
-
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `SUPABASE_URL` | Supabase project URL | Yes (production) |
-| `SUPABASE_ANON_KEY` | Supabase anonymous key | Yes (production) |
-| `PLAYER_PASSWORD` | Demo login password | No (default: tennis123) |
-
-## Architecture
+## Project Structure
 
 ```
 networth/
-├── public/               # Static files (served by Vercel)
-│   ├── index.html       # Main landing page (80s Wall Street aesthetic)
-│   ├── login.html       # Player login
-│   ├── dashboard.html   # Player dashboard
-│   └── ...
-├── api/                  # Vercel serverless functions
-│   ├── players.py       # GET players list
-│   ├── matches.py       # GET/POST matches
-│   ├── auth.py          # POST login
-│   └── health.py        # GET health check
-├── serve.py             # Local development server
-├── supabase-schema.sql  # Database schema
-└── vercel.json          # Vercel configuration
+├── public/                 # Static site
+│   ├── index.html         # Homepage + ladder
+│   ├── login.html         # Magic link login
+│   ├── join.html          # Request to join
+│   ├── dashboard.html     # Player dashboard
+│   ├── rules.html         # How it works
+│   ├── support.html       # FAQs
+│   └── privacy.html       # Privacy policy
+├── api/                    # Serverless functions
+│   ├── auth.py            # Magic link auth
+│   ├── players.py         # Player list
+│   ├── matches.py         # Match reporting
+│   ├── email.py           # Email sending
+│   ├── pairings.py        # Monthly matching algorithm
+│   ├── profile.py         # Player self-service
+│   ├── join.py            # Join requests
+│   └── config.py          # Centralized config (colors, copy, courts)
+├── .github/workflows/
+│   └── biweekly-emails.yml # 1st + 15th of month emails
+└── vercel.json            # Routing config
 ```
 
-## Design System
+## Configuration
 
-### 80s Wall Street Aesthetic
+All user-facing content is centralized:
 
-| Element | Value |
-|---------|-------|
-| Primary Color | `#D4AF37` (Bloomberg Gold) |
-| Secondary Color | `#228B22` (Court Green) |
-| Background | `#0a0a0a` (Terminal Black) |
-| Accent | `#CCFF00` (Tennis Ball) |
-| Danger | `#DC143C` (Power Red) |
-| Font Display | Playfair Display |
-| Font Mono | IBM Plex Mono |
+**`api/config.py`** - Email subjects, body copy, colors, courts list, skill levels
 
-### Typography
+**CSS Variables** (in each HTML file):
+```css
+--gold: #D4AF37;
+--tennis-ball: #CCFF00;
+--terminal-black: #0a0a0a;
+```
 
-- **Headlines**: Playfair Display - Elegant, 80s magazine aesthetic
-- **Body/UI**: IBM Plex Mono - Terminal/Bloomberg feel
-- **Accents**: Cormorant Garamond - Italic quotes
+## Environment Variables (Vercel)
 
-### Special Features
+| Variable | Description |
+|----------|-------------|
+| `SUPABASE_URL` | Supabase project URL |
+| `SUPABASE_ANON_KEY` | Supabase anon key |
+| `RESEND_API_KEY` | Resend email API key |
+| `SITE_URL` | `https://networthtennis.com` |
+| `EMAIL_FROM` | `NET WORTH Tennis <noreply@networthtennis.com>` |
+| `ADMIN_EMAIL` | Admin email for join requests |
+| `EMAIL_ENABLED` | `true` to send emails, `false` to block |
+| `CRON_SECRET` | Secret for GitHub Actions cron jobs |
 
-- **Tennis Ball Cursor**: Custom SVG cursor with seam lines
-- **Scanline Effect**: Subtle CRT terminal overlay
-- **Grid Pattern**: Bloomberg-style background grid
-- **Bloomberg Ticker**: Real-time stats scrolling bar
+## Database (Supabase)
 
-## API Endpoints
+Key tables:
+- `players` - Name, email, skill, total_games, rank, availability
+- `matches` - Scores, who played, when
+- `match_assignments` - Monthly pairings
+- `match_feedback` - "Would play again" for silent blocking
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/health` | GET | Health check |
-| `/api/players` | GET | List all active players |
-| `/api/matches` | GET | Recent match history |
-| `/api/matches` | POST | Report a match score |
-| `/api/auth` | POST | Player login |
+Run `supabase-final-setup.sql` for fresh setup.
 
-## Database Schema
+## Backup & Fallback
 
-See `supabase-schema.sql` for full schema. Key tables:
+- **Database**: Supabase has point-in-time recovery
+- **Static Fallback**: `public/fallback.html` - works with just mailto links if everything else fails
 
-- **players**: Ranks, points, wins/losses, skill levels
-- **matches**: Match history with scores and courts
+## GitHub Actions
 
-Triggers automatically update rankings after each match.
+**biweekly-emails.yml** runs on 1st and 15th of each month:
+- 1st: Generate new pairings + remind about last month
+- 15th: Mid-month check-in + outstanding match reminders
 
-## Development
+Requires `SITE_URL` and `CRON_SECRET` in GitHub secrets.
 
-### Prerequisites
-
-- Python 3.11+
-- Supabase account (for production)
-
-### Local Testing
-
-The local server (`serve.py`) provides mock data and demo authentication:
+## Local Development
 
 ```bash
 python serve.py
+# Open http://localhost:3000
 ```
-
-- Open http://localhost:3000
-- Login with any email + password `tennis123`
-- All API endpoints return sample data
-
-### Testing Production API
-
-```bash
-# Health check
-curl https://networthtennis.com/api/health
-
-# Get players
-curl https://networthtennis.com/api/players
-```
-
-## Credits
-
-- Design inspired by [Claude's Frontend Design Skill](https://www.claude.com/blog/improving-frontend-design-through-skills)
-- Navigation pattern from [Tyler McGillivary](https://www.tylermcgillivary.com/)
-- Built with the ONE_SHOT specification
 
 ## License
 
 MIT
-
----
-
-**Net Worth Tennis** - East Side LA Women's Tennis Ladder
-
-Built with Claude Code and ONE_SHOT Skills
