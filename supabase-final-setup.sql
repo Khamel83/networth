@@ -372,25 +372,21 @@ WHERE p1.id < p2.id  -- Avoid duplicates
   AND p2.is_admin = false;
 
 -- =============================================================
--- DECLINE TRACKING VIEW (admin only)
--- Players who decline too often get flagged
+-- PLAYER ENGAGEMENT VIEW (admin only)
+-- Check in with players who might need support
+-- Not punitive - just "hey, is everything ok?"
 -- =============================================================
-CREATE OR REPLACE VIEW player_decline_stats AS
+CREATE OR REPLACE VIEW player_engagement AS
 SELECT
     p.id,
     p.name,
     COUNT(ma.id) as total_assignments,
     COUNT(CASE WHEN ma.declined_by = p.id THEN 1 END) as times_declined,
-    ROUND(
-        COUNT(CASE WHEN ma.declined_by = p.id THEN 1 END)::numeric /
-        NULLIF(COUNT(ma.id), 0) * 100, 1
-    ) as decline_rate,
-    -- Flag if declined 3+ times in last 3 months
+    -- If someone's declining a lot, maybe check in with them
     CASE
-        WHEN COUNT(CASE WHEN ma.declined_by = p.id THEN 1 END) >= 3 THEN 'needs_attention'
-        WHEN COUNT(CASE WHEN ma.declined_by = p.id THEN 1 END) >= 2 THEN 'warning'
-        ELSE 'ok'
-    END as status
+        WHEN COUNT(CASE WHEN ma.declined_by = p.id THEN 1 END) >= 3 THEN 'check_in'
+        ELSE 'active'
+    END as engagement_status
 FROM players p
 LEFT JOIN match_assignments ma ON (ma.player1_id = p.id OR ma.player2_id = p.id)
 WHERE p.is_admin = false
