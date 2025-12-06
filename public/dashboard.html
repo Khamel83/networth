@@ -8,7 +8,7 @@
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700;800;900&family=IBM+Plex+Mono:wght@300;400;500;600;700&family=Cormorant+Garamond:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=IBM+Plex+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
 
     <style>
         :root {
@@ -26,18 +26,9 @@
             --text-muted: #555555;
             --font-display: 'Playfair Display', Georgia, serif;
             --font-mono: 'IBM Plex Mono', 'Courier New', monospace;
-            --font-elegant: 'Cormorant Garamond', Georgia, serif;
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
-
-        html {
-            cursor: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="%23CCFF00" stroke="%23228B22" stroke-width="1"/><path d="M12 2 Q6 12 12 22" fill="none" stroke="%23228B22" stroke-width="1.5"/><path d="M12 2 Q18 12 12 22" fill="none" stroke="%23228B22" stroke-width="1.5"/></svg>') 12 12, auto;
-        }
-
-        a, button, input[type="submit"], select {
-            cursor: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28"><circle cx="14" cy="14" r="12" fill="%23FFD700" stroke="%23228B22" stroke-width="2"/><path d="M14 2 Q6 14 14 26" fill="none" stroke="%23228B22" stroke-width="2"/><path d="M14 2 Q22 14 14 26" fill="none" stroke="%23228B22" stroke-width="2"/></svg>') 14 14, pointer;
-        }
 
         body {
             font-family: var(--font-mono);
@@ -47,55 +38,50 @@
             -webkit-font-smoothing: antialiased;
         }
 
-        body::before {
-            content: '';
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px);
-            pointer-events: none;
-            z-index: 9999;
-        }
-
         /* Header */
         .header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 1.5rem 2rem;
+            padding: 1rem;
             border-bottom: 1px solid var(--terminal-border);
             background: var(--terminal-dark);
         }
 
         .logo {
             font-family: var(--font-display);
-            font-size: 1.5rem;
+            font-size: 1.25rem;
             font-weight: 700;
             color: var(--gold);
             text-decoration: none;
-            letter-spacing: 0.1em;
         }
 
         .user-menu {
             display: flex;
             align-items: center;
-            gap: 1.5rem;
+            gap: 1rem;
         }
 
         .user-name {
-            font-size: 0.85rem;
+            font-size: 0.75rem;
             color: var(--text-secondary);
+            display: none;
+        }
+
+        @media (min-width: 600px) {
+            .user-name { display: block; }
         }
 
         .btn-logout {
             font-family: var(--font-mono);
-            font-size: 0.7rem;
+            font-size: 0.65rem;
             text-transform: uppercase;
             letter-spacing: 0.1em;
             color: var(--text-muted);
             background: none;
             border: 1px solid var(--terminal-border);
-            padding: 0.5rem 1rem;
-            transition: all 0.3s ease;
+            padding: 0.5rem 0.75rem;
+            cursor: pointer;
         }
 
         .btn-logout:hover {
@@ -105,95 +91,110 @@
 
         /* Main Layout */
         .main {
-            max-width: 1200px;
+            max-width: 800px;
             margin: 0 auto;
-            padding: 2rem;
+            padding: 1rem;
         }
 
-        .page-title {
-            font-family: var(--font-display);
-            font-size: 2rem;
-            font-weight: 700;
+        @media (min-width: 600px) {
+            .main { padding: 2rem; }
+        }
+
+        /* Stats - Simple row */
+        .stats-row {
+            display: flex;
+            gap: 1rem;
             margin-bottom: 2rem;
-        }
-
-        /* Stats Grid */
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 3rem;
+            overflow-x: auto;
         }
 
         .stat-card {
             background: var(--terminal-dark);
             border: 1px solid var(--terminal-border);
-            padding: 1.5rem;
-            position: relative;
+            padding: 1rem;
+            min-width: 100px;
+            flex: 1;
+            text-align: center;
         }
-
-        .stat-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 3px;
-            background: var(--gold);
-        }
-
-        .stat-card.green::before { background: var(--court-green); }
-        .stat-card.red::before { background: var(--power-red); }
 
         .stat-label {
-            font-size: 0.7rem;
+            font-size: 0.6rem;
             text-transform: uppercase;
-            letter-spacing: 0.15em;
+            letter-spacing: 0.1em;
             color: var(--text-muted);
-            margin-bottom: 0.5rem;
+            margin-bottom: 0.25rem;
         }
 
         .stat-value {
             font-family: var(--font-display);
-            font-size: 2.5rem;
+            font-size: 1.75rem;
             font-weight: 700;
             color: var(--gold);
         }
 
-        .stat-card.green .stat-value { color: var(--court-green); }
-        .stat-card.red .stat-value { color: var(--power-red); }
-
-        /* Sections */
+        /* Section */
         .section {
-            margin-bottom: 3rem;
-        }
-
-        .section-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1.5rem;
-            padding-bottom: 1rem;
-            border-bottom: 1px solid var(--terminal-border);
+            margin-bottom: 2rem;
         }
 
         .section-title {
             font-family: var(--font-display);
-            font-size: 1.5rem;
+            font-size: 1.25rem;
             font-weight: 600;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--terminal-border);
         }
 
+        /* Cards */
+        .card {
+            background: var(--terminal-dark);
+            border: 1px solid var(--terminal-border);
+            padding: 1.25rem;
+            margin-bottom: 1rem;
+        }
+
+        .card-highlight {
+            border-left: 3px solid var(--gold);
+        }
+
+        .card-title {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-muted);
+            margin-bottom: 0.5rem;
+        }
+
+        .opponent-name {
+            font-family: var(--font-display);
+            font-size: 1.25rem;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .opponent-details {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .opponent-details a {
+            color: var(--gold);
+        }
+
+        /* Buttons */
         .btn {
             font-family: var(--font-mono);
             font-size: 0.7rem;
             text-transform: uppercase;
             letter-spacing: 0.1em;
-            padding: 0.75rem 1.5rem;
+            padding: 0.75rem 1rem;
             border: 1px solid var(--gold);
             background: transparent;
             color: var(--gold);
-            text-decoration: none;
-            transition: all 0.3s ease;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 1rem;
         }
 
         .btn:hover {
@@ -206,70 +207,27 @@
             color: var(--terminal-black);
         }
 
-        /* Match History Table */
-        .matches-table {
-            width: 100%;
-            border-collapse: collapse;
-            background: var(--terminal-dark);
-            border: 1px solid var(--terminal-border);
+        .btn-secondary {
+            border-color: var(--terminal-border);
+            color: var(--text-secondary);
         }
 
-        .matches-table th,
-        .matches-table td {
-            padding: 1rem;
-            text-align: left;
-            border-bottom: 1px solid var(--terminal-border);
+        .btn-secondary:hover {
+            border-color: var(--text-secondary);
+            background: transparent;
+            color: var(--text-primary);
         }
 
-        .matches-table th {
-            font-size: 0.7rem;
-            text-transform: uppercase;
-            letter-spacing: 0.15em;
-            color: var(--text-muted);
-            background: var(--terminal-gray);
-        }
-
-        .matches-table tr:last-child td {
-            border-bottom: none;
-        }
-
-        .matches-table tr:hover {
-            background: rgba(212, 175, 55, 0.05);
-        }
-
-        .result-win {
-            color: var(--court-green);
-            font-weight: 600;
-        }
-
-        .result-loss {
-            color: var(--power-red);
-            font-weight: 600;
-        }
-
-        /* Report Score Form */
-        .report-form {
-            background: var(--terminal-dark);
-            border: 1px solid var(--terminal-border);
-            padding: 2rem;
-        }
-
-        .form-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1.5rem;
-            margin-bottom: 1.5rem;
-        }
-
+        /* Forms */
         .form-group {
-            margin-bottom: 1.5rem;
+            margin-bottom: 1rem;
         }
 
         .form-group label {
             display: block;
-            font-size: 0.7rem;
+            font-size: 0.65rem;
             text-transform: uppercase;
-            letter-spacing: 0.15em;
+            letter-spacing: 0.1em;
             color: var(--text-muted);
             margin-bottom: 0.5rem;
         }
@@ -277,7 +235,7 @@
         .form-group input,
         .form-group select {
             width: 100%;
-            padding: 1rem;
+            padding: 0.75rem;
             background: var(--terminal-gray);
             border: 1px solid var(--terminal-border);
             color: var(--text-primary);
@@ -291,28 +249,87 @@
             border-color: var(--gold);
         }
 
-        .form-group select option {
-            background: var(--terminal-gray);
-            color: var(--text-primary);
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.75rem;
         }
 
-        /* Empty state */
-        .empty-state {
-            text-align: center;
-            padding: 3rem;
+        /* Score inputs */
+        .score-row {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            gap: 0.5rem;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+
+        .score-row span {
             color: var(--text-muted);
+            text-align: center;
         }
 
-        .empty-state p {
-            font-size: 0.9rem;
-            margin-bottom: 1.5rem;
+        .score-input {
+            width: 100%;
+            text-align: center;
+            padding: 0.75rem;
+            background: var(--terminal-gray);
+            border: 1px solid var(--terminal-border);
+            color: var(--text-primary);
+            font-family: var(--font-mono);
+            font-size: 1rem;
         }
 
-        /* Success/Error messages */
+        /* Toggle/Checkbox */
+        .toggle-group {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .toggle-btn {
+            padding: 0.5rem 1rem;
+            border: 1px solid var(--terminal-border);
+            background: var(--terminal-gray);
+            color: var(--text-secondary);
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            cursor: pointer;
+            flex: 1;
+            min-width: 80px;
+            text-align: center;
+        }
+
+        .toggle-btn.active {
+            border-color: var(--gold);
+            color: var(--gold);
+            background: rgba(212, 175, 55, 0.1);
+        }
+
+        /* Feedback radio */
+        .feedback-options {
+            display: flex;
+            gap: 1rem;
+            margin-top: 0.5rem;
+        }
+
+        .feedback-option {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+        }
+
+        .feedback-option input {
+            width: auto;
+        }
+
+        /* Message */
         .message {
             padding: 1rem;
-            margin-bottom: 1.5rem;
+            margin-bottom: 1rem;
             border: 1px solid;
+            font-size: 0.85rem;
         }
 
         .message.success {
@@ -327,16 +344,102 @@
             color: var(--power-red);
         }
 
+        /* Match history */
+        .match-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid var(--terminal-border);
+            font-size: 0.85rem;
+        }
+
+        .match-item:last-child {
+            border-bottom: none;
+        }
+
+        .match-date {
+            color: var(--text-muted);
+            font-size: 0.75rem;
+        }
+
+        .match-score {
+            font-family: var(--font-mono);
+            color: var(--text-secondary);
+        }
+
+        /* Pause banner */
+        .pause-banner {
+            background: rgba(220, 20, 60, 0.1);
+            border: 1px solid var(--power-red);
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+            text-align: center;
+        }
+
+        .pause-banner p {
+            color: var(--power-red);
+            font-size: 0.85rem;
+            margin-bottom: 0.5rem;
+        }
+
         .hidden { display: none; }
 
-        @media (max-width: 768px) {
-            .form-row {
-                grid-template-columns: 1fr;
-            }
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
 
-            .stats-grid {
-                grid-template-columns: 1fr 1fr;
-            }
+        /* Modal */
+        .modal-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 1rem;
+        }
+
+        .modal {
+            background: var(--terminal-dark);
+            border: 1px solid var(--terminal-border);
+            max-width: 500px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            padding: 1rem;
+            border-bottom: 1px solid var(--terminal-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-title {
+            font-family: var(--font-display);
+            font-size: 1.25rem;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+
+        .modal-body {
+            padding: 1rem;
         }
     </style>
 </head>
@@ -350,122 +453,173 @@
     </header>
 
     <main class="main">
-        <h1 class="page-title">Player Dashboard</h1>
-
         <div id="message" class="message hidden"></div>
 
-        <!-- Stats -->
-        <div class="stats-grid">
+        <!-- Pause Banner (shown when paused) -->
+        <div id="pause-banner" class="pause-banner hidden">
+            <p>You're sitting out this month</p>
+            <button class="btn btn-secondary" onclick="unpause()">I'm Back!</button>
+        </div>
+
+        <!-- Stats Row -->
+        <div class="stats-row">
             <div class="stat-card">
-                <p class="stat-label">Current Rank</p>
+                <p class="stat-label">Rank</p>
                 <p class="stat-value" id="stat-rank">#-</p>
             </div>
             <div class="stat-card">
-                <p class="stat-label">Total Points</p>
-                <p class="stat-value" id="stat-points">-</p>
+                <p class="stat-label">Games Won</p>
+                <p class="stat-value" id="stat-games">0</p>
             </div>
-            <div class="stat-card green">
-                <p class="stat-label">Wins</p>
-                <p class="stat-value" id="stat-wins">-</p>
-            </div>
-            <div class="stat-card red">
-                <p class="stat-label">Losses</p>
-                <p class="stat-value" id="stat-losses">-</p>
+            <div class="stat-card">
+                <p class="stat-label">Matches</p>
+                <p class="stat-value" id="stat-matches">0</p>
             </div>
         </div>
 
-        <!-- Report Score -->
-        <section class="section">
-            <div class="section-header">
-                <h2 class="section-title">Report Match Score</h2>
+        <!-- Outstanding Matches (Current + Previous) -->
+        <section class="section" id="outstanding-section">
+            <h2 class="section-title">Your Matches</h2>
+            <div id="outstanding-matches">
+                <p class="empty-state">Loading...</p>
             </div>
+        </section>
 
-            <form class="report-form" id="report-form">
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="opponent">Opponent</label>
-                        <select id="opponent" name="opponent" required>
-                            <option value="">Select opponent...</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="result">Result</label>
-                        <select id="result" name="result" required>
-                            <option value="">Select result...</option>
-                            <option value="win">I Won</option>
-                            <option value="loss">I Lost</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="my-score">Your Score (e.g., 6-4, 6-3)</label>
-                        <input type="text" id="my-score" name="my_score" placeholder="6-4, 6-3" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="opponent-score">Opponent Score (e.g., 4-6, 3-6)</label>
-                        <input type="text" id="opponent-score" name="opponent_score" placeholder="4-6, 3-6" required>
+        <!-- Preferences -->
+        <section class="section">
+            <h2 class="section-title">Preferences</h2>
+            <div class="card">
+                <div class="form-group">
+                    <label>When can you usually play?</label>
+                    <div class="toggle-group" id="availability-toggles">
+                        <button type="button" class="toggle-btn active" data-time="morning">Mornings</button>
+                        <button type="button" class="toggle-btn active" data-time="afternoon">Afternoons</button>
+                        <button type="button" class="toggle-btn active" data-time="evening">Evenings</button>
                     </div>
                 </div>
 
                 <div class="form-group">
-                    <label for="court">Court Location</label>
-                    <select id="court" name="court">
-                        <option value="">Select court...</option>
-                        <option value="Vermont Canyon">Vermont Canyon</option>
-                        <option value="Griffith Park">Griffith Park</option>
-                        <option value="Echo Park">Echo Park</option>
-                        <option value="Silver Lake">Silver Lake</option>
-                        <option value="Elysian Park">Elysian Park</option>
-                        <option value="Los Feliz">Los Feliz Municipal</option>
-                        <option value="Other">Other</option>
-                    </select>
+                    <label>Phone (optional - for text coordination)</label>
+                    <input type="tel" id="phone-input" placeholder="(555) 123-4567">
                 </div>
 
-                <button type="submit" class="btn btn-primary">Submit Score</button>
-            </form>
+                <button class="btn btn-secondary" onclick="savePreferences()">Save Preferences</button>
+
+                <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--terminal-border);">
+                    <button class="btn btn-secondary" onclick="togglePause()" id="pause-btn">
+                        Sit Out This Month
+                    </button>
+                </div>
+            </div>
         </section>
 
         <!-- Match History -->
         <section class="section">
-            <div class="section-header">
-                <h2 class="section-title">Match History</h2>
-            </div>
-
-            <div id="matches-container">
-                <table class="matches-table">
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>Opponent</th>
-                            <th>Result</th>
-                            <th>Score</th>
-                            <th>Court</th>
-                        </tr>
-                    </thead>
-                    <tbody id="matches-body">
-                        <tr>
-                            <td colspan="5" class="empty-state">
-                                <p>No matches yet. Time to hit the courts!</p>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+            <h2 class="section-title">Match History</h2>
+            <div class="card" id="match-history">
+                <p class="empty-state">No matches yet</p>
             </div>
         </section>
     </main>
+
+    <!-- Report Score Modal -->
+    <div id="score-modal" class="modal-backdrop hidden">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">Report Score</h3>
+                <button class="modal-close" onclick="closeScoreModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom: 1rem; color: var(--text-secondary); font-size: 0.85rem;">
+                    vs <strong id="modal-opponent-name"></strong>
+                </p>
+
+                <div class="form-group">
+                    <label>Set 1</label>
+                    <div class="score-row">
+                        <input type="number" class="score-input" id="set1-me" placeholder="You" min="0" max="7">
+                        <span>-</span>
+                        <input type="number" class="score-input" id="set1-them" placeholder="Them" min="0" max="7">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Set 2</label>
+                    <div class="score-row">
+                        <input type="number" class="score-input" id="set2-me" placeholder="You" min="0" max="7">
+                        <span>-</span>
+                        <input type="number" class="score-input" id="set2-them" placeholder="Them" min="0" max="7">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Set 3 (if played)</label>
+                    <div class="score-row">
+                        <input type="number" class="score-input" id="set3-me" placeholder="You" min="0" max="7">
+                        <span>-</span>
+                        <input type="number" class="score-input" id="set3-them" placeholder="Them" min="0" max="7">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Court (optional)</label>
+                    <select id="court-select">
+                        <option value="">Select court...</option>
+                        <option value="Vermont Canyon">Vermont Canyon</option>
+                        <option value="Griffith Park - Riverside">Griffith Park - Riverside</option>
+                        <option value="Griffith Park - Merry-Go-Round">Griffith Park - Merry-Go-Round</option>
+                        <option value="Echo Park">Echo Park</option>
+                        <option value="Hermon Park">Hermon Park</option>
+                        <option value="Eagle Rock">Eagle Rock</option>
+                        <option value="Cheviot Hills">Cheviot Hills</option>
+                        <option value="Poinsettia Park">Poinsettia Park</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Would you play this person again?</label>
+                    <div class="feedback-options">
+                        <label class="feedback-option">
+                            <input type="radio" name="would-play-again" value="true" checked>
+                            <span>Yes</span>
+                        </label>
+                        <label class="feedback-option">
+                            <input type="radio" name="would-play-again" value="false">
+                            <span>No</span>
+                        </label>
+                    </div>
+                    <p style="font-size: 0.7rem; color: var(--text-muted); margin-top: 0.5rem;">
+                        This is private. If you say no, you won't be paired again.
+                    </p>
+                </div>
+
+                <button class="btn btn-primary" onclick="submitScore()">Submit Score</button>
+            </div>
+        </div>
+    </div>
 
     <script>
         // Check auth (bypass for testing with ?test in URL)
         const urlParams = new URLSearchParams(window.location.search);
         const isTestMode = urlParams.has('test') || window.location.search.includes('test');
 
-        let token, player;
+        let token, player, currentAssignment;
 
         if (isTestMode) {
             token = 'test-token';
-            player = {id: 'test', name: 'Test Player', rank: 10, total_games: 25, matches_played: 3};
+            player = {
+                id: 'test-id',
+                name: 'Test Player',
+                rank: 10,
+                total_games: 25,
+                matches_played: 3,
+                available_morning: true,
+                available_afternoon: true,
+                available_evening: false,
+                phone: null,
+                is_paused: false
+            };
         } else {
             token = localStorage.getItem('networth_token');
             player = JSON.parse(localStorage.getItem('networth_player') || '{}');
@@ -477,86 +631,383 @@
         // Update UI with player info
         document.getElementById('player-name').textContent = player.name || 'Player';
         document.getElementById('stat-rank').textContent = `#${player.rank || '-'}`;
-        document.getElementById('stat-points').textContent = player.points || '-';
-        document.getElementById('stat-wins').textContent = player.wins || '0';
-        document.getElementById('stat-losses').textContent = player.losses || '0';
+        document.getElementById('stat-games').textContent = player.total_games || '0';
+        document.getElementById('stat-matches').textContent = player.matches_played || '0';
 
-        // Load players for opponent dropdown
-        async function loadPlayers() {
+        // Load full profile for preferences
+        async function loadProfile() {
+            if (isTestMode) {
+                updatePreferencesUI(player);
+                return;
+            }
+
             try {
-                const response = await fetch('/api/players');
+                const response = await fetch('/api/profile', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
                 const data = await response.json();
+                if (data.success && data.profile) {
+                    player = { ...player, ...data.profile };
+                    updatePreferencesUI(data.profile);
 
-                if (data.success) {
-                    const select = document.getElementById('opponent');
-                    data.players
-                        .filter(p => p.id !== player.id)
-                        .forEach(p => {
-                            const option = document.createElement('option');
-                            option.value = p.id;
-                            option.textContent = `${p.name} (#${p.rank})`;
-                            select.appendChild(option);
-                        });
+                    // Update stats from profile
+                    document.getElementById('stat-rank').textContent = `#${data.profile.rank || '-'}`;
+                    document.getElementById('stat-games').textContent = data.profile.total_games || '0';
+                    document.getElementById('stat-matches').textContent = data.profile.matches_played || '0';
                 }
             } catch (err) {
-                console.error('Failed to load players:', err);
+                console.error('Failed to load profile:', err);
+            }
+        }
+
+        function updatePreferencesUI(profile) {
+            // Update availability toggles
+            const avail = profile.availability || {};
+            document.querySelectorAll('.toggle-btn').forEach(btn => {
+                const time = btn.dataset.time;
+                const isActive = avail[time] !== false; // Default true
+                btn.classList.toggle('active', isActive);
+            });
+
+            // Update phone
+            if (profile.phone) {
+                document.getElementById('phone-input').value = profile.phone;
+            }
+
+            // Update pause state
+            if (profile.is_paused) {
+                document.getElementById('pause-banner').classList.remove('hidden');
+                document.getElementById('pause-btn').textContent = 'I\'m Back!';
+            } else {
+                document.getElementById('pause-banner').classList.add('hidden');
+                document.getElementById('pause-btn').textContent = 'Sit Out This Month';
+            }
+        }
+
+        // Toggle availability
+        document.querySelectorAll('.toggle-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                btn.classList.toggle('active');
+            });
+        });
+
+        // Save preferences
+        async function savePreferences() {
+            const availability = {
+                morning: document.querySelector('[data-time="morning"]').classList.contains('active'),
+                afternoon: document.querySelector('[data-time="afternoon"]').classList.contains('active'),
+                evening: document.querySelector('[data-time="evening"]').classList.contains('active')
+            };
+            const phone = document.getElementById('phone-input').value.trim();
+
+            if (isTestMode) {
+                showMessage('Preferences saved (test mode)', 'success');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/profile', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ action: 'update', availability, phone })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    showMessage('Preferences saved!', 'success');
+                } else {
+                    throw new Error(data.error);
+                }
+            } catch (err) {
+                showMessage(err.message, 'error');
+            }
+        }
+
+        // Pause/Unpause
+        async function togglePause() {
+            const isPaused = document.getElementById('pause-banner').classList.contains('hidden') === false;
+            if (isPaused) {
+                await unpause();
+            } else {
+                await pause();
+            }
+        }
+
+        async function pause() {
+            if (isTestMode) {
+                document.getElementById('pause-banner').classList.remove('hidden');
+                document.getElementById('pause-btn').textContent = 'I\'m Back!';
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/profile', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ action: 'pause' })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    document.getElementById('pause-banner').classList.remove('hidden');
+                    document.getElementById('pause-btn').textContent = 'I\'m Back!';
+                    showMessage('You\'re sitting out this month', 'success');
+                }
+            } catch (err) {
+                showMessage(err.message, 'error');
+            }
+        }
+
+        async function unpause() {
+            if (isTestMode) {
+                document.getElementById('pause-banner').classList.add('hidden');
+                document.getElementById('pause-btn').textContent = 'Sit Out This Month';
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/profile', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ action: 'unpause' })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    document.getElementById('pause-banner').classList.add('hidden');
+                    document.getElementById('pause-btn').textContent = 'Sit Out This Month';
+                    showMessage('Welcome back!', 'success');
+                }
+            } catch (err) {
+                showMessage(err.message, 'error');
+            }
+        }
+
+        // Load outstanding matches (current + past incomplete)
+        async function loadOutstandingMatches() {
+            if (isTestMode) {
+                // Show sample data in test mode
+                document.getElementById('outstanding-matches').innerHTML = `
+                    <div class="card card-highlight">
+                        <p class="card-title">December 2024</p>
+                        <p class="opponent-name">Sarah Kaplan</p>
+                        <p class="opponent-details">4.0 Advanced<br>Prefers: Mornings, Afternoons</p>
+                        <button class="btn" onclick="openScoreModal({id: 1, opponent: {id: 2, name: 'Sarah Kaplan'}})">Report Score</button>
+                    </div>
+                    <div class="card">
+                        <p class="card-title">November 2024 (Outstanding)</p>
+                        <p class="opponent-name">Jessica Chen</p>
+                        <p class="opponent-details">3.5-4.0 Int-Adv</p>
+                        <button class="btn" onclick="openScoreModal({id: 2, opponent: {id: 3, name: 'Jessica Chen'}})">Report Score</button>
+                    </div>
+                `;
+                return;
+            }
+
+            try {
+                // Get current month pairings
+                const response = await fetch('/api/pairings');
+                const data = await response.json();
+
+                const container = document.getElementById('outstanding-matches');
+
+                if (!data.success || !data.pairings || data.pairings.length === 0) {
+                    container.innerHTML = '<p class="empty-state">No matches assigned yet. Check back on the 1st!</p>';
+                    return;
+                }
+
+                // Find assignments where this player is involved and not completed
+                const myMatches = data.pairings.filter(p => {
+                    const isPlayer1 = p.player1?.id === player.id || p.player1_id === player.id;
+                    const isPlayer2 = p.player2?.id === player.id || p.player2_id === player.id;
+                    return (isPlayer1 || isPlayer2) && p.status !== 'completed';
+                });
+
+                if (myMatches.length === 0) {
+                    container.innerHTML = '<p class="empty-state">All caught up! No outstanding matches.</p>';
+                    return;
+                }
+
+                container.innerHTML = myMatches.map(match => {
+                    const isPlayer1 = match.player1?.id === player.id || match.player1_id === player.id;
+                    const opponent = isPlayer1 ? match.player2 : match.player1;
+                    const opponentAvailability = isPlayer1 ? match.player2_availability : match.player1_availability;
+
+                    const opponentName = opponent?.name || 'Unknown';
+                    const opponentLevel = opponent?.skill_level || '';
+                    const opponentPhone = opponent?.phone ? `<br>Phone: <a href="tel:${opponent.phone}">${opponent.phone}</a>` : '';
+                    const opponentEmail = opponent?.email ? `<br>Email: <a href="mailto:${opponent.email}">${opponent.email}</a>` : '';
+
+                    return `
+                        <div class="card card-highlight">
+                            <p class="card-title">${match.period_label || data.period}</p>
+                            <p class="opponent-name">${opponentName}</p>
+                            <p class="opponent-details">
+                                ${opponentLevel}
+                                ${opponentAvailability ? `<br>Prefers: ${opponentAvailability}` : ''}
+                                ${opponentEmail}
+                                ${opponentPhone}
+                            </p>
+                            <button class="btn" onclick='openScoreModal(${JSON.stringify({
+                                id: match.id,
+                                period_label: match.period_label || data.period,
+                                opponent: { id: opponent?.id, name: opponentName }
+                            })})'>Report Score</button>
+                        </div>
+                    `;
+                }).join('');
+
+            } catch (err) {
+                console.error('Failed to load matches:', err);
+                document.getElementById('outstanding-matches').innerHTML =
+                    '<p class="empty-state">Could not load matches. Try refreshing.</p>';
             }
         }
 
         // Load match history
-        async function loadMatches() {
+        async function loadMatchHistory() {
+            if (isTestMode) {
+                document.getElementById('match-history').innerHTML = `
+                    <div class="match-item">
+                        <div>
+                            <div>vs Kim Ndombe</div>
+                            <div class="match-date">Oct 2024</div>
+                        </div>
+                        <div class="match-score">6-4, 3-6, 7-5</div>
+                    </div>
+                    <div class="match-item">
+                        <div>
+                            <div>vs Maria Rodriguez</div>
+                            <div class="match-date">Sep 2024</div>
+                        </div>
+                        <div class="match-score">6-2, 6-4</div>
+                    </div>
+                `;
+                return;
+            }
+
             try {
                 const response = await fetch('/api/matches');
                 const data = await response.json();
 
-                if (data.success && data.matches.length > 0) {
-                    const tbody = document.getElementById('matches-body');
-                    tbody.innerHTML = data.matches.map(match => {
-                        const isWinner = match.winner?.id === player.id;
-                        const opponent = isWinner ? match.loser : match.winner;
-                        const date = new Date(match.played_at).toLocaleDateString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric'
-                        });
-
-                        return `
-                            <tr>
-                                <td>${date}</td>
-                                <td>${opponent?.name || 'Unknown'}</td>
-                                <td class="${isWinner ? 'result-win' : 'result-loss'}">${isWinner ? 'WIN' : 'LOSS'}</td>
-                                <td>${isWinner ? match.winner_score : match.loser_score}</td>
-                                <td>${match.court || '-'}</td>
-                            </tr>
-                        `;
-                    }).join('');
+                if (!data.success || !data.matches || data.matches.length === 0) {
+                    document.getElementById('match-history').innerHTML =
+                        '<p class="empty-state">No matches yet. Time to hit the courts!</p>';
+                    return;
                 }
+
+                // Filter to matches involving this player
+                const myMatches = data.matches.filter(m =>
+                    m.player1?.id === player.id || m.player2?.id === player.id ||
+                    m.player1_id === player.id || m.player2_id === player.id
+                );
+
+                if (myMatches.length === 0) {
+                    document.getElementById('match-history').innerHTML =
+                        '<p class="empty-state">No matches yet. Time to hit the courts!</p>';
+                    return;
+                }
+
+                document.getElementById('match-history').innerHTML = myMatches.slice(0, 10).map(match => {
+                    const isPlayer1 = match.player1?.id === player.id || match.player1_id === player.id;
+                    const opponent = isPlayer1 ? match.player2 : match.player1;
+                    const myGames = isPlayer1 ? match.player1_games : match.player2_games;
+                    const theirGames = isPlayer1 ? match.player2_games : match.player1_games;
+
+                    // Build score string
+                    let scoreStr = '';
+                    if (match.set1_p1 !== null) {
+                        const s1 = isPlayer1 ? `${match.set1_p1}-${match.set1_p2}` : `${match.set1_p2}-${match.set1_p1}`;
+                        const s2 = isPlayer1 ? `${match.set2_p1}-${match.set2_p2}` : `${match.set2_p2}-${match.set2_p1}`;
+                        scoreStr = `${s1}, ${s2}`;
+                        if (match.set3_p1 !== null) {
+                            const s3 = isPlayer1 ? `${match.set3_p1}-${match.set3_p2}` : `${match.set3_p2}-${match.set3_p1}`;
+                            scoreStr += `, ${s3}`;
+                        }
+                    } else {
+                        scoreStr = `${myGames}-${theirGames} games`;
+                    }
+
+                    return `
+                        <div class="match-item">
+                            <div>
+                                <div>vs ${opponent?.name || 'Unknown'}</div>
+                                <div class="match-date">${match.period_label || ''}</div>
+                            </div>
+                            <div class="match-score">${scoreStr}</div>
+                        </div>
+                    `;
+                }).join('');
+
             } catch (err) {
-                console.error('Failed to load matches:', err);
+                console.error('Failed to load history:', err);
             }
         }
 
-        // Submit score
-        document.getElementById('report-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const messageEl = document.getElementById('message');
+        // Score Modal
+        function openScoreModal(assignment) {
+            currentAssignment = assignment;
+            document.getElementById('modal-opponent-name').textContent = assignment.opponent.name;
+            document.getElementById('score-modal').classList.remove('hidden');
 
-            const formData = {
-                opponent_id: parseInt(document.getElementById('opponent').value),
-                result: document.getElementById('result').value,
-                my_score: document.getElementById('my-score').value,
-                opponent_score: document.getElementById('opponent-score').value,
-                court: document.getElementById('court').value
-            };
+            // Clear previous inputs
+            ['set1-me', 'set1-them', 'set2-me', 'set2-them', 'set3-me', 'set3-them'].forEach(id => {
+                document.getElementById(id).value = '';
+            });
+            document.getElementById('court-select').value = '';
+            document.querySelector('input[name="would-play-again"][value="true"]').checked = true;
+        }
 
-            // Determine winner/loser based on result
+        function closeScoreModal() {
+            document.getElementById('score-modal').classList.add('hidden');
+            currentAssignment = null;
+        }
+
+        async function submitScore() {
+            const set1Me = parseInt(document.getElementById('set1-me').value) || 0;
+            const set1Them = parseInt(document.getElementById('set1-them').value) || 0;
+            const set2Me = parseInt(document.getElementById('set2-me').value) || 0;
+            const set2Them = parseInt(document.getElementById('set2-them').value) || 0;
+            const set3Me = parseInt(document.getElementById('set3-me').value) || null;
+            const set3Them = parseInt(document.getElementById('set3-them').value) || null;
+            const court = document.getElementById('court-select').value;
+            const wouldPlayAgain = document.querySelector('input[name="would-play-again"]:checked').value === 'true';
+
+            if (set1Me === 0 && set1Them === 0) {
+                showMessage('Please enter Set 1 score', 'error');
+                return;
+            }
+            if (set2Me === 0 && set2Them === 0) {
+                showMessage('Please enter Set 2 score', 'error');
+                return;
+            }
+
             const matchData = {
-                winner_id: formData.result === 'win' ? player.id : formData.opponent_id,
-                loser_id: formData.result === 'win' ? formData.opponent_id : player.id,
-                winner_score: formData.result === 'win' ? formData.my_score : formData.opponent_score,
-                loser_score: formData.result === 'win' ? formData.opponent_score : formData.my_score,
-                court: formData.court
+                assignment_id: currentAssignment.id,
+                player1_id: player.id,
+                player2_id: currentAssignment.opponent.id,
+                set1_p1: set1Me,
+                set1_p2: set1Them,
+                set2_p1: set2Me,
+                set2_p2: set2Them,
+                set3_p1: set3Me,
+                set3_p2: set3Them,
+                court: court || null,
+                period_label: currentAssignment.period_label,
+                would_play_again: wouldPlayAgain
             };
+
+            if (isTestMode) {
+                showMessage('Score submitted (test mode)', 'success');
+                closeScoreModal();
+                return;
+            }
 
             try {
                 const response = await fetch('/api/matches', {
@@ -569,24 +1020,35 @@
                 });
 
                 const data = await response.json();
-
                 if (data.success) {
-                    messageEl.className = 'message success';
-                    messageEl.textContent = 'Match score submitted successfully!';
-                    messageEl.classList.remove('hidden');
-                    e.target.reset();
-                    loadMatches();
+                    showMessage('Score submitted! Games added to your total.', 'success');
+                    closeScoreModal();
+                    loadOutstandingMatches();
+                    loadMatchHistory();
+                    loadProfile(); // Refresh stats
                 } else {
-                    throw new Error(data.error || 'Failed to submit score');
+                    throw new Error(data.error || 'Failed to submit');
                 }
             } catch (err) {
-                messageEl.className = 'message error';
-                messageEl.textContent = err.message;
-                messageEl.classList.remove('hidden');
+                showMessage(err.message, 'error');
             }
+        }
 
-            setTimeout(() => messageEl.classList.add('hidden'), 5000);
+        // Close modal on backdrop click
+        document.getElementById('score-modal').addEventListener('click', (e) => {
+            if (e.target.classList.contains('modal-backdrop')) {
+                closeScoreModal();
+            }
         });
+
+        // Utilities
+        function showMessage(text, type) {
+            const el = document.getElementById('message');
+            el.textContent = text;
+            el.className = `message ${type}`;
+            el.classList.remove('hidden');
+            setTimeout(() => el.classList.add('hidden'), 4000);
+        }
 
         function logout() {
             localStorage.removeItem('networth_token');
@@ -595,8 +1057,9 @@
         }
 
         // Initialize
-        loadPlayers();
-        loadMatches();
+        loadProfile();
+        loadOutstandingMatches();
+        loadMatchHistory();
     </script>
 </body>
 </html>

@@ -9,7 +9,7 @@ Endpoints:
 Players can update:
 - Time-of-day availability (morning/afternoon/evening)
 - Pause for current month (unavailable_until)
-- Preferred courts (optional)
+- Phone number (optional, for text coordination)
 """
 from http.server import BaseHTTPRequestHandler
 import json
@@ -106,6 +106,7 @@ class handler(BaseHTTPRequestHandler):
                     "id": p.get('id'),
                     "name": p.get('name'),
                     "email": p.get('email'),
+                    "phone": p.get('phone'),
                     "skill_level": p.get('skill_level'),
                     "total_games": p.get('total_games', 0),
                     "matches_played": p.get('matches_played', 0),
@@ -113,7 +114,6 @@ class handler(BaseHTTPRequestHandler):
                     "availability": availability,
                     "is_paused": is_paused,
                     "unavailable_until": str(unavailable_until) if unavailable_until else None,
-                    "preferred_courts": p.get('preferred_courts', []),
                 }
             })
 
@@ -162,9 +162,9 @@ class handler(BaseHTTPRequestHandler):
                     if 'evening' in avail:
                         updates['available_evening'] = bool(avail['evening'])
 
-                # Update preferred courts
-                if 'preferred_courts' in data:
-                    updates['preferred_courts'] = data['preferred_courts']
+                # Update phone number
+                if 'phone' in data:
+                    updates['phone'] = data['phone'] if data['phone'] else None
 
             elif action == 'pause':
                 # Pause for rest of this month (auto-available next month)
@@ -204,6 +204,7 @@ class handler(BaseHTTPRequestHandler):
                 "message": "Profile updated",
                 "profile": {
                     "name": p.get('name'),
+                    "phone": p.get('phone'),
                     "availability": availability,
                     "is_paused": is_paused,
                     "unavailable_until": str(unavailable_until) if unavailable_until else None,
