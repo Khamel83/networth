@@ -1,0 +1,126 @@
+name: Weekly Database Backup
+
+on:
+  schedule:
+    # Every Sunday at 3am PT (11am UTC)
+    - cron: '0 11 * * 0'
+  workflow_dispatch:
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Export ladder data
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          python << 'EOF'
+          import requests
+          import json
+          import os
+          from datetime import datetime
+
+          url = os.environ['SUPABASE_URL']
+          key = os.environ['SUPABASE_KEY']
+          headers = {'apikey': key, 'Authorization': f'Bearer {key}'}
+
+          # Export players
+          r = requests.get(f'{url}/rest/v1/players?is_admin=eq.false&order=rank', headers=headers)
+          players = r.json() if r.status_code == 200 else []
+
+          # Export recent matches
+          r = requests.get(f'{url}/rest/v1/matches?order=created_at.desc&limit=100', headers=headers)
+          matches = r.json() if r.status_code == 200 else []
+
+          # Save backup
+          backup = {
+              'exported_at': datetime.now().isoformat(),
+              'players': players,
+              'matches': matches
+          }
+
+          os.makedirs('backups', exist_ok=True)
+          filename = f'backups/backup_{datetime.now().strftime("%Y%m%d")}.json'
+          with open(filename, 'w') as f:
+              json.dump(backup, f, indent=2)
+
+          # Also save latest
+          with open('backups/latest.json', 'w') as f:
+              json.dump(backup, f, indent=2)
+
+          print(f'Backed up {len(players)} players and {len(matches)} matches')
+          EOF
+
+      - name: Update fallback page
+        run: |
+          python << 'EOF'
+          import json
+
+          with open('backups/latest.json') as f:
+              data = json.load(f)
+
+          players = data['players'][:20]  # Top 20
+
+          rows = '\n'.join([
+              f'<tr><td>{p["rank"]}</td><td>{p["name"]}</td><td>{p.get("total_games", 0)}</td><td>{p.get("skill_level", "")}</td></tr>'
+              for p in players
+          ])
+
+          html = f'''<!DOCTYPE html>
+          <html lang="en">
+          <head>
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>NET WORTH Tennis - Fallback</title>
+              <style>
+                  body {{ font-family: monospace; background: #0a0a0a; color: #e8e8e8; padding: 2rem; max-width: 800px; margin: 0 auto; }}
+                  h1 {{ color: #D4AF37; }}
+                  table {{ width: 100%; border-collapse: collapse; margin: 2rem 0; }}
+                  th, td {{ padding: 0.75rem; text-align: left; border-bottom: 1px solid #333; }}
+                  th {{ color: #D4AF37; }}
+                  .btn {{ display: inline-block; background: #D4AF37; color: #0a0a0a; padding: 1rem 2rem; text-decoration: none; margin: 0.5rem; }}
+                  .note {{ color: #888; font-size: 0.9rem; margin-top: 2rem; }}
+              </style>
+          </head>
+          <body>
+              <h1>NET WORTH Tennis</h1>
+              <p>East Side LA Women's Tennis Ladder</p>
+
+              <h2>Current Rankings</h2>
+              <table>
+                  <tr><th>Rank</th><th>Name</th><th>Games Won</th><th>Level</th></tr>
+                  {rows}
+              </table>
+
+              <h2>Report a Score</h2>
+              <p>Email the admin with your match result:</p>
+              <a href="mailto:support@networthtennis.com?subject=Match%20Result&body=Players:%0ASet%201:%0ASet%202:" class="btn">Report Score via Email</a>
+
+              <h2>Join the Ladder</h2>
+              <a href="mailto:support@networthtennis.com?subject=Join%20Request&body=Name:%0AEmail:%0ASkill%20Level:" class="btn">Request to Join</a>
+
+              <p class="note">Last updated: {data["exported_at"][:10]}</p>
+              <p class="note">This is a fallback page. Visit <a href="https://networthtennis.com" style="color:#D4AF37;">networthtennis.com</a> for the full site.</p>
+          </body>
+          </html>'''
+
+          with open('public/fallback.html', 'w') as f:
+              f.write(html)
+
+          print('Updated fallback.html')
+          EOF
+
+      - name: Commit backup
+        run: |
+          git config user.name "networth-bot"
+          git config user.email "networth-bot@users.noreply.github.com"
+          git add backups/ public/fallback.html
+          git diff --staged --quiet || git commit -m "Weekly backup $(date +%Y-%m-%d)"
+          git push || echo "Nothing to push"
