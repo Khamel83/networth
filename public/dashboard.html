@@ -457,11 +457,19 @@
     </main>
 
     <script>
-        // Check auth
-        const token = localStorage.getItem('networth_token');
-        const player = JSON.parse(localStorage.getItem('networth_player') || '{}');
+        // Check auth (bypass for testing with ?test in URL)
+        const urlParams = new URLSearchParams(window.location.search);
+        const isTestMode = urlParams.has('test');
 
-        if (!token) {
+        let token = localStorage.getItem('networth_token');
+        let player = JSON.parse(localStorage.getItem('networth_player') || '{}');
+
+        if (isTestMode) {
+            token = 'test-token';
+            player = {id: 'test', name: 'Test Player', rank: 10, total_games: 25, matches_played: 3};
+        }
+
+        if (!token && !isTestMode) {
             window.location.href = '/login';
         }
 
