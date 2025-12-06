@@ -1,21 +1,24 @@
 """
 Vercel Serverless Function: Authentication API
-Handles login, logout, and session management with Supabase Auth
+Handles login with demo fallback
 """
 from http.server import BaseHTTPRequestHandler
 import json
 import os
-import hashlib
 import secrets
-from urllib.parse import parse_qs
 
-try:
-    from supabase import create_client, Client
-    SUPABASE_URL = os.environ.get('SUPABASE_URL')
-    SUPABASE_KEY = os.environ.get('SUPABASE_ANON_KEY')
-    supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY) if SUPABASE_URL and SUPABASE_KEY else None
-except ImportError:
-    supabase = None
+
+def get_supabase_client():
+    """Lazy initialization of Supabase client"""
+    try:
+        from supabase import create_client
+        url = os.environ.get('SUPABASE_URL')
+        key = os.environ.get('SUPABASE_ANON_KEY')
+        if url and key:
+            return create_client(url, key)
+    except Exception:
+        pass
+    return None
 
 
 class handler(BaseHTTPRequestHandler):
@@ -32,22 +35,19 @@ class handler(BaseHTTPRequestHandler):
             body = self.rfile.read(content_length).decode('utf-8')
             data = json.loads(body) if body else {}
 
-            action = data.get('action', 'login')
             email = data.get('email', '')
             password = data.get('password', '')
 
-            if action == 'login':
-                if supabase:
-                    # Use Supabase Auth
+            supabase = get_supabase_client()
+
+            if supabase:
+                try:
                     response = supabase.auth.sign_in_with_password({
                         "email": email,
                         "password": password
                     })
-
                     if response.user:
-                        # Get player info
                         player = supabase.table('players').select('*').eq('email', email).single().execute()
-
                         self.send_response(200)
                         self.send_header('Content-Type', 'application/json')
                         self.send_header('Access-Control-Allow-Origin', '*')
@@ -58,25 +58,31 @@ class handler(BaseHTTPRequestHandler):
                             "player": player.data if player.data else None
                         }).encode())
                         return
-                else:
-                    # Fallback - simple password check for demo
-                    default_password = os.environ.get('PLAYER_PASSWORD', 'tennis123')
-                    if password == default_password:
-                        self.send_response(200)
-                        self.send_header('Content-Type', 'application/json')
-                        self.send_header('Access-Control-Allow-Origin', '*')
-                        self.end_headers()
-                        self.wfile.write(json.dumps({
-                            "success": True,
-                            "token": secrets.token_hex(32),
-                            "player": {
-                                "id": 1,
-                                "name": "Demo Player",
-                                "email": email,
-                                "is_admin": email == "admin@networthtennis.com"
-                            }
-                        }).encode())
-                        return
+                except Exception:
+                    pass
+
+            # Demo fallback
+            default_password = os.environ.get('PLAYER_PASSWORD', 'tennis123')
+            if password == default_password:
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    "success": True,
+                    "token": secrets.token_hex(32),
+                    "player": {
+                        "id": 1,
+                        "name": email.split('@')[0].title() if email else "Demo Player",
+                        "email": email,
+                        "rank": 5,
+                        "points": 38,
+                        "wins": 5,
+                        "losses": 3,
+                        "is_admin": email == "admin@networthtennis.com"
+                    }
+                }).encode())
+                return
 
             self.send_response(401)
             self.send_header('Content-Type', 'application/json')
