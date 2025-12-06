@@ -959,18 +959,11 @@
     </footer>
 
     <script>
-        // Real player data from NET WORTH Tennis Ladder
-        const samplePlayers = [
-            { rank: 1, name: "Kim Ndombe", level: "4.5 Advanced+", points: 1510, wins: 18, losses: 0, trend: "up" },
-            { rank: 2, name: "Natalie Coffen", level: "4.5 Advanced+", points: 1500, wins: 16, losses: 1, trend: "up" },
-            { rank: 3, name: "Sara Chrisman", level: "4.5 Advanced+", points: 1490, wins: 14, losses: 2, trend: "neutral" },
-            { rank: 4, name: "Arianna Hairston", level: "4.5 Advanced+", points: 1480, wins: 12, losses: 3, trend: "neutral" },
-            { rank: 5, name: "Hannah Shin", level: "4.5 Advanced+", points: 1450, wins: 10, losses: 4, trend: "up" },
-            { rank: 6, name: "Alik Apelian", level: "4.5 Advanced+", points: 1450, wins: 8, losses: 5, trend: "neutral" },
-            { rank: 7, name: "Hanna Pavlova", level: "4.2 Advanced", points: 1410, wins: 6, losses: 6, trend: "down" },
-            { rank: 8, name: "Maddy Whitby", level: "4.1 Advanced", points: 1380, wins: 4, losses: 7, trend: "neutral" },
-            { rank: 9, name: "Allison Dunne", level: "4.0 Advanced", points: 1370, wins: 2, losses: 8, trend: "up" },
-            { rank: 10, name: "Ashley Brooke Kaufman", level: "4.0 Advanced", points: 1330, wins: 0, losses: 9, trend: "neutral" },
+        // Fallback data in case API fails
+        const fallbackPlayers = [
+            { rank: 1, name: "Kim Ndombe", skill_level: "4.5 Advanced+", points: 1510, wins: 18, losses: 0, trend: "up" },
+            { rank: 2, name: "Natalie Coffen", skill_level: "4.5 Advanced+", points: 1500, wins: 16, losses: 1, trend: "up" },
+            { rank: 3, name: "Sara Chrisman", skill_level: "4.5 Advanced+", points: 1490, wins: 14, losses: 2, trend: "neutral" },
         ];
 
         function renderLadder(players) {
@@ -980,15 +973,43 @@
                     <span class="rank rank-${player.rank}">#${player.rank}</span>
                     <div class="player-info">
                         <span class="player-name">${player.name}</span>
-                        <span class="player-level">${player.level}</span>
+                        <span class="player-level">${player.skill_level || player.level || ''}</span>
                     </div>
                     <span class="player-points">${player.points} pts</span>
                     <span class="player-record">${player.wins}-${player.losses}</span>
-                    <span class="player-trend trend-${player.trend}">
+                    <span class="player-trend trend-${player.trend || 'neutral'}">
                         ${player.trend === 'up' ? '&#9650;' : player.trend === 'down' ? '&#9660;' : '&#8212;'}
                     </span>
                 </div>
             `).join('');
+        }
+
+        // Fetch real data from API
+        async function loadPlayers() {
+            try {
+                const response = await fetch('/api/players');
+                const data = await response.json();
+                if (data.success && data.players && data.players.length > 0) {
+                    // Filter out admin and sort by rank
+                    const activePlayers = data.players
+                        .filter(p => p.rank < 99)
+                        .sort((a, b) => a.rank - b.rank);
+                    renderLadder(activePlayers);
+
+                    // Update ticker with real stats
+                    document.getElementById('player-count').textContent = activePlayers.length;
+                    if (activePlayers[0]) {
+                        document.getElementById('top-mover').textContent = activePlayers[0].name.split(' ')[0] + ' ' + activePlayers[0].name.split(' ')[1]?.charAt(0) + '.';
+                    }
+
+                    console.log('Loaded', activePlayers.length, 'players from', data.source);
+                } else {
+                    renderLadder(fallbackPlayers);
+                }
+            } catch (err) {
+                console.error('Failed to load players:', err);
+                renderLadder(fallbackPlayers);
+            }
         }
 
         // Scroll animations
@@ -1018,7 +1039,7 @@
 
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
-            renderLadder(samplePlayers);
+            loadPlayers();
             handleScrollAnimations();
 
             // Update timestamp
