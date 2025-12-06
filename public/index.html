@@ -432,6 +432,30 @@
             border: 1px solid var(--terminal-border);
         }
 
+        .ladder-scroll {
+            max-height: 600px;
+            overflow-y: auto;
+            scroll-behavior: smooth;
+        }
+
+        /* Custom scrollbar */
+        .ladder-scroll::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .ladder-scroll::-webkit-scrollbar-track {
+            background: var(--terminal-gray);
+        }
+
+        .ladder-scroll::-webkit-scrollbar-thumb {
+            background: var(--gold);
+            border-radius: 4px;
+        }
+
+        .ladder-scroll::-webkit-scrollbar-thumb:hover {
+            background: var(--gold-bright);
+        }
+
         .ladder-header {
             display: grid;
             grid-template-columns: 80px 1fr 120px 100px 100px;
@@ -674,6 +698,7 @@
             color: var(--gold);
         }
 
+        /* Tablet */
         @media (max-width: 900px) {
             .nav-center {
                 display: none;
@@ -693,7 +718,7 @@
 
             .ladder-header,
             .ladder-row {
-                grid-template-columns: 60px 1fr 80px;
+                grid-template-columns: 50px 1fr 70px;
             }
 
             .ladder-header > *:nth-child(4),
@@ -707,6 +732,146 @@
                 flex-direction: column;
                 gap: var(--space-lg);
                 text-align: center;
+            }
+
+            .section {
+                padding: var(--space-xl) var(--space-md);
+            }
+
+            .courts-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Mobile */
+        @media (max-width: 600px) {
+            header {
+                padding: var(--space-md);
+            }
+
+            .logo {
+                font-size: 1.1rem;
+            }
+
+            .logo-icon {
+                width: 24px;
+                height: 24px;
+                font-size: 0.7rem;
+            }
+
+            .nav-auth {
+                display: none;
+            }
+
+            .hero {
+                padding: var(--space-xl) var(--space-md);
+                padding-top: 100px;
+                min-height: auto;
+            }
+
+            .hero-eyebrow {
+                font-size: 0.65rem;
+                letter-spacing: 0.15em;
+            }
+
+            .hero-title {
+                font-size: clamp(2rem, 15vw, 3.5rem);
+            }
+
+            .hero-subtitle {
+                font-size: 0.9rem;
+                padding: 0 var(--space-sm);
+            }
+
+            .hero-cta {
+                flex-direction: column;
+                width: 100%;
+                padding: 0 var(--space-md);
+            }
+
+            .hero-cta .btn {
+                width: 100%;
+                text-align: center;
+            }
+
+            .ticker {
+                display: none;
+            }
+
+            .section {
+                padding: var(--space-lg) var(--space-md);
+            }
+
+            .section-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: var(--space-sm);
+            }
+
+            .section-title {
+                font-size: 1.75rem;
+            }
+
+            .ladder {
+                margin: 0 calc(-1 * var(--space-md));
+                border-left: none;
+                border-right: none;
+            }
+
+            .ladder-header,
+            .ladder-row {
+                grid-template-columns: 40px 1fr 60px;
+                padding: var(--space-sm) var(--space-md);
+            }
+
+            .rank {
+                font-size: 1.1rem;
+            }
+
+            .player-name {
+                font-size: 0.85rem;
+            }
+
+            .player-level {
+                font-size: 0.6rem;
+            }
+
+            .player-points {
+                font-size: 0.85rem;
+            }
+
+            .steps-grid {
+                grid-template-columns: 1fr;
+                gap: var(--space-md);
+            }
+
+            .step-card {
+                padding: var(--space-lg);
+            }
+
+            .step-number {
+                font-size: 2.5rem;
+            }
+
+            .court-card {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: var(--space-md);
+            }
+
+            .court-link {
+                width: 100%;
+                text-align: center;
+            }
+
+            footer {
+                padding: var(--space-lg) var(--space-md);
+            }
+
+            .footer-links {
+                flex-wrap: wrap;
+                justify-content: center;
+                gap: var(--space-md);
             }
         }
 
@@ -841,10 +1006,12 @@
                 <span>Matches</span>
                 <span>Trend</span>
             </div>
-            <div id="ladder-rows">
-                <!-- Populated by JavaScript -->
-                <div class="loading">
-                    <div class="loading-spinner"></div>
+            <div class="ladder-scroll">
+                <div id="ladder-rows">
+                    <!-- Populated by JavaScript -->
+                    <div class="loading">
+                        <div class="loading-spinner"></div>
+                    </div>
                 </div>
             </div>
         </div>

@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <title>Join the Ladder | NET WORTH Tennis</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700;800;900&family=IBM+Plex+Mono:wght@300;400;500;600;700&family=Cormorant+Garamond:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --gold: #D4AF37;
+            --gold-bright: #FFD700;
+            --tennis-ball: #CCFF00;
+            --terminal-black: #0a0a0a;
+            --terminal-dark: #121212;
+            --terminal-gray: #1a1a1a;
+            --terminal-border: #2a2a2a;
+            --power-red: #DC143C;
+            --court-green: #228B22;
+            --text-primary: #e8e8e8;
+            --text-secondary: #888888;
+            --text-muted: #555555;
+            --font-display: 'Playfair Display', Georgia, serif;
+            --font-mono: 'IBM Plex Mono', 'Courier New', monospace;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        html {
+            cursor: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="%23CCFF00" stroke="%23228B22" stroke-width="1"/><path d="M12 2 Q6 12 12 22" fill="none" stroke="%23228B22" stroke-width="1.5"/><path d="M12 2 Q18 12 12 22" fill="none" stroke="%23228B22" stroke-width="1.5"/></svg>') 12 12, auto;
+        }
+
+        a, button, input[type="submit"], select {
+            cursor: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28"><circle cx="14" cy="14" r="12" fill="%23FFD700" stroke="%23228B22" stroke-width="2"/><path d="M14 2 Q6 14 14 26" fill="none" stroke="%23228B22" stroke-width="2"/><path d="M14 2 Q22 14 14 26" fill="none" stroke="%23228B22" stroke-width="2"/></svg>') 14 14, pointer;
+        }
+
+        body {
+            font-family: var(--font-mono);
+            background: var(--terminal-black);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px);
+            pointer-events: none;
+            z-index: 9999;
+        }
+
+        body::after {
+            content: '';
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-image:
+                linear-gradient(rgba(212, 175, 55, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(212, 175, 55, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .join-container {
+            width: 100%;
+            max-width: 480px;
+            padding: 2rem;
+        }
+
+        .join-card {
+            background: var(--terminal-dark);
+            border: 1px solid var(--terminal-border);
+            padding: 3rem;
+        }
+
+        .join-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .join-logo {
+            font-family: var(--font-display);
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--gold);
+            margin-bottom: 0.5rem;
+            letter-spacing: 0.1em;
+        }
+
+        .join-subtitle {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.2em;
+        }
+
+        .join-intro {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            line-height: 1.6;
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        label {
+            display: block;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            color: var(--text-muted);
+            margin-bottom: 0.5rem;
+        }
+
+        input[type="text"],
+        input[type="email"],
+        select {
+            width: 100%;
+            padding: 0.875rem;
+            background: var(--terminal-gray);
+            border: 1px solid var(--terminal-border);
+            color: var(--text-primary);
+            font-family: var(--font-mono);
+            font-size: 0.9rem;
+            transition: border-color 0.3s ease;
+        }
+
+        select {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23888' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 1rem center;
+            padding-right: 2.5rem;
+        }
+
+        select option {
+            background: var(--terminal-dark);
+            color: var(--text-primary);
+        }
+
+        input:focus,
+        select:focus {
+            outline: none;
+            border-color: var(--gold);
+        }
+
+        input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .btn-join {
+            width: 100%;
+            padding: 1rem;
+            background: var(--gold);
+            border: none;
+            color: var(--terminal-black);
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            transition: all 0.3s ease;
+            margin-top: 0.5rem;
+        }
+
+        .btn-join:hover {
+            background: var(--gold-bright);
+        }
+
+        .btn-join:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .message {
+            padding: 0.75rem;
+            font-size: 0.8rem;
+            margin-bottom: 1.5rem;
+            display: none;
+        }
+
+        .message.show {
+            display: block;
+        }
+
+        .message.error {
+            background: rgba(220, 20, 60, 0.1);
+            border: 1px solid var(--power-red);
+            color: var(--power-red);
+        }
+
+        .message.success {
+            background: rgba(34, 139, 34, 0.1);
+            border: 1px solid var(--court-green);
+            color: var(--court-green);
+        }
+
+        .join-footer {
+            margin-top: 2rem;
+            text-align: center;
+        }
+
+        .join-footer p {
+            color: var(--text-muted);
+            font-size: 0.75rem;
+        }
+
+        .join-footer a {
+            color: var(--gold);
+            text-decoration: none;
+        }
+
+        .join-footer a:hover {
+            text-decoration: underline;
+        }
+
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.75rem;
+            margin-bottom: 2rem;
+            transition: color 0.3s ease;
+        }
+
+        .back-link:hover {
+            color: var(--gold);
+        }
+
+        /* Success state */
+        .success-state {
+            text-align: center;
+            padding: 2rem 0;
+        }
+
+        .success-state svg {
+            width: 64px;
+            height: 64px;
+            color: var(--court-green);
+            margin-bottom: 1.5rem;
+        }
+
+        .success-state h2 {
+            font-family: var(--font-display);
+            font-size: 1.5rem;
+            color: var(--text-primary);
+            margin-bottom: 1rem;
+        }
+
+        .success-state p {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <div class="join-container">
+        <a href="/" class="back-link">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M19 12H5M12 19l-7-7 7-7"/>
+            </svg>
+            Back to Ladder
+        </a>
+
+        <div class="join-card">
+            <div id="form-section">
+                <div class="join-header">
+                    <h1 class="join-logo">NET WORTH</h1>
+                    <p class="join-subtitle">Join the Ladder</p>
+                </div>
+
+                <p class="join-intro">
+                    Want to play? Fill out this quick form and we'll get you added to the ladder.
+                </p>
+
+                <div id="message" class="message"></div>
+
+                <form id="join-form">
+                    <div class="form-group">
+                        <label for="name">Your Name</label>
+                        <input type="text" id="name" name="name" placeholder="Jane Smith" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="email">Email Address</label>
+                        <input type="email" id="email" name="email" placeholder="your@email.com" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="skill">Skill Level (NTRP)</label>
+                        <select id="skill" name="skill" required>
+                            <option value="">Select your level...</option>
+                            <option value="2.5">2.5 - Beginner</option>
+                            <option value="3.0">3.0 - Beginner+</option>
+                            <option value="3.5">3.5 - Intermediate</option>
+                            <option value="3.5+">3.5+ - Intermediate+</option>
+                            <option value="4.0">4.0 - Advanced</option>
+                            <option value="4.5">4.5 - Advanced+</option>
+                        </select>
+                    </div>
+
+                    <button type="submit" class="btn-join" id="submit-btn">
+                        Request to Join
+                    </button>
+                </form>
+
+                <div class="join-footer">
+                    <p>Already in the league? <a href="/login">Log in here</a></p>
+                </div>
+            </div>
+
+            <!-- Success state -->
+            <div id="success-section" style="display: none;">
+                <div class="success-state">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                        <polyline points="22 4 12 14.01 9 11.01"/>
+                    </svg>
+                    <h2>Request Sent!</h2>
+                    <p>We'll review your request and add you to the ladder. You'll get an email when you're in.</p>
+                    <p style="margin-top: 1.5rem; font-size: 0.75rem; color: var(--text-muted);">
+                        Usually takes 1-2 days.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('join-form');
+        const messageEl = document.getElementById('message');
+        const submitBtn = document.getElementById('submit-btn');
+        const formSection = document.getElementById('form-section');
+        const successSection = document.getElementById('success-section');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            messageEl.className = 'message';
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Sending...';
+
+            const name = document.getElementById('name').value.trim();
+            const email = document.getElementById('email').value.trim().toLowerCase();
+            const skill = document.getElementById('skill').value;
+
+            try {
+                const response = await fetch('/api/join', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, email, skill_level: skill })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    formSection.style.display = 'none';
+                    successSection.style.display = 'block';
+                } else {
+                    throw new Error(data.error || 'Something went wrong');
+                }
+            } catch (err) {
+                messageEl.textContent = err.message;
+                messageEl.className = 'message error show';
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Request to Join';
+            }
+        });
+    </script>
+</body>
+</html>
