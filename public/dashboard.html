@@ -719,11 +719,11 @@
     </main>
 
     <!-- Report Score Modal -->
-    <div id="score-modal" class="modal-backdrop hidden">
+    <div id="score-modal" class="modal-backdrop hidden" style="display: none;">
         <div class="modal">
             <div class="modal-header">
                 <h3 class="modal-title">Report Score</h3>
-                <button class="modal-close" onclick="closeScoreModal()">&times;</button>
+                <button class="modal-close" onclick="document.getElementById('score-modal').style.display='none'; document.getElementById('score-modal').classList.add('hidden');">&times;</button>
             </div>
             <div class="modal-body">
                 <p style="margin-bottom: 1rem; color: var(--text-secondary); font-size: 0.85rem;">
@@ -1188,6 +1188,7 @@
             currentAssignment = assignment;
             document.getElementById('modal-opponent-name').textContent = assignment.opponent.name;
             document.getElementById('score-modal').classList.remove('hidden');
+            document.getElementById('score-modal').style.display = 'flex';
 
             // Clear previous inputs
             ['set1-me', 'set1-them', 'set2-me', 'set2-them', 'set3-me', 'set3-them'].forEach(id => {
@@ -1199,6 +1200,7 @@
 
         function closeScoreModal() {
             document.getElementById('score-modal').classList.add('hidden');
+            document.getElementById('score-modal').style.display = 'none';
             currentAssignment = null;
         }
 
