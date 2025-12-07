@@ -89,6 +89,117 @@
             color: var(--power-red);
         }
 
+        /* Admin Panel */
+        .admin-panel {
+            background: var(--terminal-dark);
+            border: 2px solid var(--power-red);
+            margin-bottom: 2rem;
+            padding: 1rem;
+        }
+
+        .admin-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid var(--terminal-border);
+        }
+
+        .admin-title {
+            font-family: var(--font-display);
+            font-size: 1rem;
+            color: var(--power-red);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .admin-badge {
+            font-size: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            background: var(--power-red);
+            color: white;
+            padding: 0.2rem 0.4rem;
+        }
+
+        .admin-select {
+            width: 100%;
+            padding: 0.75rem;
+            background: var(--terminal-gray);
+            border: 1px solid var(--terminal-border);
+            color: var(--text-primary);
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            margin-bottom: 1rem;
+        }
+
+        .admin-select:focus {
+            outline: none;
+            border-color: var(--power-red);
+        }
+
+        .admin-player-card {
+            background: var(--terminal-gray);
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .admin-player-name {
+            font-family: var(--font-display);
+            font-size: 1.1rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .admin-player-email {
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .admin-player-stats {
+            display: flex;
+            gap: 1rem;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-bottom: 0.75rem;
+        }
+
+        .admin-form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.75rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .admin-form-row .form-group {
+            margin-bottom: 0;
+        }
+
+        .admin-actions {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .admin-actions .btn {
+            flex: 1;
+            min-width: 120px;
+            margin-top: 0;
+            font-size: 0.65rem;
+        }
+
+        .btn-admin-action {
+            border-color: var(--power-red);
+            color: var(--power-red);
+        }
+
+        .btn-admin-action:hover {
+            background: var(--power-red);
+            color: white;
+        }
+
         /* Main Layout */
         .main {
             max-width: 800px;
@@ -483,6 +594,67 @@
         <div id="pause-banner" class="pause-banner hidden">
             <p>You're sitting out this month</p>
             <button class="btn btn-secondary" onclick="unpause()">I'm Back!</button>
+        </div>
+
+        <!-- Admin Panel (only shown for admins) -->
+        <div id="admin-panel" class="admin-panel hidden">
+            <div class="admin-header">
+                <div class="admin-title">
+                    <span class="admin-badge">Admin</span>
+                    Backstage
+                </div>
+            </div>
+
+            <select id="admin-player-select" class="admin-select" onchange="loadSelectedPlayer()">
+                <option value="">Select a player to manage...</option>
+            </select>
+
+            <div id="admin-player-details" class="hidden">
+                <div class="admin-player-card">
+                    <div class="admin-player-name" id="admin-player-name">-</div>
+                    <div class="admin-player-email" id="admin-player-email">-</div>
+                    <div class="admin-player-stats">
+                        <span>Rank: <strong id="admin-player-rank">-</strong></span>
+                        <span>Games: <strong id="admin-player-games">-</strong></span>
+                        <span id="admin-player-status-text">Active</span>
+                    </div>
+
+                    <div class="admin-form-row">
+                        <div class="form-group">
+                            <label>Name</label>
+                            <input type="text" id="admin-edit-name">
+                        </div>
+                        <div class="form-group">
+                            <label>Email</label>
+                            <input type="email" id="admin-edit-email">
+                        </div>
+                    </div>
+
+                    <div class="admin-form-row">
+                        <div class="form-group">
+                            <label>Phone</label>
+                            <input type="tel" id="admin-edit-phone" placeholder="(555) 123-4567">
+                        </div>
+                        <div class="form-group">
+                            <label>Skill Level</label>
+                            <select id="admin-edit-skill">
+                                <option value="4.5 Advanced+">4.5 Advanced+</option>
+                                <option value="4.0 Advanced">4.0 Advanced</option>
+                                <option value="3.5+ Intermediate+">3.5+ Intermediate+</option>
+                                <option value="3.5 Intermediate">3.5 Intermediate</option>
+                                <option value="3.0 Beginner+">3.0 Beginner+</option>
+                                <option value="2.5 Beginner">2.5 Beginner</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="admin-actions">
+                        <button class="btn" onclick="adminSavePlayer()">Save Changes</button>
+                        <button class="btn btn-admin-action" id="admin-pause-btn" onclick="adminTogglePause()">Pause</button>
+                        <button class="btn btn-admin-action" id="admin-active-btn" onclick="adminToggleActive()">Deactivate</button>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Stats Row -->
@@ -1089,10 +1261,200 @@
             window.location.href = '/';
         }
 
+        // ==========================================
+        // ADMIN FUNCTIONS
+        // ==========================================
+        let allPlayers = [];
+        let selectedPlayer = null;
+
+        async function checkAdminAndLoad() {
+            if (isTestMode) return;
+
+            try {
+                const response = await fetch('/api/admin?action=players', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (response.status === 403) {
+                    // Not an admin, hide panel
+                    return;
+                }
+
+                const data = await response.json();
+                if (data.success && data.players) {
+                    allPlayers = data.players;
+                    document.getElementById('admin-panel').classList.remove('hidden');
+                    populatePlayerSelect(allPlayers);
+                }
+            } catch (err) {
+                console.error('Admin check failed:', err);
+            }
+        }
+
+        function populatePlayerSelect(players) {
+            const select = document.getElementById('admin-player-select');
+            select.innerHTML = '<option value="">Select a player to manage...</option>';
+
+            // Sort by name, put admins at bottom
+            const sorted = [...players].sort((a, b) => {
+                if (a.is_admin && !b.is_admin) return 1;
+                if (!a.is_admin && b.is_admin) return -1;
+                return a.name.localeCompare(b.name);
+            });
+
+            sorted.forEach(p => {
+                const status = p.is_admin ? ' [Admin]' : (!p.is_active ? ' [Inactive]' : (p.is_paused ? ' [Paused]' : ''));
+                const opt = document.createElement('option');
+                opt.value = p.id;
+                opt.textContent = `${p.name}${status}`;
+                select.appendChild(opt);
+            });
+        }
+
+        function loadSelectedPlayer() {
+            const select = document.getElementById('admin-player-select');
+            const playerId = select.value;
+
+            if (!playerId) {
+                document.getElementById('admin-player-details').classList.add('hidden');
+                selectedPlayer = null;
+                return;
+            }
+
+            selectedPlayer = allPlayers.find(p => p.id === playerId);
+            if (!selectedPlayer) return;
+
+            // Update display
+            document.getElementById('admin-player-name').textContent = selectedPlayer.name;
+            document.getElementById('admin-player-email').textContent = selectedPlayer.email;
+            document.getElementById('admin-player-rank').textContent = selectedPlayer.is_admin ? '-' : '#' + selectedPlayer.rank;
+            document.getElementById('admin-player-games').textContent = selectedPlayer.total_games || 0;
+
+            // Status text
+            let statusText = 'Active';
+            if (selectedPlayer.is_admin) statusText = 'Admin';
+            else if (!selectedPlayer.is_active) statusText = 'Inactive';
+            else if (selectedPlayer.is_paused) statusText = 'Paused';
+            document.getElementById('admin-player-status-text').textContent = statusText;
+
+            // Populate form
+            document.getElementById('admin-edit-name').value = selectedPlayer.name || '';
+            document.getElementById('admin-edit-email').value = selectedPlayer.email || '';
+            document.getElementById('admin-edit-phone').value = selectedPlayer.phone || '';
+            document.getElementById('admin-edit-skill').value = selectedPlayer.skill_level || '3.5 Intermediate';
+
+            // Update button labels
+            document.getElementById('admin-pause-btn').textContent = selectedPlayer.is_paused ? 'Unpause' : 'Pause';
+            document.getElementById('admin-active-btn').textContent = selectedPlayer.is_active ? 'Deactivate' : 'Activate';
+
+            document.getElementById('admin-player-details').classList.remove('hidden');
+        }
+
+        async function adminSavePlayer() {
+            if (!selectedPlayer) return;
+
+            try {
+                const response = await fetch('/api/admin', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        action: 'update',
+                        player_id: selectedPlayer.id,
+                        name: document.getElementById('admin-edit-name').value,
+                        email: document.getElementById('admin-edit-email').value,
+                        phone: document.getElementById('admin-edit-phone').value || null,
+                        skill_level: document.getElementById('admin-edit-skill').value
+                    })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    showMessage('Player updated!', 'success');
+                    // Refresh player list
+                    await checkAdminAndLoad();
+                    // Re-select the same player
+                    document.getElementById('admin-player-select').value = selectedPlayer.id;
+                    loadSelectedPlayer();
+                } else {
+                    throw new Error(data.error);
+                }
+            } catch (err) {
+                showMessage(err.message, 'error');
+            }
+        }
+
+        async function adminTogglePause() {
+            if (!selectedPlayer) return;
+
+            const action = selectedPlayer.is_paused ? 'unpause' : 'pause';
+
+            try {
+                const response = await fetch('/api/admin', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        action,
+                        player_id: selectedPlayer.id
+                    })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    showMessage(`Player ${action}d!`, 'success');
+                    await checkAdminAndLoad();
+                    document.getElementById('admin-player-select').value = selectedPlayer.id;
+                    loadSelectedPlayer();
+                } else {
+                    throw new Error(data.error);
+                }
+            } catch (err) {
+                showMessage(err.message, 'error');
+            }
+        }
+
+        async function adminToggleActive() {
+            if (!selectedPlayer) return;
+
+            const action = selectedPlayer.is_active ? 'deactivate' : 'activate';
+
+            try {
+                const response = await fetch('/api/admin', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        action,
+                        player_id: selectedPlayer.id
+                    })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    showMessage(`Player ${action}d!`, 'success');
+                    await checkAdminAndLoad();
+                    document.getElementById('admin-player-select').value = selectedPlayer.id;
+                    loadSelectedPlayer();
+                } else {
+                    throw new Error(data.error);
+                }
+            } catch (err) {
+                showMessage(err.message, 'error');
+            }
+        }
+
         // Initialize
         loadProfile();
         loadOutstandingMatches();
         loadMatchHistory();
+        checkAdminAndLoad();
     </script>
 </body>
 </html>
