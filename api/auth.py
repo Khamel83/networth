@@ -36,13 +36,14 @@ class handler(BaseHTTPRequestHandler):
             data = json.loads(body) if body else {}
 
             action = data.get('action', 'magic_link')
-            email = data.get('email', '').lower().strip()
-
-            if not email:
-                self._send_error(400, "Email is required")
-                return
+            email = data.get('email', '').lower().strip() if data.get('email') else ''
 
             supabase = get_supabase_client()
+
+            # Email required only for magic_link action
+            if action == 'magic_link' and not email:
+                self._send_error(400, "Email is required")
+                return
 
             if action == 'magic_link':
                 # Send magic link email
