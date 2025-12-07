@@ -1278,7 +1278,15 @@
 
         // Close modal on backdrop click
         document.getElementById('score-modal').addEventListener('click', (e) => {
-            if (e.target.classList.contains('modal-backdrop')) {
+            // Close if clicking the backdrop (not the modal content)
+            if (e.target.id === 'score-modal') {
+                closeScoreModal();
+            }
+        });
+
+        // Close modal on Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
                 closeScoreModal();
             }
         });
