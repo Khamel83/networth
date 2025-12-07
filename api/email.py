@@ -44,6 +44,14 @@ def send_email(to_email, subject, html_content, reply_to=None):
                 'message': 'Email sending is disabled (EMAIL_ENABLED=false)'
             }
 
+        # Skip test/admin emails (never send to @khamel.com addresses)
+        if to_email and to_email.lower().endswith('@khamel.com'):
+            return {
+                'success': True,
+                'blocked': True,
+                'message': f'Skipped test email: {to_email}'
+            }
+
         import requests
         api_key = os.environ.get('RESEND_API_KEY')
 
