@@ -802,6 +802,43 @@
 
         let token, player, currentAssignment;
 
+        // Handle magic link callback (token in URL hash from Supabase)
+        async function handleMagicLinkCallback() {
+            const hash = window.location.hash;
+            if (hash && hash.includes('access_token=')) {
+                const params = new URLSearchParams(hash.substring(1));
+                const accessToken = params.get('access_token');
+
+                if (accessToken) {
+                    try {
+                        const response = await fetch('/api/auth', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ action: 'verify', token: accessToken })
+                        });
+
+                        const data = await response.json();
+
+                        if (data.success && data.player) {
+                            localStorage.setItem('networth_token', accessToken);
+                            localStorage.setItem('networth_player', JSON.stringify(data.player));
+                            // Clear the hash and reload clean
+                            window.location.href = '/dashboard';
+                            return true;
+                        }
+                    } catch (err) {
+                        console.error('Token verification failed:', err);
+                    }
+                }
+            }
+            return false;
+        }
+
+        // Check for magic link callback first
+        if (window.location.hash.includes('access_token=')) {
+            handleMagicLinkCallback();
+        }
+
         if (isTestMode) {
             token = 'test-token';
             player = {
@@ -819,7 +856,7 @@
         } else {
             token = localStorage.getItem('networth_token');
             player = JSON.parse(localStorage.getItem('networth_player') || '{}');
-            if (!token) {
+            if (!token && !window.location.hash.includes('access_token=')) {
                 window.location.href = '/login';
             }
         }
