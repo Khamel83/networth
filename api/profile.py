@@ -114,6 +114,10 @@ class handler(BaseHTTPRequestHandler):
                     "availability": availability,
                     "is_paused": is_paused,
                     "unavailable_until": str(unavailable_until) if unavailable_until else None,
+                    "profile_picture": p.get('profile_picture'),
+                    "neighborhood": p.get('neighborhood'),
+                    "instagram_handle": p.get('instagram_handle'),
+                    "fun_fact": p.get('fun_fact'),
                 }
             })
 
@@ -166,6 +170,16 @@ class handler(BaseHTTPRequestHandler):
                 if 'phone' in data:
                     updates['phone'] = data['phone'] if data['phone'] else None
 
+                # Update profile fields
+                if 'profile_picture' in data:
+                    updates['profile_picture'] = data['profile_picture'] if data['profile_picture'] else None
+                if 'neighborhood' in data:
+                    updates['neighborhood'] = data['neighborhood'] if data['neighborhood'] else None
+                if 'instagram_handle' in data:
+                    updates['instagram_handle'] = data['instagram_handle'] if data['instagram_handle'] else None
+                if 'fun_fact' in data:
+                    updates['fun_fact'] = data['fun_fact'] if data['fun_fact'] else None
+
             elif action == 'pause':
                 # Pause for rest of this month (auto-available next month)
                 updates['unavailable_until'] = str(get_next_month_first())
@@ -208,6 +222,10 @@ class handler(BaseHTTPRequestHandler):
                     "availability": availability,
                     "is_paused": is_paused,
                     "unavailable_until": str(unavailable_until) if unavailable_until else None,
+                    "profile_picture": p.get('profile_picture'),
+                    "neighborhood": p.get('neighborhood'),
+                    "instagram_handle": p.get('instagram_handle'),
+                    "fun_fact": p.get('fun_fact'),
                 }
             })
 

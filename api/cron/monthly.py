@@ -136,14 +136,26 @@ class handler(BaseHTTPRequestHandler):
                 p2 = next((p for p in players if p['id'] == assignment['player2_id']), None)
 
                 if p1 and p2:
-                    # Email to player 1
-                    html1 = get_pairing_email_html(p1['name'], p2['name'], p2['email'], period_label)
+                    # Email to player 1 (about opponent p2)
+                    html1 = get_pairing_email_html(
+                        p1['name'], p2['name'], p2['email'], period_label,
+                        opponent_photo=p2.get('profile_picture'),
+                        opponent_neighborhood=p2.get('neighborhood'),
+                        opponent_instagram=p2.get('instagram_handle'),
+                        opponent_fun_fact=p2.get('fun_fact')
+                    )
                     result1 = send_email(p1['email'], f'🎾 Your {period_label} Tennis Match', html1)
                     if result1.get('success'):
                         sent_count += 1
 
-                    # Email to player 2
-                    html2 = get_pairing_email_html(p2['name'], p1['name'], p1['email'], period_label)
+                    # Email to player 2 (about opponent p1)
+                    html2 = get_pairing_email_html(
+                        p2['name'], p1['name'], p1['email'], period_label,
+                        opponent_photo=p1.get('profile_picture'),
+                        opponent_neighborhood=p1.get('neighborhood'),
+                        opponent_instagram=p1.get('instagram_handle'),
+                        opponent_fun_fact=p1.get('fun_fact')
+                    )
                     result2 = send_email(p2['email'], f'🎾 Your {period_label} Tennis Match', html2)
                     if result2.get('success'):
                         sent_count += 1

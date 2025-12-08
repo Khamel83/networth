@@ -88,7 +88,8 @@ def send_email(to_email, subject, html_content, reply_to=None):
 
 
 def get_pairing_email_html(player_name, opponent_name, opponent_email, period_label,
-                           player_availability="Any time", opponent_availability="Any time"):
+                           player_availability="Any time", opponent_availability="Any time",
+                           opponent_photo=None, opponent_neighborhood=None, opponent_instagram=None, opponent_fun_fact=None):
     """
     Generate HTML for pairing notification email
 
@@ -151,7 +152,19 @@ def get_pairing_email_html(player_name, opponent_name, opponent_email, period_la
 
             <div class="card">
                 <div class="match-title">Your {period_label} Match</div>
-                <div class="opponent">{opponent_name}</div>
+
+                <!-- Player Profile Section -->
+                <div style="display: flex; align-items: center; gap: 20px; margin: 20px 0; padding: 20px; background: {COLORS['background']}; border-radius: 8px;">
+                    {"<img src='" + opponent_photo + "' alt='" + opponent_name + "' style='width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 2px solid " + COLORS['gold'] + ";'>" if opponent_photo else "<div style='width: 80px; height: 80px; border-radius: 50%; background: " + COLORS['card_bg'] + "; border: 2px solid " + COLORS['border'] + "; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; color: " + COLORS['text_muted'] + ";'>" + opponent_name.split()[0][0] + opponent_name.split()[1][0] + "</div>"}
+                    <div style="flex: 1;">
+                        <div class="opponent">{opponent_name}</div>
+                        {("<div style='color: " + COLORS['gold'] + "; font-size: 13px; margin-top: 5px;'>📍 " + opponent_neighborhood + "</div>") if opponent_neighborhood else ""}
+                        {("<div style='color: " + COLORS['lime'] + "; font-size: 13px; margin-top: 5px;'>📸 @" + opponent_instagram + "</div>") if opponent_instagram else ""}
+                    </div>
+                </div>
+
+                {("<div style='background: linear-gradient(135deg, rgba(212, 175, 55, 0.1), rgba(34, 139, 34, 0.1)); padding: 15px; border-radius: 4px; border-left: 3px solid " + COLORS['lime'] + "; margin: 20px 0;'><div style='color: " + COLORS['text_muted'] + "; font-size: 11px; text-transform: uppercase; margin-bottom: 5px;'>🎾 Tennis Fan Moment</div><div style='color: " + COLORS['text_secondary'] + "; font-style: italic; font-size: 14px;'>" + opponent_fun_fact + "</div></div>") if opponent_fun_fact else ""}
+
                 <div class="contact">Contact: {opponent_email}</div>
 
                 <div class="availability">
@@ -560,7 +573,11 @@ class handler(BaseHTTPRequestHandler):
             html1 = get_pairing_email_html(
                 p1['name'], p2['name'], p2['email'], period_label,
                 player_availability=p1_avail,
-                opponent_availability=p2_avail
+                opponent_availability=p2_avail,
+                opponent_photo=p2.get('profile_picture'),
+                opponent_neighborhood=p2.get('neighborhood'),
+                opponent_instagram=p2.get('instagram_handle'),
+                opponent_fun_fact=p2.get('fun_fact')
             )
             result1 = send_email(
                 p1['email'],
@@ -577,7 +594,11 @@ class handler(BaseHTTPRequestHandler):
             html2 = get_pairing_email_html(
                 p2['name'], p1['name'], p1['email'], period_label,
                 player_availability=p2_avail,
-                opponent_availability=p1_avail
+                opponent_availability=p1_avail,
+                opponent_photo=p1.get('profile_picture'),
+                opponent_neighborhood=p1.get('neighborhood'),
+                opponent_instagram=p1.get('instagram_handle'),
+                opponent_fun_fact=p1.get('fun_fact')
             )
             result2 = send_email(
                 p2['email'],
