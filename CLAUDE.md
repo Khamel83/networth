@@ -92,6 +92,24 @@ Set in Vercel dashboard:
 Set in GitHub repo secrets:
 - `SITE_URL`, `CRON_SECRET`
 
+## Security Configuration
+
+### Database Security (Supabase)
+
+To fix security linter issues, run `fix-security-linter-issues.sql` in the Supabase SQL Editor. This migration:
+- Removes SECURITY DEFINER from the `blocked_pairs` view
+- Adds `search_path` protection to all database functions to prevent injection attacks
+
+### Auth Security (Supabase Dashboard)
+
+**IMPORTANT**: Enable leaked password protection in Supabase Auth settings:
+
+1. Go to Authentication → Settings → Security & Protection
+2. Enable "Leaked Password Protection"
+3. This checks passwords against HaveIBeenPwned.org to prevent compromised passwords
+
+This setting must be enabled manually in the Supabase dashboard - it cannot be set via SQL.
+
 ## Fallback Mode
 
 If Supabase/Vercel are down, `public/fallback.html` is a pure static page with:
