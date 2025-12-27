@@ -4,82 +4,68 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-    <title>Join the Ladder | NET WORTH Tennis</title>
+    <title>Join Net Worth | Net Worth Tennis</title>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700;800;900&family=IBM+Plex+Mono:wght@300;400;500;600;700&family=Cormorant+Garamond:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
     <style>
         :root {
-            --gold: #D4AF37;
-            --gold-bright: #FFD700;
-            --tennis-ball: #CCFF00;
-            --terminal-black: #0a0a0a;
-            --terminal-dark: #121212;
-            --terminal-gray: #1a1a1a;
-            --terminal-border: #2a2a2a;
-            --power-red: #DC143C;
-            --court-green: #228B22;
-            --text-primary: #e8e8e8;
-            --text-secondary: #888888;
-            --text-muted: #555555;
-            --font-display: 'Playfair Display', Georgia, serif;
-            --font-mono: 'IBM Plex Mono', 'Courier New', monospace;
+            --pink: #d165a4;
+            --orange: #ec613e;
+            --peach: #e7b4b5;
+            --bg-gradient: linear-gradient(135deg, var(--pink) 0%, var(--orange) 50%, var(--peach) 100%);
+            --text-white: #ffffff;
+            --text-dark: #1a1a1a;
+            --text-muted: rgba(255, 255, 255, 0.7);
+            --card-bg: rgba(255, 255, 255, 0.15);
+            --card-bg-solid: rgba(255, 255, 255, 0.95);
+            --card-border: rgba(255, 255, 255, 0.2);
+            --font-display: 'Poppins', 'Helvetica Neue', sans-serif;
+            --font-body: 'Inter', 'Helvetica Neue', sans-serif;
+            --success-green: #22c55e;
+            --error-red: #ef4444;
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
-        html {
-            cursor: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="%23CCFF00" stroke="%23228B22" stroke-width="1"/><path d="M12 2 Q6 12 12 22" fill="none" stroke="%23228B22" stroke-width="1.5"/><path d="M12 2 Q18 12 12 22" fill="none" stroke="%23228B22" stroke-width="1.5"/></svg>') 12 12, auto;
-        }
-
-        a, button, input[type="submit"], select {
-            cursor: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28"><circle cx="14" cy="14" r="12" fill="%23FFD700" stroke="%23228B22" stroke-width="2"/><path d="M14 2 Q6 14 14 26" fill="none" stroke="%23228B22" stroke-width="2"/><path d="M14 2 Q22 14 14 26" fill="none" stroke="%23228B22" stroke-width="2"/></svg>') 14 14, pointer;
-        }
-
         body {
-            font-family: var(--font-mono);
-            background: var(--terminal-black);
-            color: var(--text-primary);
+            font-family: var(--font-body);
+            background: var(--bg-gradient);
+            background-attachment: fixed;
+            color: var(--text-white);
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
+            padding: 2rem 0;
             -webkit-font-smoothing: antialiased;
         }
 
+        /* Grainy Texture */
         body::before {
             content: '';
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px);
+            opacity: 0.12;
             pointer-events: none;
             z-index: 9999;
-        }
-
-        body::after {
-            content: '';
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background-image:
-                linear-gradient(rgba(212, 175, 55, 0.03) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(212, 175, 55, 0.03) 1px, transparent 1px);
-            background-size: 50px 50px;
-            pointer-events: none;
-            z-index: -1;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
         }
 
         .join-container {
             width: 100%;
-            max-width: 480px;
-            padding: 2rem;
+            max-width: 520px;
+            padding: 1rem 2rem;
         }
 
         .join-card {
-            background: var(--terminal-dark);
-            border: 1px solid var(--terminal-border);
-            padding: 3rem;
+            background: var(--card-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--card-border);
+            border-radius: 24px;
+            padding: 2.5rem;
         }
 
         .join-header {
@@ -89,26 +75,16 @@
 
         .join-logo {
             font-family: var(--font-display);
-            font-size: 2rem;
+            font-size: 2.5rem;
             font-weight: 700;
-            color: var(--gold);
+            color: var(--text-white);
             margin-bottom: 0.5rem;
-            letter-spacing: 0.1em;
+            text-transform: lowercase;
         }
 
         .join-subtitle {
-            font-size: 0.75rem;
+            font-size: 1rem;
             color: var(--text-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.2em;
-        }
-
-        .join-intro {
-            color: var(--text-secondary);
-            font-size: 0.85rem;
-            line-height: 1.6;
-            margin-bottom: 2rem;
-            text-align: center;
         }
 
         .form-group {
@@ -117,77 +93,213 @@
 
         label {
             display: block;
-            font-size: 0.7rem;
-            text-transform: uppercase;
-            letter-spacing: 0.15em;
-            color: var(--text-muted);
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-white);
             margin-bottom: 0.5rem;
+        }
+
+        label .required {
+            color: var(--peach);
         }
 
         input[type="text"],
         input[type="email"],
-        select {
+        input[type="tel"],
+        textarea {
             width: 100%;
-            padding: 0.875rem;
-            background: var(--terminal-gray);
-            border: 1px solid var(--terminal-border);
-            color: var(--text-primary);
-            font-family: var(--font-mono);
-            font-size: 0.9rem;
-            transition: border-color 0.3s ease;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            color: var(--text-white);
+            font-family: var(--font-body);
+            font-size: 1rem;
+            transition: all 0.3s ease;
         }
 
-        select {
-            appearance: none;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23888' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
-            background-repeat: no-repeat;
-            background-position: right 1rem center;
-            padding-right: 2.5rem;
-        }
-
-        select option {
-            background: var(--terminal-dark);
-            color: var(--text-primary);
+        textarea {
+            resize: vertical;
+            min-height: 80px;
         }
 
         input:focus,
-        select:focus {
+        textarea:focus {
             outline: none;
-            border-color: var(--gold);
+            border-color: var(--text-white);
+            background: rgba(255, 255, 255, 0.2);
         }
 
-        input::placeholder {
+        input::placeholder,
+        textarea::placeholder {
             color: var(--text-muted);
+        }
+
+        /* Membership Tier Selection */
+        .tier-section {
+            margin-bottom: 1.5rem;
+        }
+
+        .tier-section h3 {
+            font-family: var(--font-display);
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+
+        .tier-options {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .tier-option {
+            position: relative;
+        }
+
+        .tier-option input[type="radio"] {
+            position: absolute;
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .tier-label {
+            display: block;
+            padding: 1.25rem;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid transparent;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .tier-option input[type="radio"]:checked + .tier-label {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: var(--text-white);
+        }
+
+        .tier-option input[type="radio"]:focus + .tier-label {
+            border-color: var(--text-white);
+        }
+
+        .tier-name {
+            font-weight: 600;
+            font-size: 1rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .tier-description {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+
+        /* Availability Section */
+        .availability-section {
+            margin-bottom: 1.5rem;
+        }
+
+        .availability-section h3 {
+            font-family: var(--font-display);
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .availability-help {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-bottom: 1rem;
+        }
+
+        .availability-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.75rem;
+        }
+
+        .availability-column h4 {
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+            color: var(--text-white);
+        }
+
+        .checkbox-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .checkbox-item input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            accent-color: var(--pink);
+            cursor: pointer;
+        }
+
+        .checkbox-item label {
+            font-size: 0.9rem;
+            font-weight: 400;
+            color: var(--text-white);
+            margin-bottom: 0;
+            cursor: pointer;
+        }
+
+        /* Greyed out state for Social Butterflies */
+        .availability-section.disabled {
+            opacity: 0.4;
+            pointer-events: none;
+        }
+
+        .availability-section.disabled::after {
+            content: 'Availability is only needed for Players';
+            display: block;
+            text-align: center;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-top: 0.5rem;
+            font-style: italic;
         }
 
         .btn-join {
             width: 100%;
             padding: 1rem;
-            background: var(--gold);
+            background: var(--text-white);
             border: none;
-            color: var(--terminal-black);
-            font-family: var(--font-mono);
-            font-size: 0.8rem;
+            border-radius: 50px;
+            color: var(--pink);
+            font-family: var(--font-body);
+            font-size: 1rem;
             font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.15em;
+            cursor: pointer;
             transition: all 0.3s ease;
-            margin-top: 0.5rem;
+            margin-top: 1rem;
         }
 
         .btn-join:hover {
-            background: var(--gold-bright);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(255, 255, 255, 0.3);
         }
 
         .btn-join:disabled {
             opacity: 0.5;
             cursor: not-allowed;
+            transform: none;
         }
 
         .message {
-            padding: 0.75rem;
-            font-size: 0.8rem;
+            padding: 1rem;
+            font-size: 0.9rem;
             margin-bottom: 1.5rem;
+            border-radius: 12px;
             display: none;
         }
 
@@ -196,15 +308,15 @@
         }
 
         .message.error {
-            background: rgba(220, 20, 60, 0.1);
-            border: 1px solid var(--power-red);
-            color: var(--power-red);
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid var(--error-red);
+            color: #fecaca;
         }
 
         .message.success {
-            background: rgba(34, 139, 34, 0.1);
-            border: 1px solid var(--court-green);
-            color: var(--court-green);
+            background: rgba(34, 197, 94, 0.2);
+            border: 1px solid var(--success-green);
+            color: #bbf7d0;
         }
 
         .join-footer {
@@ -214,15 +326,38 @@
 
         .join-footer p {
             color: var(--text-muted);
-            font-size: 0.75rem;
+            font-size: 0.9rem;
         }
 
         .join-footer a {
-            color: var(--gold);
+            color: var(--text-white);
             text-decoration: none;
+            font-weight: 600;
         }
 
         .join-footer a:hover {
+            text-decoration: underline;
+        }
+
+        .contact-footer {
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--card-border);
+            text-align: center;
+        }
+
+        .contact-footer p {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            line-height: 1.6;
+        }
+
+        .contact-footer a {
+            color: var(--text-white);
+            text-decoration: none;
+        }
+
+        .contact-footer a:hover {
             text-decoration: underline;
         }
 
@@ -230,41 +365,68 @@
             display: inline-flex;
             align-items: center;
             gap: 0.5rem;
-            color: var(--text-muted);
+            color: var(--text-white);
             text-decoration: none;
-            font-size: 0.75rem;
-            margin-bottom: 2rem;
-            transition: color 0.3s ease;
+            font-size: 0.9rem;
+            margin-bottom: 1.5rem;
+            opacity: 0.8;
+            transition: opacity 0.3s ease;
         }
 
         .back-link:hover {
-            color: var(--gold);
+            opacity: 1;
         }
 
         /* Success state */
         .success-state {
             text-align: center;
-            padding: 2rem 0;
+            padding: 1.5rem 0;
         }
 
         .success-state svg {
             width: 64px;
             height: 64px;
-            color: var(--court-green);
+            color: var(--text-white);
             margin-bottom: 1.5rem;
         }
 
         .success-state h2 {
             font-family: var(--font-display);
-            font-size: 1.5rem;
-            color: var(--text-primary);
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--text-white);
             margin-bottom: 1rem;
         }
 
         .success-state p {
-            color: var(--text-secondary);
-            font-size: 0.85rem;
+            color: var(--text-muted);
+            font-size: 1rem;
             line-height: 1.6;
+        }
+
+        .success-state .venmo-info {
+            margin-top: 1.5rem;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 12px;
+        }
+
+        .success-state .venmo-info strong {
+            color: var(--text-white);
+        }
+
+        @media (max-width: 480px) {
+            .join-card {
+                padding: 2rem 1.5rem;
+            }
+
+            .availability-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .join-logo {
+                font-size: 2rem;
+            }
         }
     </style>
 </head>
@@ -274,53 +436,114 @@
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M19 12H5M12 19l-7-7 7-7"/>
             </svg>
-            Back to Ladder
+            Back to Net Worth
         </a>
 
         <div class="join-card">
             <div id="form-section">
                 <div class="join-header">
-                    <h1 class="join-logo">NET WORTH</h1>
-                    <p class="join-subtitle">Join the Ladder</p>
+                    <h1 class="join-logo">net worth</h1>
+                    <p class="join-subtitle">Join the League</p>
                 </div>
-
-                <p class="join-intro">
-                    Want to play? Fill out this quick form and we'll get you added to the ladder.
-                </p>
 
                 <div id="message" class="message"></div>
 
                 <form id="join-form">
                     <div class="form-group">
-                        <label for="name">Your Name</label>
-                        <input type="text" id="name" name="name" placeholder="Jane Smith" required>
+                        <label for="name">Name <span class="required">*</span></label>
+                        <input type="text" id="name" name="name" placeholder="Your full name" required autocomplete="name">
                     </div>
 
                     <div class="form-group">
-                        <label for="email">Email Address</label>
-                        <input type="email" id="email" name="email" placeholder="your@email.com" required>
+                        <label for="email">Email <span class="required">*</span></label>
+                        <input type="email" id="email" name="email" placeholder="you@example.com" required autocomplete="email">
                     </div>
 
                     <div class="form-group">
-                        <label for="skill">Skill Level (NTRP)</label>
-                        <select id="skill" name="skill" required>
-                            <option value="">Select your level...</option>
-                            <option value="2.5">2.5 - Beginner</option>
-                            <option value="3.0">3.0 - Beginner+</option>
-                            <option value="3.5">3.5 - Intermediate</option>
-                            <option value="3.5+">3.5+ - Intermediate+</option>
-                            <option value="4.0">4.0 - Advanced</option>
-                            <option value="4.5">4.5 - Advanced+</option>
-                        </select>
+                        <label for="phone">Phone Number <span class="required">*</span></label>
+                        <input type="tel" id="phone" name="phone" placeholder="(555) 555-5555" required autocomplete="tel">
+                    </div>
+
+                    <!-- Membership Tier Selection -->
+                    <div class="tier-section">
+                        <h3>Membership Type <span class="required">*</span></h3>
+                        <div class="tier-options">
+                            <div class="tier-option">
+                                <input type="radio" id="tier-player" name="membership_tier" value="player" required>
+                                <label for="tier-player" class="tier-label">
+                                    <div class="tier-name">Player - $35</div>
+                                    <div class="tier-description">Monthly match assignments plus access to all league events and community.</div>
+                                </label>
+                            </div>
+                            <div class="tier-option">
+                                <input type="radio" id="tier-social" name="membership_tier" value="social_butterfly">
+                                <label for="tier-social" class="tier-label">
+                                    <div class="tier-name">Social Butterfly - $45</div>
+                                    <div class="tier-description">All the social events and community, with no matches assigned.</div>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Availability Section -->
+                    <div class="availability-section" id="availability-section">
+                        <h3>Your Availability for Matches</h3>
+                        <p class="availability-help">Select all times you're typically available</p>
+                        <div class="availability-grid">
+                            <div class="availability-column">
+                                <h4>Weekdays</h4>
+                                <div class="checkbox-group">
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="avail-weekday-early" name="avail_weekday_early">
+                                        <label for="avail-weekday-early">Before 9am</label>
+                                    </div>
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="avail-weekday-day" name="avail_weekday_day">
+                                        <label for="avail-weekday-day">9am - 5pm</label>
+                                    </div>
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="avail-weekday-late" name="avail_weekday_late">
+                                        <label for="avail-weekday-late">After 5pm</label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="availability-column">
+                                <h4>Weekends</h4>
+                                <div class="checkbox-group">
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="avail-weekend-early" name="avail_weekend_early">
+                                        <label for="avail-weekend-early">Before 9am</label>
+                                    </div>
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="avail-weekend-day" name="avail_weekend_day">
+                                        <label for="avail-weekend-day">9am - 5pm</label>
+                                    </div>
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="avail-weekend-late" name="avail_weekend_late">
+                                        <label for="avail-weekend-late">After 5pm</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Favorite Players -->
+                    <div class="form-group">
+                        <label for="favorite-players">Favorite Players (optional)</label>
+                        <textarea id="favorite-players" name="favorite_players" placeholder="Any players you especially enjoy playing with?"></textarea>
                     </div>
 
                     <button type="submit" class="btn-join" id="submit-btn">
-                        Request to Join
+                        Join Now
                     </button>
                 </form>
 
                 <div class="join-footer">
-                    <p>Already in the league? <a href="/login">Log in here</a></p>
+                    <p>Already in the league? <a href="/login">Sign in here</a></p>
+                </div>
+
+                <div class="contact-footer">
+                    <p>Have ideas for the league or want to help plan events? Get in touch with <a href="mailto:ashleybrooke.kaufman@gmail.com">Ash</a> and <a href="mailto:nmcoffen@gmail.com">Natalie</a>.</p>
                 </div>
             </div>
 
@@ -332,10 +555,19 @@
                         <polyline points="22 4 12 14.01 9 11.01"/>
                     </svg>
                     <h2>Request Sent!</h2>
-                    <p>We'll review your request and add you to the ladder. You'll get an email when you're in.</p>
-                    <p style="margin-top: 1.5rem; font-size: 0.75rem; color: var(--text-muted);">
-                        Usually takes 1-2 days.
-                    </p>
+                    <p>We're so pumped for you to join us!</p>
+                    <div class="venmo-info">
+                        <p>Please send your membership fee via Venmo to <strong>@NCOFFEN (Natalie)</strong> to complete your registration.</p>
+                    </div>
+                </div>
+
+                <div class="join-footer" style="margin-top: 2rem;">
+                    <a href="/" class="back-link" style="justify-content: center;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M19 12H5M12 19l-7-7 7-7"/>
+                        </svg>
+                        Back to Net Worth
+                    </a>
                 </div>
             </div>
         </div>
@@ -347,22 +579,95 @@
         const submitBtn = document.getElementById('submit-btn');
         const formSection = document.getElementById('form-section');
         const successSection = document.getElementById('success-section');
+        const availabilitySection = document.getElementById('availability-section');
+        const tierRadios = document.querySelectorAll('input[name="membership_tier"]');
+
+        // Toggle availability section based on tier selection
+        tierRadios.forEach(radio => {
+            radio.addEventListener('change', function() {
+                if (this.value === 'social_butterfly') {
+                    availabilitySection.classList.add('disabled');
+                    // Uncheck all availability checkboxes
+                    availabilitySection.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+                        cb.checked = false;
+                    });
+                } else {
+                    availabilitySection.classList.remove('disabled');
+                }
+            });
+        });
+
+        // Format phone number as user types
+        const phoneInput = document.getElementById('phone');
+        phoneInput.addEventListener('input', function(e) {
+            let value = e.target.value.replace(/\D/g, '');
+            if (value.length > 0) {
+                if (value.length <= 3) {
+                    value = '(' + value;
+                } else if (value.length <= 6) {
+                    value = '(' + value.substring(0, 3) + ') ' + value.substring(3);
+                } else {
+                    value = '(' + value.substring(0, 3) + ') ' + value.substring(3, 6) + '-' + value.substring(6, 10);
+                }
+            }
+            e.target.value = value;
+        });
 
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
             messageEl.className = 'message';
             submitBtn.disabled = true;
-            submitBtn.textContent = 'Sending...';
+            submitBtn.textContent = 'Submitting...';
 
             const name = document.getElementById('name').value.trim();
             const email = document.getElementById('email').value.trim().toLowerCase();
-            const skill = document.getElementById('skill').value;
+            const phone = document.getElementById('phone').value.trim();
+            const membershipTier = document.querySelector('input[name="membership_tier"]:checked')?.value;
+            const favoritePlayers = document.getElementById('favorite-players').value.trim();
+
+            // Collect availability
+            const availability = {
+                avail_weekday_early: document.getElementById('avail-weekday-early').checked,
+                avail_weekday_day: document.getElementById('avail-weekday-day').checked,
+                avail_weekday_late: document.getElementById('avail-weekday-late').checked,
+                avail_weekend_early: document.getElementById('avail-weekend-early').checked,
+                avail_weekend_day: document.getElementById('avail-weekend-day').checked,
+                avail_weekend_late: document.getElementById('avail-weekend-late').checked
+            };
+
+            // Validate tier selection
+            if (!membershipTier) {
+                messageEl.textContent = 'Please select a membership type.';
+                messageEl.className = 'message error show';
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Join Now';
+                return;
+            }
+
+            // Validate availability for Players
+            if (membershipTier === 'player') {
+                const hasAvailability = Object.values(availability).some(v => v);
+                if (!hasAvailability) {
+                    messageEl.textContent = 'Please select at least one availability slot.';
+                    messageEl.className = 'message error show';
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Join Now';
+                    return;
+                }
+            }
 
             try {
                 const response = await fetch('/api/join', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name, email, skill_level: skill })
+                    body: JSON.stringify({
+                        name,
+                        email,
+                        phone,
+                        membership_tier: membershipTier,
+                        favorite_players: favoritePlayers,
+                        ...availability
+                    })
                 });
 
                 const data = await response.json();
@@ -377,7 +682,7 @@
                 messageEl.textContent = err.message;
                 messageEl.className = 'message error show';
                 submitBtn.disabled = false;
-                submitBtn.textContent = 'Request to Join';
+                submitBtn.textContent = 'Join Now';
             }
         });
     </script>
