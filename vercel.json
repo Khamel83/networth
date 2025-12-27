@@ -37,6 +37,14 @@
     {
       "src": "/join",
       "dest": "/join.html"
+    },
+    {
+      "src": "/profile",
+      "dest": "/profile.html"
+    },
+    {
+      "src": "/admin",
+      "dest": "/admin.html"
     }
   ]
 }
