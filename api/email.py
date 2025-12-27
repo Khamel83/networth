@@ -91,99 +91,179 @@ def send_email(to_email, subject, html_content, reply_to=None):
         return {'success': False, 'error': str(e)}
 
 
-def get_pairing_email_html(player_name, opponent_name, opponent_email, period_label,
-                           player_availability="Any time", opponent_availability="Any time"):
+def get_pairing_email_html(player1_name, player2_name, opponent_email, period_label,
+                           player_availability="", opponent_availability=""):
     """
-    Generate HTML for pairing notification email
+    Generate HTML for pairing notification email (sent to both players)
 
-    Args:
-        player_name: Name of the recipient
-        opponent_name: Name of their opponent
-        opponent_email: Opponent's email (for contact info)
-        period_label: e.g., "January 2025"
-        player_availability: Recipient's time preferences
-        opponent_availability: Opponent's time preferences
+    This version uses the new design from Ashley's Christmas 2025 feedback.
+    The email is sent to both players at once (Reply All to coordinate).
     """
-    # Import config for branding
-    try:
-        from api.config import LEAGUE_NAME, LEAGUE_TAGLINE, COLORS, EMAIL_COPY, COURTS_DISPLAY, get_site_url
-        site_url = get_site_url()
-    except ImportError:
-        # Fallback if config not available
-        LEAGUE_NAME = "NET WORTH"
-        LEAGUE_TAGLINE = "East Side LA Women's Tennis"
-        COLORS = {
-            'background': '#0a0a0a', 'card_bg': '#121212', 'border': '#2a2a2a',
-            'text_primary': '#e8e8e8', 'text_secondary': '#888888',
-            'gold': '#D4AF37', 'lime': '#CCFF00', 'red': '#DC143C'
-        }
-        EMAIL_COPY = {'pairing_instructions': 'Coordinate with your opponent to schedule your match this month. Play 2 sets and report your score when done.'}
-        COURTS_DISPLAY = "Vermont Canyon • Griffith Park • Echo Park • Hermon Park • Eagle Rock • Cheviot Hills • Poinsettia Park"
-        site_url = os.environ.get('SITE_URL', 'https://networthtennis.com')
+    site_url = os.environ.get('SITE_URL', 'https://networthtennis.com')
 
     return f"""
     <!DOCTYPE html>
     <html>
     <head>
         <style>
-            body {{ font-family: 'Courier New', monospace; background: {COLORS['background']}; color: {COLORS['text_primary']}; padding: 40px; }}
-            .container {{ max-width: 600px; margin: 0 auto; }}
-            .header {{ text-align: center; margin-bottom: 30px; }}
-            .logo {{ color: {COLORS['gold']}; font-size: 28px; font-weight: bold; letter-spacing: 3px; }}
-            .card {{ background: {COLORS['card_bg']}; border: 1px solid {COLORS['border']}; padding: 30px; margin: 20px 0; }}
-            .match-title {{ color: {COLORS['gold']}; font-size: 14px; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 15px; }}
-            .opponent {{ font-size: 24px; color: {COLORS['lime']}; margin-bottom: 10px; }}
-            .contact {{ color: {COLORS['text_secondary']}; font-size: 14px; }}
-            .availability {{ background: {COLORS['background']}; padding: 15px; margin: 20px 0; border-left: 3px solid {COLORS['gold']}; }}
-            .availability-title {{ color: {COLORS['gold']}; font-size: 12px; text-transform: uppercase; margin-bottom: 10px; }}
-            .availability-row {{ color: {COLORS['text_secondary']}; font-size: 14px; margin: 5px 0; }}
-            .availability-name {{ color: {COLORS['lime']}; }}
-            .btn {{ display: inline-block; background: {COLORS['gold']}; color: {COLORS['background']}; padding: 12px 30px; text-decoration: none; font-weight: bold; margin-top: 20px; }}
-            .courts {{ margin-top: 20px; padding-top: 20px; border-top: 1px solid {COLORS['border']}; }}
-            .courts-title {{ color: {COLORS['text_secondary']}; font-size: 12px; text-transform: uppercase; margin-bottom: 10px; }}
-            .court-list {{ color: {COLORS['text_secondary']}; font-size: 13px; line-height: 1.8; }}
-            .footer {{ text-align: center; margin-top: 40px; color: #555; font-size: 12px; }}
-            .reply-note {{ color: {COLORS['lime']}; font-size: 13px; margin-top: 15px; }}
+            body {{
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+                background: linear-gradient(135deg, #d165a4 0%, #ec613e 50%, #e7b4b5 100%);
+                color: #ffffff;
+                padding: 40px 20px;
+                margin: 0;
+            }}
+            .container {{
+                max-width: 600px;
+                margin: 0 auto;
+                background: rgba(255, 255, 255, 0.15);
+                border-radius: 24px;
+                padding: 40px;
+                backdrop-filter: blur(10px);
+            }}
+            .header {{
+                text-align: center;
+                margin-bottom: 30px;
+            }}
+            .logo {{
+                font-size: 32px;
+                font-weight: 700;
+                letter-spacing: -0.02em;
+                text-transform: lowercase;
+            }}
+            .tagline {{
+                color: rgba(255, 255, 255, 0.7);
+                font-size: 14px;
+                margin-top: 5px;
+            }}
+            .card {{
+                background: rgba(255, 255, 255, 0.95);
+                color: #1a1a1a;
+                border-radius: 16px;
+                padding: 30px;
+                margin: 20px 0;
+            }}
+            .card-title {{
+                color: #d165a4;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.1em;
+                font-weight: 600;
+                margin-bottom: 15px;
+            }}
+            .greeting {{
+                font-size: 18px;
+                line-height: 1.6;
+                color: #1a1a1a;
+                margin-bottom: 20px;
+            }}
+            .cta-text {{
+                font-size: 16px;
+                font-weight: 600;
+                color: #d165a4;
+                margin: 20px 0;
+            }}
+            .instruction {{
+                color: #666;
+                font-size: 15px;
+                line-height: 1.7;
+                margin-bottom: 15px;
+            }}
+            .availability {{
+                background: #f8f8f8;
+                border-radius: 12px;
+                padding: 20px;
+                margin: 20px 0;
+            }}
+            .availability-title {{
+                color: #d165a4;
+                font-size: 12px;
+                text-transform: uppercase;
+                letter-spacing: 0.1em;
+                font-weight: 600;
+                margin-bottom: 12px;
+            }}
+            .availability-row {{
+                color: #666;
+                font-size: 14px;
+                margin: 8px 0;
+            }}
+            .availability-name {{
+                font-weight: 600;
+                color: #1a1a1a;
+            }}
+            .btn {{
+                display: inline-block;
+                background: #d165a4;
+                color: #ffffff;
+                padding: 14px 32px;
+                text-decoration: none;
+                font-weight: 600;
+                border-radius: 50px;
+                margin-top: 20px;
+            }}
+            .signoff {{
+                margin-top: 30px;
+                color: #666;
+                font-size: 15px;
+                line-height: 1.6;
+            }}
+            .signoff-name {{
+                font-weight: 600;
+                color: #1a1a1a;
+            }}
+            .footer {{
+                text-align: center;
+                margin-top: 30px;
+                color: rgba(255, 255, 255, 0.7);
+                font-size: 13px;
+            }}
         </style>
     </head>
     <body>
         <div class="container">
             <div class="header">
-                <div class="logo">{LEAGUE_NAME}</div>
-                <p style="color: {COLORS['text_secondary']}; margin-top: 5px;">{LEAGUE_TAGLINE}</p>
+                <div class="logo">net worth</div>
+                <p class="tagline">Tennis. Events. Community.</p>
             </div>
 
             <div class="card">
-                <div class="match-title">Your {period_label} Match</div>
-                <div class="opponent">{opponent_name}</div>
-                <div class="contact">Contact: {opponent_email}</div>
+                <div class="card-title">You're Matched for {period_label}</div>
 
-                <div class="availability">
+                <p class="greeting">Hi {player1_name} and {player2_name},</p>
+
+                <p class="instruction">You've been matched for a league game in {period_label}.</p>
+
+                <p class="cta-text">Go ahead... make the first move 😉</p>
+
+                <p class="instruction">
+                    Please reply all with a few dates and times you're available so you can get your match on the calendar.
+                </p>
+
+                <p class="instruction">
+                    You're free to choose the date, time, and location that work best for both of you.
+                </p>
+
+                {f'''<div class="availability">
                     <div class="availability-title">Availability</div>
-                    <div class="availability-row"><span class="availability-name">{opponent_name}:</span> {opponent_availability}</div>
-                    <div class="availability-row"><span class="availability-name">You:</span> {player_availability}</div>
-                </div>
+                    <div class="availability-row"><span class="availability-name">{player1_name}:</span> {player_availability or "Check their profile"}</div>
+                    <div class="availability-row"><span class="availability-name">{player2_name}:</span> {opponent_availability or "Check their profile"}</div>
+                </div>''' if player_availability or opponent_availability else ''}
 
-                <p style="margin-top: 20px; color: {COLORS['text_secondary']}; line-height: 1.6;">
-                    {EMAIL_COPY.get('pairing_instructions', 'Coordinate with your opponent to schedule your match this month. Play 2 sets and report your score when done.')}
+                <p class="instruction">
+                    You can view match details and log your score here:
                 </p>
 
-                <p class="reply-note">
-                    💡 Just hit reply to email {opponent_name} directly!
-                </p>
+                <a href="{site_url}/dashboard" class="btn">View Match Details →</a>
 
-                <a href="{site_url}/dashboard" class="btn">Report Score →</a>
-
-                <div class="courts">
-                    <div class="courts-title">Approved Courts</div>
-                    <div class="court-list">
-                        {COURTS_DISPLAY}
-                    </div>
+                <div class="signoff">
+                    <p>Have fun and happy hitting,</p>
+                    <p class="signoff-name">Net Worth</p>
                 </div>
             </div>
 
             <div class="footer">
-                <p>{LEAGUE_NAME} Tennis © 2025</p>
+                <p>Net Worth Tennis</p>
             </div>
         </div>
     </body>
@@ -192,7 +272,7 @@ def get_pairing_email_html(player_name, opponent_name, opponent_email, period_la
 
 
 def get_reminder_email_html(player_name, opponent_name, period_label, days_left):
-    """Generate HTML for reminder email"""
+    """Generate HTML for reminder email with new design"""
     site_url = os.environ.get('SITE_URL', 'https://networthtennis.com')
 
     return f"""
@@ -200,40 +280,110 @@ def get_reminder_email_html(player_name, opponent_name, period_label, days_left)
     <html>
     <head>
         <style>
-            body {{ font-family: 'Courier New', monospace; background: #0a0a0a; color: #e8e8e8; padding: 40px; }}
-            .container {{ max-width: 600px; margin: 0 auto; }}
-            .header {{ text-align: center; margin-bottom: 30px; }}
-            .logo {{ color: #D4AF37; font-size: 28px; font-weight: bold; letter-spacing: 3px; }}
-            .card {{ background: #121212; border: 1px solid #DC143C; padding: 30px; margin: 20px 0; }}
-            .reminder {{ color: #DC143C; font-size: 14px; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 15px; }}
-            .days {{ font-size: 48px; color: #DC143C; font-weight: bold; }}
-            .btn {{ display: inline-block; background: #D4AF37; color: #0a0a0a; padding: 12px 30px; text-decoration: none; font-weight: bold; margin-top: 20px; }}
-            .footer {{ text-align: center; margin-top: 40px; color: #555; font-size: 12px; }}
+            body {{
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+                background: linear-gradient(135deg, #d165a4 0%, #ec613e 50%, #e7b4b5 100%);
+                color: #ffffff;
+                padding: 40px 20px;
+                margin: 0;
+            }}
+            .container {{
+                max-width: 600px;
+                margin: 0 auto;
+                background: rgba(255, 255, 255, 0.15);
+                border-radius: 24px;
+                padding: 40px;
+            }}
+            .header {{
+                text-align: center;
+                margin-bottom: 30px;
+            }}
+            .logo {{
+                font-size: 32px;
+                font-weight: 700;
+                text-transform: lowercase;
+            }}
+            .card {{
+                background: rgba(255, 255, 255, 0.95);
+                color: #1a1a1a;
+                border-radius: 16px;
+                padding: 30px;
+                margin: 20px 0;
+                text-align: center;
+            }}
+            .card-title {{
+                color: #ec613e;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.1em;
+                font-weight: 600;
+                margin-bottom: 15px;
+            }}
+            .days {{
+                font-size: 48px;
+                font-weight: 700;
+                color: #ec613e;
+                margin: 10px 0;
+            }}
+            .days-label {{
+                color: #666;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.1em;
+            }}
+            .message {{
+                color: #666;
+                font-size: 15px;
+                line-height: 1.7;
+                margin: 25px 0;
+                text-align: left;
+            }}
+            .opponent {{
+                color: #d165a4;
+                font-weight: 600;
+            }}
+            .btn {{
+                display: inline-block;
+                background: #d165a4;
+                color: #ffffff;
+                padding: 14px 32px;
+                text-decoration: none;
+                font-weight: 600;
+                border-radius: 50px;
+                margin-top: 10px;
+            }}
+            .footer {{
+                text-align: center;
+                margin-top: 30px;
+                color: rgba(255, 255, 255, 0.7);
+                font-size: 13px;
+            }}
         </style>
     </head>
     <body>
         <div class="container">
             <div class="header">
-                <div class="logo">NET WORTH</div>
+                <div class="logo">net worth</div>
             </div>
 
             <div class="card">
-                <div class="reminder">Match Reminder</div>
-                <div class="days">{days_left} days left</div>
+                <div class="card-title">Match Reminder</div>
+                <div class="days">{days_left}</div>
+                <div class="days-label">days left this month</div>
 
-                <p style="margin-top: 20px; color: #888; line-height: 1.6;">
-                    Hey {player_name}! You haven't reported your {period_label} match with <strong style="color: #CCFF00;">{opponent_name}</strong> yet.
+                <p class="message">
+                    Hi {player_name}! Just a friendly reminder that you have {days_left} days left to play your match with <span class="opponent">{opponent_name}</span> this month.
                 </p>
 
-                <p style="color: #888; line-height: 1.6;">
-                    Please play and report your score before the month ends.
+                <p class="message">
+                    If you haven't connected yet, now's a great time to reach out!
                 </p>
 
                 <a href="{site_url}/dashboard" class="btn">Report Score →</a>
             </div>
 
             <div class="footer">
-                <p>NET WORTH Tennis © 2025</p>
+                <p>Net Worth Tennis</p>
             </div>
         </div>
     </body>
@@ -241,57 +391,139 @@ def get_reminder_email_html(player_name, opponent_name, period_label, days_left)
     """
 
 
-def get_welcome_email_html(player_name):
+def get_welcome_email_html(player_name, membership_tier='player'):
     """Generate HTML for welcome email when new player joins"""
     site_url = os.environ.get('SITE_URL', 'https://networthtennis.com')
+
+    tier_text = "You'll receive your first match assignment at the start of next month" if membership_tier == 'player' else "Enjoy access to our events and community"
 
     return f"""
     <!DOCTYPE html>
     <html>
     <head>
         <style>
-            body {{ font-family: 'Courier New', monospace; background: #0a0a0a; color: #e8e8e8; padding: 40px; }}
-            .container {{ max-width: 600px; margin: 0 auto; }}
-            .header {{ text-align: center; margin-bottom: 30px; }}
-            .logo {{ color: #D4AF37; font-size: 28px; font-weight: bold; letter-spacing: 3px; }}
-            .welcome {{ color: #CCFF00; font-size: 32px; margin: 20px 0; }}
-            .card {{ background: #121212; border: 1px solid #2a2a2a; padding: 30px; margin: 20px 0; }}
-            .section-title {{ color: #D4AF37; font-size: 14px; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 15px; }}
-            .btn {{ display: inline-block; background: #D4AF37; color: #0a0a0a; padding: 12px 30px; text-decoration: none; font-weight: bold; margin-top: 20px; }}
-            .footer {{ text-align: center; margin-top: 40px; color: #555; font-size: 12px; }}
+            body {{
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+                background: linear-gradient(135deg, #d165a4 0%, #ec613e 50%, #e7b4b5 100%);
+                color: #ffffff;
+                padding: 40px 20px;
+                margin: 0;
+            }}
+            .container {{
+                max-width: 600px;
+                margin: 0 auto;
+                background: rgba(255, 255, 255, 0.15);
+                border-radius: 24px;
+                padding: 40px;
+            }}
+            .header {{
+                text-align: center;
+                margin-bottom: 20px;
+            }}
+            .logo {{
+                font-size: 32px;
+                font-weight: 700;
+                text-transform: lowercase;
+            }}
+            .tagline {{
+                color: rgba(255, 255, 255, 0.7);
+                font-size: 14px;
+                margin-top: 5px;
+            }}
+            .welcome {{
+                font-size: 28px;
+                font-weight: 700;
+                text-align: center;
+                margin: 30px 0;
+            }}
+            .card {{
+                background: rgba(255, 255, 255, 0.95);
+                color: #1a1a1a;
+                border-radius: 16px;
+                padding: 30px;
+                margin: 20px 0;
+            }}
+            .card-title {{
+                color: #d165a4;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.1em;
+                font-weight: 600;
+                margin-bottom: 15px;
+            }}
+            .intro {{
+                color: #666;
+                font-size: 15px;
+                line-height: 1.7;
+                margin-bottom: 20px;
+            }}
+            .next-steps {{
+                list-style: none;
+                padding: 0;
+                margin: 0;
+            }}
+            .next-steps li {{
+                color: #666;
+                font-size: 15px;
+                line-height: 1.7;
+                padding: 10px 0;
+                border-bottom: 1px solid #eee;
+                display: flex;
+                align-items: flex-start;
+                gap: 10px;
+            }}
+            .next-steps li:last-child {{
+                border-bottom: none;
+            }}
+            .check {{
+                color: #d165a4;
+                font-weight: 600;
+            }}
+            .btn {{
+                display: inline-block;
+                background: #d165a4;
+                color: #ffffff;
+                padding: 14px 32px;
+                text-decoration: none;
+                font-weight: 600;
+                border-radius: 50px;
+                margin-top: 20px;
+            }}
+            .footer {{
+                text-align: center;
+                margin-top: 30px;
+                color: rgba(255, 255, 255, 0.7);
+                font-size: 13px;
+            }}
         </style>
     </head>
     <body>
         <div class="container">
             <div class="header">
-                <div class="logo">NET WORTH</div>
-                <p style="color: #888; margin-top: 5px;">East Side LA Women's Tennis</p>
+                <div class="logo">net worth</div>
+                <p class="tagline">Tennis. Events. Community.</p>
             </div>
 
             <div class="welcome">Welcome, {player_name}!</div>
 
             <div class="card">
-                <div class="section-title">How It Works</div>
-                <p style="color: #888; line-height: 1.8;">
-                    1. Each month you'll be paired with another player<br>
-                    2. Coordinate with them to schedule your match<br>
-                    3. Play 2 sets at any approved court<br>
-                    4. Report your score on the dashboard<br>
-                    5. Climb the ladder based on games won!
+                <p class="intro">
+                    You're officially part of LA's East Side women's tennis community. We're so glad you're here!
                 </p>
-            </div>
 
-            <div class="card">
-                <div class="section-title">Next Steps</div>
-                <p style="color: #888; line-height: 1.6;">
-                    Set your availability so we can match you with players who have similar schedules.
-                </p>
-                <a href="{site_url}/dashboard" class="btn">Set Availability →</a>
+                <div class="card-title">What Happens Next</div>
+                <ul class="next-steps">
+                    <li><span class="check">✓</span> {tier_text}</li>
+                    <li><span class="check">✓</span> Log into your dashboard to set your availability preferences</li>
+                    <li><span class="check">✓</span> Connect with the community in our WhatsApp group</li>
+                </ul>
+
+                <a href="{site_url}/dashboard" class="btn">Go to Dashboard →</a>
             </div>
 
             <div class="footer">
-                <p>Questions? Reply to this email.</p>
-                <p style="margin-top: 10px;">NET WORTH Tennis © 2025</p>
+                <p>Happy hitting!</p>
+                <p style="margin-top: 5px;">Net Worth Tennis</p>
             </div>
         </div>
     </body>
@@ -308,37 +540,98 @@ def get_score_confirmation_email_html(player_name, opponent_name, score_display,
     <html>
     <head>
         <style>
-            body {{ font-family: 'Courier New', monospace; background: #0a0a0a; color: #e8e8e8; padding: 40px; }}
-            .container {{ max-width: 600px; margin: 0 auto; }}
-            .header {{ text-align: center; margin-bottom: 30px; }}
-            .logo {{ color: #D4AF37; font-size: 28px; font-weight: bold; letter-spacing: 3px; }}
-            .card {{ background: #121212; border: 1px solid #CCFF00; padding: 30px; margin: 20px 0; }}
-            .confirmed {{ color: #CCFF00; font-size: 14px; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 15px; }}
-            .score {{ font-size: 36px; color: #e8e8e8; font-weight: bold; margin: 15px 0; }}
-            .games {{ color: #D4AF37; font-size: 18px; }}
-            .opponent {{ color: #888; font-size: 14px; margin-top: 10px; }}
-            .btn {{ display: inline-block; background: #D4AF37; color: #0a0a0a; padding: 12px 30px; text-decoration: none; font-weight: bold; margin-top: 20px; }}
-            .footer {{ text-align: center; margin-top: 40px; color: #555; font-size: 12px; }}
+            body {{
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+                background: linear-gradient(135deg, #d165a4 0%, #ec613e 50%, #e7b4b5 100%);
+                color: #ffffff;
+                padding: 40px 20px;
+                margin: 0;
+            }}
+            .container {{
+                max-width: 600px;
+                margin: 0 auto;
+                background: rgba(255, 255, 255, 0.15);
+                border-radius: 24px;
+                padding: 40px;
+            }}
+            .header {{
+                text-align: center;
+                margin-bottom: 30px;
+            }}
+            .logo {{
+                font-size: 32px;
+                font-weight: 700;
+                text-transform: lowercase;
+            }}
+            .card {{
+                background: rgba(255, 255, 255, 0.95);
+                color: #1a1a1a;
+                border-radius: 16px;
+                padding: 30px;
+                margin: 20px 0;
+                text-align: center;
+            }}
+            .card-title {{
+                color: #22c55e;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.1em;
+                font-weight: 600;
+                margin-bottom: 15px;
+            }}
+            .score {{
+                font-size: 42px;
+                font-weight: 700;
+                color: #1a1a1a;
+                margin: 15px 0;
+            }}
+            .games {{
+                font-size: 18px;
+                font-weight: 600;
+                color: #d165a4;
+                margin: 10px 0;
+            }}
+            .opponent {{
+                color: #666;
+                font-size: 15px;
+                margin-top: 15px;
+            }}
+            .btn {{
+                display: inline-block;
+                background: #d165a4;
+                color: #ffffff;
+                padding: 14px 32px;
+                text-decoration: none;
+                font-weight: 600;
+                border-radius: 50px;
+                margin-top: 20px;
+            }}
+            .footer {{
+                text-align: center;
+                margin-top: 30px;
+                color: rgba(255, 255, 255, 0.7);
+                font-size: 13px;
+            }}
         </style>
     </head>
     <body>
         <div class="container">
             <div class="header">
-                <div class="logo">NET WORTH</div>
+                <div class="logo">net worth</div>
             </div>
 
             <div class="card">
-                <div class="confirmed">Match Recorded</div>
+                <div class="card-title">Match Recorded</div>
                 <div class="score">{score_display}</div>
                 <div class="games">+{games_won} games added to your total</div>
                 <div class="opponent">vs {opponent_name} • {period_label}</div>
 
-                <a href="{site_url}" class="btn">View Ladder →</a>
+                <a href="{site_url}#rankings" class="btn">View Rankings →</a>
             </div>
 
             <div class="footer">
                 <p>Thanks for playing!</p>
-                <p style="margin-top: 10px;">NET WORTH Tennis © 2025</p>
+                <p style="margin-top: 5px;">Net Worth Tennis</p>
             </div>
         </div>
     </body>
@@ -355,39 +648,113 @@ def get_outstanding_match_email_html(player_name, opponent_name, opponent_email,
     <html>
     <head>
         <style>
-            body {{ font-family: 'Courier New', monospace; background: #0a0a0a; color: #e8e8e8; padding: 40px; }}
-            .container {{ max-width: 600px; margin: 0 auto; }}
-            .header {{ text-align: center; margin-bottom: 30px; }}
-            .logo {{ color: #D4AF37; font-size: 28px; font-weight: bold; letter-spacing: 3px; }}
-            .card {{ background: #121212; border: 1px solid #2a2a2a; padding: 30px; margin: 20px 0; }}
-            .checkin {{ color: #D4AF37; font-size: 14px; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 15px; }}
-            .message {{ color: #e8e8e8; font-size: 16px; line-height: 1.6; }}
-            .opponent {{ color: #CCFF00; }}
-            .period {{ color: #D4AF37; font-weight: bold; }}
-            .options {{ background: #1a1a1a; padding: 20px; margin: 20px 0; }}
-            .options-title {{ color: #888; font-size: 12px; text-transform: uppercase; margin-bottom: 15px; }}
-            .option {{ color: #888; font-size: 14px; margin: 10px 0; }}
-            .btn {{ display: inline-block; background: #D4AF37; color: #0a0a0a; padding: 12px 30px; text-decoration: none; font-weight: bold; margin-top: 20px; margin-right: 10px; }}
-            .btn-secondary {{ background: transparent; border: 1px solid #888; color: #888; }}
-            .footer {{ text-align: center; margin-top: 40px; color: #555; font-size: 12px; }}
-            .no-pressure {{ color: #888; font-style: italic; font-size: 14px; margin-top: 20px; }}
+            body {{
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+                background: linear-gradient(135deg, #d165a4 0%, #ec613e 50%, #e7b4b5 100%);
+                color: #ffffff;
+                padding: 40px 20px;
+                margin: 0;
+            }}
+            .container {{
+                max-width: 600px;
+                margin: 0 auto;
+                background: rgba(255, 255, 255, 0.15);
+                border-radius: 24px;
+                padding: 40px;
+            }}
+            .header {{
+                text-align: center;
+                margin-bottom: 30px;
+            }}
+            .logo {{
+                font-size: 32px;
+                font-weight: 700;
+                text-transform: lowercase;
+            }}
+            .card {{
+                background: rgba(255, 255, 255, 0.95);
+                color: #1a1a1a;
+                border-radius: 16px;
+                padding: 30px;
+                margin: 20px 0;
+            }}
+            .card-title {{
+                color: #d165a4;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.1em;
+                font-weight: 600;
+                margin-bottom: 15px;
+            }}
+            .message {{
+                color: #666;
+                font-size: 15px;
+                line-height: 1.7;
+                margin-bottom: 20px;
+            }}
+            .period {{
+                color: #d165a4;
+                font-weight: 600;
+            }}
+            .opponent {{
+                color: #1a1a1a;
+                font-weight: 600;
+            }}
+            .options {{
+                background: #f8f8f8;
+                border-radius: 12px;
+                padding: 20px;
+                margin: 20px 0;
+            }}
+            .option {{
+                color: #666;
+                font-size: 14px;
+                margin: 12px 0;
+                display: flex;
+                align-items: flex-start;
+                gap: 10px;
+            }}
+            .option strong {{
+                color: #1a1a1a;
+            }}
+            .no-pressure {{
+                color: #888;
+                font-style: italic;
+                font-size: 14px;
+                margin-top: 20px;
+            }}
+            .btn {{
+                display: inline-block;
+                background: #d165a4;
+                color: #ffffff;
+                padding: 14px 32px;
+                text-decoration: none;
+                font-weight: 600;
+                border-radius: 50px;
+                margin-top: 15px;
+            }}
+            .footer {{
+                text-align: center;
+                margin-top: 30px;
+                color: rgba(255, 255, 255, 0.7);
+                font-size: 13px;
+            }}
         </style>
     </head>
     <body>
         <div class="container">
             <div class="header">
-                <div class="logo">NET WORTH</div>
+                <div class="logo">net worth</div>
             </div>
 
             <div class="card">
-                <div class="checkin">Quick check-in</div>
+                <div class="card-title">Quick Check-in</div>
                 <p class="message">
                     Hey {player_name}! Just wanted to check in about your <span class="period">{period_label}</span> match with <span class="opponent">{opponent_name}</span>.
                 </p>
 
                 <div class="options">
-                    <div class="options-title">Did you get to play?</div>
-                    <div class="option">✓ <strong>Yes!</strong> Report the score anytime - better late than never</div>
+                    <div class="option">✓ <strong>Yes, we played!</strong> Report the score anytime - better late than never</div>
                     <div class="option">✗ <strong>Didn't work out?</strong> No worries at all - we'll pair you fresh next month</div>
                 </div>
 
@@ -399,7 +766,234 @@ def get_outstanding_match_email_html(player_name, opponent_name, opponent_email,
             </div>
 
             <div class="footer">
-                <p>NET WORTH Tennis © 2025</p>
+                <p>Net Worth Tennis</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+
+
+def get_sitout_confirmation_email_html(player_name, period_label):
+    """Generate HTML for sit-out confirmation email"""
+    site_url = os.environ.get('SITE_URL', 'https://networthtennis.com')
+
+    return f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <style>
+            body {{
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+                background: linear-gradient(135deg, #d165a4 0%, #ec613e 50%, #e7b4b5 100%);
+                color: #ffffff;
+                padding: 40px 20px;
+                margin: 0;
+            }}
+            .container {{
+                max-width: 600px;
+                margin: 0 auto;
+                background: rgba(255, 255, 255, 0.15);
+                border-radius: 24px;
+                padding: 40px;
+            }}
+            .header {{
+                text-align: center;
+                margin-bottom: 30px;
+            }}
+            .logo {{
+                font-size: 32px;
+                font-weight: 700;
+                text-transform: lowercase;
+            }}
+            .card {{
+                background: rgba(255, 255, 255, 0.95);
+                color: #1a1a1a;
+                border-radius: 16px;
+                padding: 30px;
+                margin: 20px 0;
+            }}
+            .card-title {{
+                color: #d165a4;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.1em;
+                font-weight: 600;
+                margin-bottom: 15px;
+            }}
+            .message {{
+                color: #666;
+                font-size: 15px;
+                line-height: 1.7;
+                margin-bottom: 15px;
+            }}
+            .highlight {{
+                color: #1a1a1a;
+                font-weight: 600;
+            }}
+            .btn {{
+                display: inline-block;
+                background: #d165a4;
+                color: #ffffff;
+                padding: 14px 32px;
+                text-decoration: none;
+                font-weight: 600;
+                border-radius: 50px;
+                margin-top: 20px;
+            }}
+            .footer {{
+                text-align: center;
+                margin-top: 30px;
+                color: rgba(255, 255, 255, 0.7);
+                font-size: 13px;
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <div class="logo">net worth</div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">You're Sitting Out</div>
+
+                <p class="message">
+                    Hi {player_name},
+                </p>
+
+                <p class="message">
+                    This confirms you've chosen to sit out match assignments for <span class="highlight">{period_label}</span>.
+                </p>
+
+                <p class="message">
+                    You won't be assigned a match until you toggle back in.
+                </p>
+
+                <p class="message">
+                    To rejoin, just log into your dashboard and click the button to start playing again.
+                </p>
+
+                <a href="{site_url}/dashboard" class="btn">Go to Dashboard →</a>
+            </div>
+
+            <div class="footer">
+                <p>See you back on the court soon!</p>
+                <p style="margin-top: 5px;">Net Worth Tennis</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+
+
+def get_rejoin_confirmation_email_html(player_name, eligible_month):
+    """Generate HTML for rejoin confirmation email"""
+    site_url = os.environ.get('SITE_URL', 'https://networthtennis.com')
+
+    return f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <style>
+            body {{
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+                background: linear-gradient(135deg, #d165a4 0%, #ec613e 50%, #e7b4b5 100%);
+                color: #ffffff;
+                padding: 40px 20px;
+                margin: 0;
+            }}
+            .container {{
+                max-width: 600px;
+                margin: 0 auto;
+                background: rgba(255, 255, 255, 0.15);
+                border-radius: 24px;
+                padding: 40px;
+            }}
+            .header {{
+                text-align: center;
+                margin-bottom: 30px;
+            }}
+            .logo {{
+                font-size: 32px;
+                font-weight: 700;
+                text-transform: lowercase;
+            }}
+            .card {{
+                background: rgba(255, 255, 255, 0.95);
+                color: #1a1a1a;
+                border-radius: 16px;
+                padding: 30px;
+                margin: 20px 0;
+                text-align: center;
+            }}
+            .card-title {{
+                color: #22c55e;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.1em;
+                font-weight: 600;
+                margin-bottom: 15px;
+            }}
+            .welcome {{
+                font-size: 24px;
+                font-weight: 700;
+                color: #1a1a1a;
+                margin: 15px 0;
+            }}
+            .message {{
+                color: #666;
+                font-size: 15px;
+                line-height: 1.7;
+                margin: 15px 0;
+            }}
+            .highlight {{
+                color: #d165a4;
+                font-weight: 600;
+            }}
+            .btn {{
+                display: inline-block;
+                background: #d165a4;
+                color: #ffffff;
+                padding: 14px 32px;
+                text-decoration: none;
+                font-weight: 600;
+                border-radius: 50px;
+                margin-top: 20px;
+            }}
+            .footer {{
+                text-align: center;
+                margin-top: 30px;
+                color: rgba(255, 255, 255, 0.7);
+                font-size: 13px;
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <div class="logo">net worth</div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">Welcome Back!</div>
+
+                <p class="welcome">You're back in, {player_name}!</p>
+
+                <p class="message">
+                    Great news! You're back in the match queue.
+                </p>
+
+                <p class="message">
+                    You'll be assigned a match starting <span class="highlight">{eligible_month}</span>.
+                </p>
+
+                <a href="{site_url}/dashboard" class="btn">Go to Dashboard →</a>
+            </div>
+
+            <div class="footer">
+                <p>Looking forward to seeing you play!</p>
+                <p style="margin-top: 5px;">Net Worth Tennis</p>
             </div>
         </div>
     </body>
@@ -416,37 +1010,115 @@ def get_last_chance_email_html(player_name, opponent_name, opponent_email, perio
     <html>
     <head>
         <style>
-            body {{ font-family: 'Courier New', monospace; background: #0a0a0a; color: #e8e8e8; padding: 40px; }}
-            .container {{ max-width: 600px; margin: 0 auto; }}
-            .header {{ text-align: center; margin-bottom: 30px; }}
-            .logo {{ color: #D4AF37; font-size: 28px; font-weight: bold; letter-spacing: 3px; }}
-            .card {{ background: #121212; border: 2px solid #DC143C; padding: 30px; margin: 20px 0; }}
-            .urgent {{ color: #DC143C; font-size: 16px; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 15px; font-weight: bold; }}
-            .message {{ color: #e8e8e8; font-size: 18px; line-height: 1.6; }}
-            .opponent {{ color: #CCFF00; }}
-            .contact {{ background: #1a1a1a; padding: 15px; margin: 20px 0; border-left: 3px solid #D4AF37; }}
-            .btn {{ display: inline-block; background: #DC143C; color: #fff; padding: 12px 30px; text-decoration: none; font-weight: bold; margin-top: 20px; }}
-            .footer {{ text-align: center; margin-top: 40px; color: #555; font-size: 12px; }}
+            body {{
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+                background: linear-gradient(135deg, #d165a4 0%, #ec613e 50%, #e7b4b5 100%);
+                color: #ffffff;
+                padding: 40px 20px;
+                margin: 0;
+            }}
+            .container {{
+                max-width: 600px;
+                margin: 0 auto;
+                background: rgba(255, 255, 255, 0.15);
+                border-radius: 24px;
+                padding: 40px;
+            }}
+            .header {{
+                text-align: center;
+                margin-bottom: 30px;
+            }}
+            .logo {{
+                font-size: 32px;
+                font-weight: 700;
+                text-transform: lowercase;
+            }}
+            .card {{
+                background: rgba(255, 255, 255, 0.95);
+                color: #1a1a1a;
+                border-radius: 16px;
+                padding: 30px;
+                margin: 20px 0;
+                border: 2px solid #ec613e;
+            }}
+            .card-title {{
+                color: #ec613e;
+                font-size: 16px;
+                text-transform: uppercase;
+                letter-spacing: 0.1em;
+                font-weight: 700;
+                margin-bottom: 15px;
+            }}
+            .message {{
+                color: #666;
+                font-size: 15px;
+                line-height: 1.7;
+                margin-bottom: 20px;
+            }}
+            .opponent {{
+                color: #d165a4;
+                font-weight: 600;
+            }}
+            .contact {{
+                background: #f8f8f8;
+                border-radius: 12px;
+                padding: 15px;
+                margin: 20px 0;
+            }}
+            .contact-label {{
+                color: #d165a4;
+                font-size: 12px;
+                text-transform: uppercase;
+                letter-spacing: 0.1em;
+                font-weight: 600;
+                margin-bottom: 5px;
+            }}
+            .contact-email {{
+                color: #1a1a1a;
+                font-size: 15px;
+            }}
+            .no-worries {{
+                color: #888;
+                font-size: 14px;
+                margin-top: 20px;
+            }}
+            .btn {{
+                display: inline-block;
+                background: #ec613e;
+                color: #ffffff;
+                padding: 14px 32px;
+                text-decoration: none;
+                font-weight: 600;
+                border-radius: 50px;
+                margin-top: 15px;
+            }}
+            .footer {{
+                text-align: center;
+                margin-top: 30px;
+                color: rgba(255, 255, 255, 0.7);
+                font-size: 13px;
+            }}
         </style>
     </head>
     <body>
         <div class="container">
             <div class="header">
-                <div class="logo">NET WORTH</div>
+                <div class="logo">net worth</div>
             </div>
 
             <div class="card">
-                <div class="urgent">Last Chance!</div>
+                <div class="card-title">Last Chance!</div>
+
                 <p class="message">
                     Hey {player_name}, {period_label} ends in just a few days and you still haven't played your match with <span class="opponent">{opponent_name}</span>.
                 </p>
 
                 <div class="contact">
-                    <strong style="color: #D4AF37;">Reach out now:</strong><br>
-                    <span style="color: #888;">{opponent_email}</span>
+                    <p class="contact-label">Reach out now</p>
+                    <p class="contact-email">{opponent_email}</p>
                 </div>
 
-                <p style="color: #888; line-height: 1.6;">
+                <p class="no-worries">
                     If you can't make it work, no worries - just let us know and we'll pair you with someone else next month.
                 </p>
 
@@ -454,7 +1126,7 @@ def get_last_chance_email_html(player_name, opponent_name, opponent_email, perio
             </div>
 
             <div class="footer">
-                <p>NET WORTH Tennis © 2025</p>
+                <p>Net Worth Tennis</p>
             </div>
         </div>
     </body>
@@ -544,7 +1216,7 @@ class handler(BaseHTTPRequestHandler):
 
         # Get all pending assignments for this period (with availability fields)
         assignments = supabase.table('match_assignments')\
-            .select('*, player1:players!player1_id(id, name, email, available_morning, available_afternoon, available_evening), player2:players!player2_id(id, name, email, available_morning, available_afternoon, available_evening)')\
+            .select('*, player1:players!player1_id(id, name, email, avail_weekday_early, avail_weekday_day, avail_weekday_late, avail_weekend_early, avail_weekend_day, avail_weekend_late, available_morning, available_afternoon, available_evening), player2:players!player2_id(id, name, email, avail_weekday_early, avail_weekday_day, avail_weekday_late, avail_weekend_early, avail_weekend_day, avail_weekend_late, available_morning, available_afternoon, available_evening)')\
             .eq('period_label', period_label)\
             .eq('status', 'pending')\
             .execute()
@@ -601,24 +1273,65 @@ class handler(BaseHTTPRequestHandler):
         }
 
     def _get_availability_text(self, player):
-        """Build human-readable availability string"""
-        morning = player.get('available_morning', True)
-        afternoon = player.get('available_afternoon', True)
-        evening = player.get('available_evening', True)
+        """Build human-readable availability string using 6-slot system"""
+        # New 6-slot system
+        weekday_early = player.get('avail_weekday_early', False)
+        weekday_day = player.get('avail_weekday_day', False)
+        weekday_late = player.get('avail_weekday_late', False)
+        weekend_early = player.get('avail_weekend_early', False)
+        weekend_day = player.get('avail_weekend_day', False)
+        weekend_late = player.get('avail_weekend_late', False)
 
-        if morning and afternoon and evening:
-            return "Any time"
-        if not morning and not afternoon and not evening:
-            return "No times specified"
+        # Check if any new fields exist
+        has_new_slots = any([
+            weekday_early, weekday_day, weekday_late,
+            weekend_early, weekend_day, weekend_late
+        ])
 
-        times = []
-        if morning:
-            times.append("Mornings")
-        if afternoon:
-            times.append("Afternoons")
-        if evening:
-            times.append("Evenings")
-        return ", ".join(times)
+        # Fallback to old 3-slot system for backward compatibility
+        if not has_new_slots:
+            morning = player.get('available_morning', False)
+            afternoon = player.get('available_afternoon', False)
+            evening = player.get('available_evening', False)
+
+            if morning and afternoon and evening:
+                return "Any time"
+            if not morning and not afternoon and not evening:
+                return ""
+
+            times = []
+            if morning:
+                times.append("Mornings")
+            if afternoon:
+                times.append("Afternoons")
+            if evening:
+                times.append("Evenings")
+            return ", ".join(times)
+
+        # Build availability text from 6-slot system
+        weekday_times = []
+        if weekday_early:
+            weekday_times.append("before 9am")
+        if weekday_day:
+            weekday_times.append("9-5")
+        if weekday_late:
+            weekday_times.append("after 5pm")
+
+        weekend_times = []
+        if weekend_early:
+            weekend_times.append("before 9am")
+        if weekend_day:
+            weekend_times.append("9-5")
+        if weekend_late:
+            weekend_times.append("after 5pm")
+
+        parts = []
+        if weekday_times:
+            parts.append(f"Weekdays: {', '.join(weekday_times)}")
+        if weekend_times:
+            parts.append(f"Weekends: {', '.join(weekend_times)}")
+
+        return " | ".join(parts) if parts else ""
 
     def _send_reminder_emails(self, period_label=None):
         """Send reminders for matches not yet completed"""
