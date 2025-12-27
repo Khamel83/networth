@@ -4,38 +4,51 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-    <title>Dashboard | NET WORTH Tennis</title>
+    <title>My Profile | Net Worth Tennis</title>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=IBM+Plex+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
     <style>
         :root {
-            --gold: #D4AF37;
-            --gold-bright: #FFD700;
-            --tennis-ball: #CCFF00;
-            --terminal-black: #0a0a0a;
-            --terminal-dark: #121212;
-            --terminal-gray: #1a1a1a;
-            --terminal-border: #2a2a2a;
-            --power-red: #DC143C;
-            --court-green: #228B22;
-            --text-primary: #e8e8e8;
-            --text-secondary: #888888;
-            --text-muted: #555555;
-            --font-display: 'Playfair Display', Georgia, serif;
-            --font-mono: 'IBM Plex Mono', 'Courier New', monospace;
+            --pink: #d165a4;
+            --orange: #ec613e;
+            --peach: #e7b4b5;
+            --bg-gradient: linear-gradient(135deg, var(--pink) 0%, var(--orange) 50%, var(--peach) 100%);
+            --text-white: #ffffff;
+            --text-dark: #1a1a1a;
+            --text-muted: rgba(255, 255, 255, 0.7);
+            --card-bg: rgba(255, 255, 255, 0.15);
+            --card-bg-solid: rgba(255, 255, 255, 0.95);
+            --card-border: rgba(255, 255, 255, 0.2);
+            --font-display: 'Poppins', 'Helvetica Neue', sans-serif;
+            --font-body: 'Inter', 'Helvetica Neue', sans-serif;
+            --success-green: #22c55e;
+            --error-red: #ef4444;
+            --warning-yellow: #eab308;
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
-            font-family: var(--font-mono);
-            background: var(--terminal-black);
-            color: var(--text-primary);
+            font-family: var(--font-body);
+            background: var(--bg-gradient);
+            background-attachment: fixed;
+            color: var(--text-white);
             min-height: 100vh;
             -webkit-font-smoothing: antialiased;
+        }
+
+        /* Grainy Texture */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            opacity: 0.12;
+            pointer-events: none;
+            z-index: 9999;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
         }
 
         /* Header */
@@ -43,17 +56,17 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 1rem;
-            border-bottom: 1px solid var(--terminal-border);
-            background: var(--terminal-dark);
+            padding: 1.5rem 2rem;
+            background: linear-gradient(180deg, rgba(209, 101, 164, 0.3) 0%, transparent 100%);
         }
 
         .logo {
             font-family: var(--font-display);
-            font-size: 1.25rem;
+            font-size: 1.5rem;
             font-weight: 700;
-            color: var(--gold);
+            color: var(--text-white);
             text-decoration: none;
+            text-transform: lowercase;
         }
 
         .user-menu {
@@ -63,8 +76,9 @@
         }
 
         .user-name {
-            font-size: 0.75rem;
-            color: var(--text-secondary);
+            font-size: 0.9rem;
+            color: var(--text-white);
+            opacity: 0.8;
             display: none;
         }
 
@@ -73,155 +87,175 @@
         }
 
         .btn-logout {
-            font-family: var(--font-mono);
-            font-size: 0.65rem;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-            color: var(--text-muted);
-            background: none;
-            border: 1px solid var(--terminal-border);
-            padding: 0.5rem 0.75rem;
+            font-family: var(--font-body);
+            font-size: 0.85rem;
+            color: var(--text-white);
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid var(--card-border);
+            border-radius: 8px;
+            padding: 0.5rem 1rem;
             cursor: pointer;
+            transition: all 0.3s ease;
         }
 
         .btn-logout:hover {
-            border-color: var(--power-red);
-            color: var(--power-red);
-        }
-
-        /* Admin Panel */
-        .admin-panel {
-            background: var(--terminal-dark);
-            border: 2px solid var(--power-red);
-            margin-bottom: 2rem;
-            padding: 1rem;
-        }
-
-        .admin-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1rem;
-            padding-bottom: 0.75rem;
-            border-bottom: 1px solid var(--terminal-border);
-        }
-
-        .admin-title {
-            font-family: var(--font-display);
-            font-size: 1rem;
-            color: var(--power-red);
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .admin-badge {
-            font-size: 0.5rem;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-            background: var(--power-red);
-            color: white;
-            padding: 0.2rem 0.4rem;
-        }
-
-        .admin-select {
-            width: 100%;
-            padding: 0.75rem;
-            background: var(--terminal-gray);
-            border: 1px solid var(--terminal-border);
-            color: var(--text-primary);
-            font-family: var(--font-mono);
-            font-size: 0.85rem;
-            margin-bottom: 1rem;
-        }
-
-        .admin-select:focus {
-            outline: none;
-            border-color: var(--power-red);
-        }
-
-        .admin-player-card {
-            background: var(--terminal-gray);
-            padding: 1rem;
-            margin-bottom: 1rem;
-        }
-
-        .admin-player-name {
-            font-family: var(--font-display);
-            font-size: 1.1rem;
-            margin-bottom: 0.25rem;
-        }
-
-        .admin-player-email {
-            color: var(--text-secondary);
-            font-size: 0.8rem;
-            margin-bottom: 0.75rem;
-        }
-
-        .admin-player-stats {
-            display: flex;
-            gap: 1rem;
-            font-size: 0.75rem;
-            color: var(--text-muted);
-            margin-bottom: 0.75rem;
-        }
-
-        .admin-form-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 0.75rem;
-            margin-bottom: 0.75rem;
-        }
-
-        .admin-form-row .form-group {
-            margin-bottom: 0;
-        }
-
-        .admin-actions {
-            display: flex;
-            gap: 0.5rem;
-            flex-wrap: wrap;
-        }
-
-        .admin-actions .btn {
-            flex: 1;
-            min-width: 120px;
-            margin-top: 0;
-            font-size: 0.65rem;
-        }
-
-        .btn-admin-action {
-            border-color: var(--power-red);
-            color: var(--power-red);
-        }
-
-        .btn-admin-action:hover {
-            background: var(--power-red);
-            color: white;
+            background: rgba(255, 255, 255, 0.25);
         }
 
         /* Main Layout */
         .main {
             max-width: 800px;
             margin: 0 auto;
-            padding: 1rem;
+            padding: 1.5rem;
         }
 
         @media (min-width: 600px) {
             .main { padding: 2rem; }
         }
 
-        /* Stats - Simple row */
+        /* Message */
+        .message {
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+            border-radius: 12px;
+            font-size: 0.9rem;
+        }
+
+        .message.success {
+            background: rgba(34, 197, 94, 0.2);
+            border: 1px solid var(--success-green);
+            color: #bbf7d0;
+        }
+
+        .message.error {
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid var(--error-red);
+            color: #fecaca;
+        }
+
+        .hidden { display: none !important; }
+
+        /* Match Status Section (Sit Out) - PROMINENT AT TOP */
+        .match-status-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .match-status-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .match-status-title {
+            font-family: var(--font-display);
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .status-badge {
+            padding: 0.35rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .status-badge.active {
+            background: rgba(34, 197, 94, 0.2);
+            color: #bbf7d0;
+            border: 1px solid var(--success-green);
+        }
+
+        .status-badge.paused {
+            background: rgba(234, 179, 8, 0.2);
+            color: #fef08a;
+            border: 1px solid var(--warning-yellow);
+        }
+
+        .btn-status-toggle {
+            width: 100%;
+            padding: 0.875rem;
+            border-radius: 50px;
+            font-family: var(--font-body);
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: none;
+        }
+
+        .btn-sit-out {
+            background: rgba(255, 255, 255, 0.15);
+            color: var(--text-white);
+            border: 1px solid var(--card-border);
+        }
+
+        .btn-sit-out:hover {
+            background: rgba(255, 255, 255, 0.25);
+        }
+
+        .btn-rejoin {
+            background: var(--text-white);
+            color: var(--pink);
+        }
+
+        .btn-rejoin:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(255, 255, 255, 0.3);
+        }
+
+        .status-help {
+            margin-top: 1rem;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            line-height: 1.6;
+        }
+
+        /* Social Butterfly Card */
+        .social-butterfly-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: 2rem;
+            margin-bottom: 1.5rem;
+            text-align: center;
+        }
+
+        .social-butterfly-card h2 {
+            font-family: var(--font-display);
+            font-size: 1.5rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .social-butterfly-card p {
+            color: var(--text-muted);
+            margin-bottom: 1.5rem;
+        }
+
+        .social-butterfly-card .btn {
+            background: var(--text-white);
+            color: var(--pink);
+        }
+
+        /* Stats Row */
         .stats-row {
             display: flex;
             gap: 1rem;
-            margin-bottom: 2rem;
+            margin-bottom: 1.5rem;
             overflow-x: auto;
         }
 
         .stat-card {
-            background: var(--terminal-dark);
-            border: 1px solid var(--terminal-border);
+            background: var(--card-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
             padding: 1rem;
             min-width: 100px;
             flex: 1;
@@ -229,9 +263,7 @@
         }
 
         .stat-label {
-            font-size: 0.6rem;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
+            font-size: 0.75rem;
             color: var(--text-muted);
             margin-bottom: 0.25rem;
         }
@@ -240,12 +272,20 @@
             font-family: var(--font-display);
             font-size: 1.75rem;
             font-weight: 700;
-            color: var(--gold);
+            color: var(--text-white);
         }
 
         /* Section */
         .section {
-            margin-bottom: 2rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .section-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: 1.5rem;
         }
 
         .section-title {
@@ -253,26 +293,28 @@
             font-size: 1.25rem;
             font-weight: 600;
             margin-bottom: 1rem;
-            padding-bottom: 0.5rem;
-            border-bottom: 1px solid var(--terminal-border);
         }
 
         /* Cards */
         .card {
-            background: var(--terminal-dark);
-            border: 1px solid var(--terminal-border);
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
             padding: 1.25rem;
             margin-bottom: 1rem;
         }
 
+        .card:last-child {
+            margin-bottom: 0;
+        }
+
         .card-highlight {
-            border-left: 3px solid var(--gold);
+            border-left: 3px solid var(--text-white);
         }
 
         .card-title {
-            font-size: 0.7rem;
+            font-size: 0.75rem;
             text-transform: uppercase;
-            letter-spacing: 0.1em;
+            letter-spacing: 0.05em;
             color: var(--text-muted);
             margin-bottom: 0.5rem;
         }
@@ -280,53 +322,54 @@
         .opponent-name {
             font-family: var(--font-display);
             font-size: 1.25rem;
-            color: var(--text-primary);
+            font-weight: 600;
+            color: var(--text-white);
             margin-bottom: 0.5rem;
         }
 
         .opponent-details {
-            font-size: 0.8rem;
-            color: var(--text-secondary);
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            line-height: 1.6;
         }
 
         .opponent-details a {
-            color: var(--gold);
+            color: var(--text-white);
         }
 
         /* Buttons */
         .btn {
-            font-family: var(--font-mono);
-            font-size: 0.7rem;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-            padding: 0.75rem 1rem;
-            border: 1px solid var(--gold);
-            background: transparent;
-            color: var(--gold);
+            font-family: var(--font-body);
+            font-size: 0.9rem;
+            font-weight: 600;
+            padding: 0.875rem 1.5rem;
+            border: none;
+            border-radius: 50px;
+            background: rgba(255, 255, 255, 0.2);
+            color: var(--text-white);
             cursor: pointer;
             width: 100%;
             margin-top: 1rem;
+            transition: all 0.3s ease;
         }
 
         .btn:hover {
-            background: var(--gold);
-            color: var(--terminal-black);
+            background: rgba(255, 255, 255, 0.3);
         }
 
         .btn-primary {
-            background: var(--gold);
-            color: var(--terminal-black);
+            background: var(--text-white);
+            color: var(--pink);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(255, 255, 255, 0.3);
         }
 
         .btn-secondary {
-            border-color: var(--terminal-border);
-            color: var(--text-secondary);
-        }
-
-        .btn-secondary:hover {
-            border-color: var(--text-secondary);
-            background: transparent;
-            color: var(--text-primary);
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--card-border);
         }
 
         /* Forms */
@@ -336,34 +379,105 @@
 
         .form-group label {
             display: block;
-            font-size: 0.65rem;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-            color: var(--text-muted);
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-white);
             margin-bottom: 0.5rem;
         }
 
         .form-group input,
         .form-group select {
             width: 100%;
-            padding: 0.75rem;
-            background: var(--terminal-gray);
-            border: 1px solid var(--terminal-border);
-            color: var(--text-primary);
-            font-family: var(--font-mono);
-            font-size: 0.9rem;
+            padding: 0.875rem 1rem;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            color: var(--text-white);
+            font-family: var(--font-body);
+            font-size: 1rem;
+            transition: all 0.3s ease;
         }
 
         .form-group input:focus,
         .form-group select:focus {
             outline: none;
-            border-color: var(--gold);
+            border-color: var(--text-white);
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .form-group input::placeholder {
+            color: var(--text-muted);
         }
 
         .form-row {
             display: grid;
             grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        @media (max-width: 500px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Availability Grid */
+        .availability-section h4 {
+            font-family: var(--font-display);
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+        }
+
+        .availability-help {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-bottom: 1rem;
+        }
+
+        .availability-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        @media (max-width: 500px) {
+            .availability-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .availability-column h5 {
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+            color: var(--text-white);
+        }
+
+        .checkbox-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
             gap: 0.75rem;
+        }
+
+        .checkbox-item input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            accent-color: var(--pink);
+            cursor: pointer;
+        }
+
+        .checkbox-item label {
+            font-size: 0.9rem;
+            color: var(--text-white);
+            cursor: pointer;
+            margin-bottom: 0;
         }
 
         /* Score inputs */
@@ -383,60 +497,33 @@
         .score-input {
             width: 100%;
             text-align: center;
-            padding: 0.75rem;
-            background: var(--terminal-gray);
-            border: 1px solid var(--terminal-border);
-            color: var(--text-primary);
-            font-family: var(--font-mono);
-            font-size: 16px; /* Prevents iOS zoom on focus */
+            padding: 0.875rem;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            color: var(--text-white);
+            font-family: var(--font-body);
+            font-size: 16px;
             -webkit-appearance: none;
             -moz-appearance: textfield;
-            border-radius: 0;
         }
 
         .score-input:focus {
             outline: none;
-            border-color: var(--gold);
-            background: var(--terminal-dark);
+            border-color: var(--text-white);
+            background: rgba(255, 255, 255, 0.2);
         }
 
-        /* Hide number spinner on inputs */
         .score-input::-webkit-outer-spin-button,
         .score-input::-webkit-inner-spin-button {
             -webkit-appearance: none;
             margin: 0;
         }
 
-        /* Toggle/Checkbox */
-        .toggle-group {
-            display: flex;
-            gap: 0.5rem;
-            flex-wrap: wrap;
-        }
-
-        .toggle-btn {
-            padding: 0.5rem 1rem;
-            border: 1px solid var(--terminal-border);
-            background: var(--terminal-gray);
-            color: var(--text-secondary);
-            font-family: var(--font-mono);
-            font-size: 0.75rem;
-            cursor: pointer;
-            flex: 1;
-            min-width: 80px;
-            text-align: center;
-        }
-
-        .toggle-btn.active {
-            border-color: var(--gold);
-            color: var(--gold);
-            background: rgba(212, 175, 55, 0.1);
-        }
-
         /* Feedback radio */
         .feedback-options {
             display: flex;
-            gap: 1rem;
+            gap: 1.5rem;
             margin-top: 0.5rem;
         }
 
@@ -449,26 +536,7 @@
 
         .feedback-option input {
             width: auto;
-        }
-
-        /* Message */
-        .message {
-            padding: 1rem;
-            margin-bottom: 1rem;
-            border: 1px solid;
-            font-size: 0.85rem;
-        }
-
-        .message.success {
-            background: rgba(34, 139, 34, 0.1);
-            border-color: var(--court-green);
-            color: var(--court-green);
-        }
-
-        .message.error {
-            background: rgba(220, 20, 60, 0.1);
-            border-color: var(--power-red);
-            color: var(--power-red);
+            accent-color: var(--pink);
         }
 
         /* Match history */
@@ -477,47 +545,45 @@
             justify-content: space-between;
             align-items: center;
             padding: 0.75rem 0;
-            border-bottom: 1px solid var(--terminal-border);
-            font-size: 0.85rem;
+            border-bottom: 1px solid var(--card-border);
+            font-size: 0.9rem;
         }
 
         .match-item:last-child {
             border-bottom: none;
+            padding-bottom: 0;
         }
 
         .match-date {
             color: var(--text-muted);
-            font-size: 0.75rem;
+            font-size: 0.8rem;
         }
 
         .match-score {
-            font-family: var(--font-mono);
-            color: var(--text-secondary);
+            color: var(--text-white);
+            font-weight: 500;
         }
-
-        /* Pause banner */
-        .pause-banner {
-            background: rgba(220, 20, 60, 0.1);
-            border: 1px solid var(--power-red);
-            padding: 1rem;
-            margin-bottom: 1.5rem;
-            text-align: center;
-        }
-
-        .pause-banner p {
-            color: var(--power-red);
-            font-size: 0.85rem;
-            margin-bottom: 0.5rem;
-        }
-
-        .hidden { display: none; }
 
         /* Empty state */
         .empty-state {
             text-align: center;
             padding: 2rem;
             color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        /* Save feedback */
+        .save-feedback {
+            display: inline-block;
+            margin-left: 0.5rem;
             font-size: 0.85rem;
+            color: #bbf7d0;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .save-feedback.show {
+            opacity: 1;
         }
 
         /* Modal */
@@ -527,7 +593,8 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(0,0,0,0.8);
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(4px);
             display: flex;
             align-items: flex-start;
             justify-content: center;
@@ -538,49 +605,172 @@
         }
 
         .modal {
-            background: var(--terminal-dark);
-            border: 1px solid var(--terminal-border);
+            background: linear-gradient(135deg, var(--pink) 0%, var(--orange) 100%);
+            border-radius: 24px;
             max-width: 500px;
             width: 100%;
             margin: 2rem auto;
             position: relative;
+            overflow: hidden;
+        }
+
+        .modal::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            opacity: 0.12;
+            pointer-events: none;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
         }
 
         .modal-header {
-            padding: 1rem;
-            border-bottom: 1px solid var(--terminal-border);
+            padding: 1.5rem;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            position: sticky;
-            top: 0;
-            background: var(--terminal-dark);
+            position: relative;
             z-index: 1;
         }
 
         .modal-title {
             font-family: var(--font-display);
             font-size: 1.25rem;
+            font-weight: 600;
         }
 
         .modal-close {
-            background: none;
+            background: rgba(255, 255, 255, 0.2);
             border: none;
-            color: var(--text-muted);
-            font-size: 1.5rem;
+            color: var(--text-white);
+            font-size: 1.25rem;
             cursor: pointer;
             padding: 0.5rem;
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             line-height: 1;
         }
 
+        .modal-close:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
         .modal-body {
+            padding: 0 1.5rem 1.5rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Admin Panel */
+        .admin-panel {
+            background: rgba(239, 68, 68, 0.1);
+            border: 2px solid var(--error-red);
+            border-radius: 16px;
+            margin-bottom: 1.5rem;
+            padding: 1.5rem;
+        }
+
+        .admin-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .admin-title {
+            font-family: var(--font-display);
+            font-size: 1rem;
+            color: #fecaca;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .admin-badge {
+            font-size: 0.6rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            background: var(--error-red);
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+        }
+
+        .admin-select {
+            width: 100%;
+            padding: 0.875rem;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            color: var(--text-white);
+            font-family: var(--font-body);
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+        }
+
+        .admin-select:focus {
+            outline: none;
+            border-color: var(--error-red);
+        }
+
+        .admin-player-card {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
             padding: 1rem;
+        }
+
+        .admin-player-name {
+            font-family: var(--font-display);
+            font-size: 1.1rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .admin-player-email {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .admin-player-stats {
+            display: flex;
+            gap: 1rem;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-bottom: 1rem;
+        }
+
+        .admin-actions {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .admin-actions .btn {
+            flex: 1;
+            min-width: 100px;
+            margin-top: 0;
+            font-size: 0.8rem;
+            padding: 0.75rem;
+        }
+
+        .btn-admin-action {
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid var(--error-red);
+            color: #fecaca;
+        }
+
+        .btn-admin-action:hover {
+            background: var(--error-red);
+            color: white;
         }
     </style>
 </head>
 <body>
     <header class="header">
-        <a href="/" class="logo">NET WORTH</a>
+        <a href="/" class="logo">net worth</a>
         <div class="user-menu">
             <span class="user-name" id="player-name">Loading...</span>
             <button class="btn-logout" onclick="logout()">Sign Out</button>
@@ -589,12 +779,6 @@
 
     <main class="main">
         <div id="message" class="message hidden"></div>
-
-        <!-- Pause Banner (shown when paused) -->
-        <div id="pause-banner" class="pause-banner hidden">
-            <p>You're sitting out this month</p>
-            <button class="btn btn-secondary" onclick="unpause()">I'm Back!</button>
-        </div>
 
         <!-- Admin Panel (only shown for admins) -->
         <div id="admin-panel" class="admin-panel hidden">
@@ -616,40 +800,12 @@
                     <div class="admin-player-stats">
                         <span>Rank: <strong id="admin-player-rank">-</strong></span>
                         <span>Games: <strong id="admin-player-games">-</strong></span>
+                        <span>Tier: <strong id="admin-player-tier">-</strong></span>
                         <span id="admin-player-status-text">Active</span>
                     </div>
 
-                    <div class="admin-form-row">
-                        <div class="form-group">
-                            <label>Name</label>
-                            <input type="text" id="admin-edit-name">
-                        </div>
-                        <div class="form-group">
-                            <label>Email</label>
-                            <input type="email" id="admin-edit-email">
-                        </div>
-                    </div>
-
-                    <div class="admin-form-row">
-                        <div class="form-group">
-                            <label>Phone</label>
-                            <input type="tel" id="admin-edit-phone" placeholder="(555) 123-4567">
-                        </div>
-                        <div class="form-group">
-                            <label>Skill Level</label>
-                            <select id="admin-edit-skill">
-                                <option value="4.5 Advanced+">4.5 Advanced+</option>
-                                <option value="4.0 Advanced">4.0 Advanced</option>
-                                <option value="3.5+ Intermediate+">3.5+ Intermediate+</option>
-                                <option value="3.5 Intermediate">3.5 Intermediate</option>
-                                <option value="3.0 Beginner+">3.0 Beginner+</option>
-                                <option value="2.5 Beginner">2.5 Beginner</option>
-                            </select>
-                        </div>
-                    </div>
-
                     <div class="admin-actions">
-                        <button class="btn" onclick="adminSavePlayer()">Save Changes</button>
+                        <button class="btn" onclick="adminSavePlayer()">Save</button>
                         <button class="btn btn-admin-action" id="admin-pause-btn" onclick="adminTogglePause()">Pause</button>
                         <button class="btn btn-admin-action" id="admin-active-btn" onclick="adminToggleActive()">Deactivate</button>
                     </div>
@@ -657,65 +813,133 @@
             </div>
         </div>
 
-        <!-- Stats Row -->
-        <div class="stats-row">
-            <div class="stat-card">
-                <p class="stat-label">Rank</p>
-                <p class="stat-value" id="stat-rank">#-</p>
-            </div>
-            <div class="stat-card">
-                <p class="stat-label">Games Won</p>
-                <p class="stat-value" id="stat-games">0</p>
-            </div>
-            <div class="stat-card">
-                <p class="stat-label">Matches</p>
-                <p class="stat-value" id="stat-matches">0</p>
-            </div>
+        <!-- Social Butterfly View (hidden by default) -->
+        <div id="social-butterfly-section" class="social-butterfly-card hidden">
+            <h2>Social Butterfly</h2>
+            <p>You're enjoying the events and community without match assignments.</p>
+            <button class="btn" onclick="upgradeTier()">I want to start playing!</button>
+            <p class="status-help" style="margin-top: 1rem;">
+                Clicking this button adds you to the match queue for the following month. If you need to sit out in the future, be sure to return to your profile and update your status before each month's match assignments.
+            </p>
         </div>
 
-        <!-- Outstanding Matches (Current + Previous) -->
-        <section class="section" id="outstanding-section">
-            <h2 class="section-title">Your Matches</h2>
-            <div id="outstanding-matches">
-                <p class="empty-state">Loading...</p>
+        <!-- Player View -->
+        <div id="player-section">
+            <!-- Match Status (Sit Out) - TOP OF PAGE -->
+            <div class="match-status-card" id="match-status-card">
+                <div class="match-status-header">
+                    <span class="match-status-title">Match Status</span>
+                    <span class="status-badge active" id="status-badge">Active</span>
+                </div>
+                <button class="btn-status-toggle btn-sit-out" id="status-toggle-btn" onclick="togglePause()">
+                    Sit Out This Month
+                </button>
+                <p class="status-help">
+                    Clicking this button pauses match assignments until you click back in. If you rejoin mid-month, you'll be assigned starting the following month. You'll receive email confirmations for each month you're paused.
+                </p>
             </div>
-        </section>
 
-        <!-- Preferences -->
-        <section class="section">
-            <h2 class="section-title">Preferences</h2>
-            <div class="card">
-                <div class="form-group">
-                    <label>When can you usually play?</label>
-                    <div class="toggle-group" id="availability-toggles">
-                        <button type="button" class="toggle-btn active" data-time="morning">Mornings</button>
-                        <button type="button" class="toggle-btn active" data-time="afternoon">Afternoons</button>
-                        <button type="button" class="toggle-btn active" data-time="evening">Evenings</button>
+            <!-- Stats Row -->
+            <div class="stats-row" id="stats-row">
+                <div class="stat-card">
+                    <p class="stat-label">Games Won</p>
+                    <p class="stat-value" id="stat-games">0</p>
+                </div>
+                <div class="stat-card">
+                    <p class="stat-label">Matches</p>
+                    <p class="stat-value" id="stat-matches">0</p>
+                </div>
+                <div class="stat-card">
+                    <p class="stat-label">Ranking</p>
+                    <p class="stat-value" id="stat-rank">#-</p>
+                </div>
+            </div>
+
+            <!-- This Month's Match -->
+            <section class="section" id="outstanding-section">
+                <div class="section-card">
+                    <h2 class="section-title">This Month's Match</h2>
+                    <div id="outstanding-matches">
+                        <p class="empty-state">Loading...</p>
                     </div>
                 </div>
+            </section>
 
-                <div class="form-group">
-                    <label>Phone (optional - for text coordination)</label>
-                    <input type="tel" id="phone-input" placeholder="(555) 123-4567">
-                </div>
+            <!-- My Info -->
+            <section class="section">
+                <div class="section-card">
+                    <h2 class="section-title">My Info</h2>
 
-                <button class="btn btn-secondary" onclick="savePreferences()">Save Preferences</button>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="name-input">Name</label>
+                            <input type="text" id="name-input" placeholder="Your name">
+                        </div>
+                        <div class="form-group">
+                            <label for="phone-input">Phone Number</label>
+                            <input type="tel" id="phone-input" placeholder="(555) 555-5555">
+                        </div>
+                    </div>
 
-                <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--terminal-border);">
-                    <button class="btn btn-secondary" onclick="togglePause()" id="pause-btn">
-                        Sit Out This Month
+                    <!-- Availability -->
+                    <div class="availability-section">
+                        <h4>My Availability</h4>
+                        <p class="availability-help">Select all times you're typically available for matches</p>
+                        <div class="availability-grid">
+                            <div class="availability-column">
+                                <h5>Weekdays</h5>
+                                <div class="checkbox-group">
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="avail-weekday-early" name="avail_weekday_early">
+                                        <label for="avail-weekday-early">Before 9am</label>
+                                    </div>
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="avail-weekday-day" name="avail_weekday_day">
+                                        <label for="avail-weekday-day">9am - 5pm</label>
+                                    </div>
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="avail-weekday-late" name="avail_weekday_late">
+                                        <label for="avail-weekday-late">After 5pm</label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="availability-column">
+                                <h5>Weekends</h5>
+                                <div class="checkbox-group">
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="avail-weekend-early" name="avail_weekend_early">
+                                        <label for="avail-weekend-early">Before 9am</label>
+                                    </div>
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="avail-weekend-day" name="avail_weekend_day">
+                                        <label for="avail-weekend-day">9am - 5pm</label>
+                                    </div>
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="avail-weekend-late" name="avail_weekend_late">
+                                        <label for="avail-weekend-late">After 5pm</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button class="btn btn-secondary" onclick="savePreferences()" id="save-info-btn">
+                        Save My Info
                     </button>
+                    <span class="save-feedback" id="save-feedback">Changes saved!</span>
                 </div>
-            </div>
-        </section>
+            </section>
 
-        <!-- Match History -->
-        <section class="section">
-            <h2 class="section-title">Match History</h2>
-            <div class="card" id="match-history">
-                <p class="empty-state">No matches yet</p>
-            </div>
-        </section>
+            <!-- Match History -->
+            <section class="section">
+                <div class="section-card">
+                    <h2 class="section-title">Match History</h2>
+                    <div id="match-history">
+                        <p class="empty-state">No matches played yet</p>
+                    </div>
+                </div>
+            </section>
+        </div>
     </main>
 
     <!-- Report Score Modal -->
@@ -723,11 +947,11 @@
         <div class="modal">
             <div class="modal-header">
                 <h3 class="modal-title">Report Score</h3>
-                <button class="modal-close" onclick="document.getElementById('score-modal').style.display='none'; document.getElementById('score-modal').classList.add('hidden');">&times;</button>
+                <button class="modal-close" onclick="closeScoreModal()">&times;</button>
             </div>
             <div class="modal-body">
-                <p style="margin-bottom: 1rem; color: var(--text-secondary); font-size: 0.85rem;">
-                    vs <strong id="modal-opponent-name"></strong>
+                <p style="margin-bottom: 1.5rem; color: var(--text-muted); font-size: 0.9rem;">
+                    vs <strong id="modal-opponent-name" style="color: var(--text-white);"></strong>
                 </p>
 
                 <div class="form-group">
@@ -749,17 +973,8 @@
                 </div>
 
                 <div class="form-group">
-                    <label>Set 3 (if played)</label>
-                    <div class="score-row">
-                        <input type="number" class="score-input" id="set3-me" placeholder="You" min="0" max="7">
-                        <span>-</span>
-                        <input type="number" class="score-input" id="set3-them" placeholder="Them" min="0" max="7">
-                    </div>
-                </div>
-
-                <div class="form-group">
                     <label>Court (optional)</label>
-                    <select id="court-select">
+                    <select id="court-select" class="form-group select" style="width: 100%; padding: 0.875rem; background: rgba(255,255,255,0.1); border: 1px solid var(--card-border); border-radius: 12px; color: var(--text-white); font-size: 1rem;">
                         <option value="">Select court...</option>
                         <option value="Vermont Canyon">Vermont Canyon</option>
                         <option value="Griffith Park - Riverside">Griffith Park - Riverside</option>
@@ -785,7 +1000,7 @@
                             <span>No</span>
                         </label>
                     </div>
-                    <p style="font-size: 0.7rem; color: var(--text-muted); margin-top: 0.5rem;">
+                    <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem;">
                         This is private. If you say no, you won't be paired again.
                     </p>
                 </div>
@@ -796,13 +1011,13 @@
     </div>
 
     <script>
-        // Check auth (bypass for testing with ?test in URL)
+        // Check auth
         const urlParams = new URLSearchParams(window.location.search);
         const isTestMode = urlParams.has('test') || window.location.search.includes('test');
 
         let token, player, currentAssignment;
 
-        // Handle magic link callback (token in URL hash from Supabase)
+        // Handle magic link callback
         async function handleMagicLinkCallback() {
             const hash = window.location.hash;
             if (hash && hash.includes('access_token=')) {
@@ -822,7 +1037,6 @@
                         if (data.success && data.player) {
                             localStorage.setItem('networth_token', accessToken);
                             localStorage.setItem('networth_player', JSON.stringify(data.player));
-                            // Clear the hash and reload clean
                             window.location.href = '/dashboard';
                             return true;
                         }
@@ -847,9 +1061,13 @@
                 rank: 10,
                 total_games: 25,
                 matches_played: 3,
-                available_morning: true,
-                available_afternoon: true,
-                available_evening: false,
+                membership_tier: 'player',
+                avail_weekday_early: false,
+                avail_weekday_day: true,
+                avail_weekday_late: true,
+                avail_weekend_early: false,
+                avail_weekend_day: true,
+                avail_weekend_late: false,
                 phone: null,
                 is_paused: false
             };
@@ -867,10 +1085,25 @@
         document.getElementById('stat-games').textContent = player.total_games || '0';
         document.getElementById('stat-matches').textContent = player.matches_played || '0';
 
-        // Load full profile for preferences
+        // Handle tier-specific views
+        function updateTierView(tier) {
+            const playerSection = document.getElementById('player-section');
+            const socialSection = document.getElementById('social-butterfly-section');
+
+            if (tier === 'social_butterfly') {
+                playerSection.classList.add('hidden');
+                socialSection.classList.remove('hidden');
+            } else {
+                playerSection.classList.remove('hidden');
+                socialSection.classList.add('hidden');
+            }
+        }
+
+        // Load full profile
         async function loadProfile() {
             if (isTestMode) {
                 updatePreferencesUI(player);
+                updateTierView(player.membership_tier);
                 return;
             }
 
@@ -882,8 +1115,9 @@
                 if (data.success && data.profile) {
                     player = { ...player, ...data.profile };
                     updatePreferencesUI(data.profile);
+                    updateTierView(data.profile.membership_tier || 'player');
 
-                    // Update stats from profile
+                    // Update stats
                     document.getElementById('stat-rank').textContent = `#${data.profile.rank || '-'}`;
                     document.getElementById('stat-games').textContent = data.profile.total_games || '0';
                     document.getElementById('stat-matches').textContent = data.profile.matches_played || '0';
@@ -894,47 +1128,69 @@
         }
 
         function updatePreferencesUI(profile) {
-            // Update availability toggles
-            const avail = profile.availability || {};
-            document.querySelectorAll('.toggle-btn').forEach(btn => {
-                const time = btn.dataset.time;
-                const isActive = avail[time] !== false; // Default true
-                btn.classList.toggle('active', isActive);
-            });
+            // Update name
+            document.getElementById('name-input').value = profile.name || '';
 
             // Update phone
             if (profile.phone) {
                 document.getElementById('phone-input').value = profile.phone;
             }
 
+            // Update availability checkboxes
+            document.getElementById('avail-weekday-early').checked = profile.avail_weekday_early || false;
+            document.getElementById('avail-weekday-day').checked = profile.avail_weekday_day || false;
+            document.getElementById('avail-weekday-late').checked = profile.avail_weekday_late || false;
+            document.getElementById('avail-weekend-early').checked = profile.avail_weekend_early || false;
+            document.getElementById('avail-weekend-day').checked = profile.avail_weekend_day || false;
+            document.getElementById('avail-weekend-late').checked = profile.avail_weekend_late || false;
+
             // Update pause state
-            if (profile.is_paused) {
-                document.getElementById('pause-banner').classList.remove('hidden');
-                document.getElementById('pause-btn').textContent = 'I\'m Back!';
+            updatePauseUI(profile.is_paused);
+        }
+
+        function updatePauseUI(isPaused) {
+            const badge = document.getElementById('status-badge');
+            const btn = document.getElementById('status-toggle-btn');
+
+            if (isPaused) {
+                badge.textContent = 'Sitting Out';
+                badge.className = 'status-badge paused';
+                btn.textContent = "I'm Back!";
+                btn.className = 'btn-status-toggle btn-rejoin';
             } else {
-                document.getElementById('pause-banner').classList.add('hidden');
-                document.getElementById('pause-btn').textContent = 'Sit Out This Month';
+                badge.textContent = 'Active';
+                badge.className = 'status-badge active';
+                btn.textContent = 'Sit Out This Month';
+                btn.className = 'btn-status-toggle btn-sit-out';
             }
         }
 
-        // Toggle availability
-        document.querySelectorAll('.toggle-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                btn.classList.toggle('active');
-            });
-        });
-
         // Save preferences
         async function savePreferences() {
-            const availability = {
-                morning: document.querySelector('[data-time="morning"]').classList.contains('active'),
-                afternoon: document.querySelector('[data-time="afternoon"]').classList.contains('active'),
-                evening: document.querySelector('[data-time="evening"]').classList.contains('active')
-            };
+            const btn = document.getElementById('save-info-btn');
+            const feedback = document.getElementById('save-feedback');
+
+            const name = document.getElementById('name-input').value.trim();
             const phone = document.getElementById('phone-input').value.trim();
+            const availability = {
+                avail_weekday_early: document.getElementById('avail-weekday-early').checked,
+                avail_weekday_day: document.getElementById('avail-weekday-day').checked,
+                avail_weekday_late: document.getElementById('avail-weekday-late').checked,
+                avail_weekend_early: document.getElementById('avail-weekend-early').checked,
+                avail_weekend_day: document.getElementById('avail-weekend-day').checked,
+                avail_weekend_late: document.getElementById('avail-weekend-late').checked
+            };
+
+            btn.textContent = 'Saving...';
+            btn.disabled = true;
 
             if (isTestMode) {
-                showMessage('Preferences saved (test mode)', 'success');
+                setTimeout(() => {
+                    btn.textContent = 'Save My Info';
+                    btn.disabled = false;
+                    feedback.classList.add('show');
+                    setTimeout(() => feedback.classList.remove('show'), 3000);
+                }, 500);
                 return;
             }
 
@@ -945,22 +1201,26 @@
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${token}`
                     },
-                    body: JSON.stringify({ action: 'update', availability, phone })
+                    body: JSON.stringify({ action: 'update', name, phone, ...availability })
                 });
                 const data = await response.json();
                 if (data.success) {
-                    showMessage('Preferences saved!', 'success');
+                    feedback.classList.add('show');
+                    setTimeout(() => feedback.classList.remove('show'), 3000);
                 } else {
                     throw new Error(data.error);
                 }
             } catch (err) {
                 showMessage(err.message, 'error');
             }
+
+            btn.textContent = 'Save My Info';
+            btn.disabled = false;
         }
 
         // Pause/Unpause
         async function togglePause() {
-            const isPaused = document.getElementById('pause-banner').classList.contains('hidden') === false;
+            const isPaused = document.getElementById('status-badge').classList.contains('paused');
             if (isPaused) {
                 await unpause();
             } else {
@@ -970,8 +1230,8 @@
 
         async function pause() {
             if (isTestMode) {
-                document.getElementById('pause-banner').classList.remove('hidden');
-                document.getElementById('pause-btn').textContent = 'I\'m Back!';
+                updatePauseUI(true);
+                showMessage("You're sitting out this month", 'success');
                 return;
             }
 
@@ -986,9 +1246,8 @@
                 });
                 const data = await response.json();
                 if (data.success) {
-                    document.getElementById('pause-banner').classList.remove('hidden');
-                    document.getElementById('pause-btn').textContent = 'I\'m Back!';
-                    showMessage('You\'re sitting out this month', 'success');
+                    updatePauseUI(true);
+                    showMessage("You're sitting out this month", 'success');
                 }
             } catch (err) {
                 showMessage(err.message, 'error');
@@ -997,8 +1256,8 @@
 
         async function unpause() {
             if (isTestMode) {
-                document.getElementById('pause-banner').classList.add('hidden');
-                document.getElementById('pause-btn').textContent = 'Sit Out This Month';
+                updatePauseUI(false);
+                showMessage('Welcome back!', 'success');
                 return;
             }
 
@@ -1013,8 +1272,7 @@
                 });
                 const data = await response.json();
                 if (data.success) {
-                    document.getElementById('pause-banner').classList.add('hidden');
-                    document.getElementById('pause-btn').textContent = 'Sit Out This Month';
+                    updatePauseUI(false);
                     showMessage('Welcome back!', 'success');
                 }
             } catch (err) {
@@ -1022,40 +1280,62 @@
             }
         }
 
-        // Load outstanding matches (current + past incomplete)
+        // Upgrade from Social Butterfly to Player
+        async function upgradeTier() {
+            if (isTestMode) {
+                updateTierView('player');
+                showMessage("You'll be matched starting next month!", 'success');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/profile', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ action: 'upgrade_tier' })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    updateTierView('player');
+                    showMessage("You'll be matched starting next month!", 'success');
+                    loadProfile();
+                }
+            } catch (err) {
+                showMessage(err.message, 'error');
+            }
+        }
+
+        // Load outstanding matches
         async function loadOutstandingMatches() {
             if (isTestMode) {
-                // Show sample data in test mode
                 document.getElementById('outstanding-matches').innerHTML = `
                     <div class="card card-highlight">
                         <p class="card-title">December 2024</p>
                         <p class="opponent-name">Sarah Kaplan</p>
-                        <p class="opponent-details">4.0 Advanced<br>Prefers: Mornings, Afternoons</p>
+                        <p class="opponent-details">
+                            Their availability: Weekdays 9-5, Weekends 9-5<br>
+                            Email: <a href="mailto:sarah@example.com">sarah@example.com</a>
+                        </p>
                         <button class="btn" onclick="openScoreModal({id: 1, opponent: {id: 2, name: 'Sarah Kaplan'}})">Report Score</button>
-                    </div>
-                    <div class="card">
-                        <p class="card-title">November 2024 (Outstanding)</p>
-                        <p class="opponent-name">Jessica Chen</p>
-                        <p class="opponent-details">3.5-4.0 Int-Adv</p>
-                        <button class="btn" onclick="openScoreModal({id: 2, opponent: {id: 3, name: 'Jessica Chen'}})">Report Score</button>
                     </div>
                 `;
                 return;
             }
 
             try {
-                // Get current month pairings
                 const response = await fetch('/api/pairings');
                 const data = await response.json();
 
                 const container = document.getElementById('outstanding-matches');
 
                 if (!data.success || !data.pairings || data.pairings.length === 0) {
-                    container.innerHTML = '<p class="empty-state">No matches assigned yet. Check back on the 1st!</p>';
+                    container.innerHTML = '<p class="empty-state">No match assigned for this month</p>';
                     return;
                 }
 
-                // Find assignments where this player is involved and not completed
                 const myMatches = data.pairings.filter(p => {
                     const isPlayer1 = p.player1?.id === player.id || p.player1_id === player.id;
                     const isPlayer2 = p.player2?.id === player.id || p.player2_id === player.id;
@@ -1070,20 +1350,30 @@
                 container.innerHTML = myMatches.map(match => {
                     const isPlayer1 = match.player1?.id === player.id || match.player1_id === player.id;
                     const opponent = isPlayer1 ? match.player2 : match.player1;
-                    const opponentAvailability = isPlayer1 ? match.player2_availability : match.player1_availability;
 
                     const opponentName = opponent?.name || 'Unknown';
-                    const opponentLevel = opponent?.skill_level || '';
                     const opponentPhone = opponent?.phone ? `<br>Phone: <a href="tel:${opponent.phone}">${opponent.phone}</a>` : '';
                     const opponentEmail = opponent?.email ? `<br>Email: <a href="mailto:${opponent.email}">${opponent.email}</a>` : '';
+
+                    // Build availability string from new fields
+                    let availStr = '';
+                    const avails = [];
+                    if (opponent?.avail_weekday_early) avails.push('Weekdays before 9am');
+                    if (opponent?.avail_weekday_day) avails.push('Weekdays 9-5');
+                    if (opponent?.avail_weekday_late) avails.push('Weekdays after 5pm');
+                    if (opponent?.avail_weekend_early) avails.push('Weekends before 9am');
+                    if (opponent?.avail_weekend_day) avails.push('Weekends 9-5');
+                    if (opponent?.avail_weekend_late) avails.push('Weekends after 5pm');
+                    if (avails.length > 0) {
+                        availStr = `Their availability: ${avails.join(', ')}`;
+                    }
 
                     return `
                         <div class="card card-highlight">
                             <p class="card-title">${match.period_label || data.period}</p>
                             <p class="opponent-name">${opponentName}</p>
                             <p class="opponent-details">
-                                ${opponentLevel}
-                                ${opponentAvailability ? `<br>Prefers: ${opponentAvailability}` : ''}
+                                ${availStr}
                                 ${opponentEmail}
                                 ${opponentPhone}
                             </p>
@@ -1112,7 +1402,7 @@
                             <div>vs Kim Ndombe</div>
                             <div class="match-date">Oct 2024</div>
                         </div>
-                        <div class="match-score">6-4, 3-6, 7-5</div>
+                        <div class="match-score">6-4, 3-6</div>
                     </div>
                     <div class="match-item">
                         <div>
@@ -1131,11 +1421,10 @@
 
                 if (!data.success || !data.matches || data.matches.length === 0) {
                     document.getElementById('match-history').innerHTML =
-                        '<p class="empty-state">No matches yet. Time to hit the courts!</p>';
+                        '<p class="empty-state">No matches played yet</p>';
                     return;
                 }
 
-                // Filter to matches involving this player
                 const myMatches = data.matches.filter(m =>
                     m.player1?.id === player.id || m.player2?.id === player.id ||
                     m.player1_id === player.id || m.player2_id === player.id
@@ -1143,28 +1432,23 @@
 
                 if (myMatches.length === 0) {
                     document.getElementById('match-history').innerHTML =
-                        '<p class="empty-state">No matches yet. Time to hit the courts!</p>';
+                        '<p class="empty-state">No matches played yet</p>';
                     return;
                 }
 
                 document.getElementById('match-history').innerHTML = myMatches.slice(0, 10).map(match => {
                     const isPlayer1 = match.player1?.id === player.id || match.player1_id === player.id;
                     const opponent = isPlayer1 ? match.player2 : match.player1;
-                    const myGames = isPlayer1 ? match.player1_games : match.player2_games;
-                    const theirGames = isPlayer1 ? match.player2_games : match.player1_games;
 
-                    // Build score string
                     let scoreStr = '';
                     if (match.set1_p1 !== null) {
                         const s1 = isPlayer1 ? `${match.set1_p1}-${match.set1_p2}` : `${match.set1_p2}-${match.set1_p1}`;
                         const s2 = isPlayer1 ? `${match.set2_p1}-${match.set2_p2}` : `${match.set2_p2}-${match.set2_p1}`;
                         scoreStr = `${s1}, ${s2}`;
-                        if (match.set3_p1 !== null) {
-                            const s3 = isPlayer1 ? `${match.set3_p1}-${match.set3_p2}` : `${match.set3_p2}-${match.set3_p1}`;
-                            scoreStr += `, ${s3}`;
-                        }
                     } else {
-                        scoreStr = `${myGames}-${theirGames} games`;
+                        const myGames = isPlayer1 ? match.player1_games : match.player2_games;
+                        const theirGames = isPlayer1 ? match.player2_games : match.player1_games;
+                        scoreStr = `${myGames}-${theirGames}`;
                     }
 
                     return `
@@ -1190,8 +1474,7 @@
             document.getElementById('score-modal').classList.remove('hidden');
             document.getElementById('score-modal').style.display = 'flex';
 
-            // Clear previous inputs
-            ['set1-me', 'set1-them', 'set2-me', 'set2-them', 'set3-me', 'set3-them'].forEach(id => {
+            ['set1-me', 'set1-them', 'set2-me', 'set2-them'].forEach(id => {
                 document.getElementById(id).value = '';
             });
             document.getElementById('court-select').value = '';
@@ -1205,43 +1488,30 @@
         }
 
         async function submitScore() {
-            const set1MeVal = document.getElementById('set1-me').value;
-            const set1ThemVal = document.getElementById('set1-them').value;
-            const set2MeVal = document.getElementById('set2-me').value;
-            const set2ThemVal = document.getElementById('set2-them').value;
-            const set3MeVal = document.getElementById('set3-me').value;
-            const set3ThemVal = document.getElementById('set3-them').value;
+            const set1Me = document.getElementById('set1-me').value;
+            const set1Them = document.getElementById('set1-them').value;
+            const set2Me = document.getElementById('set2-me').value;
+            const set2Them = document.getElementById('set2-them').value;
             const court = document.getElementById('court-select').value;
             const wouldPlayAgain = document.querySelector('input[name="would-play-again"]:checked').value === 'true';
 
-            // Validate Set 1
-            if (set1MeVal === '' || set1ThemVal === '') {
+            if (set1Me === '' || set1Them === '') {
                 showMessage('Please enter Set 1 score', 'error');
                 return;
             }
-            // Validate Set 2
-            if (set2MeVal === '' || set2ThemVal === '') {
+            if (set2Me === '' || set2Them === '') {
                 showMessage('Please enter Set 2 score', 'error');
                 return;
             }
-
-            const set1Me = parseInt(set1MeVal);
-            const set1Them = parseInt(set1ThemVal);
-            const set2Me = parseInt(set2MeVal);
-            const set2Them = parseInt(set2ThemVal);
-            const set3Me = set3MeVal ? parseInt(set3MeVal) : null;
-            const set3Them = set3ThemVal ? parseInt(set3ThemVal) : null;
 
             const matchData = {
                 assignment_id: currentAssignment.id,
                 player1_id: player.id,
                 player2_id: currentAssignment.opponent.id,
-                set1_p1: set1Me,
-                set1_p2: set1Them,
-                set2_p1: set2Me,
-                set2_p2: set2Them,
-                set3_p1: set3Me,
-                set3_p2: set3Them,
+                set1_p1: parseInt(set1Me),
+                set1_p2: parseInt(set1Them),
+                set2_p1: parseInt(set2Me),
+                set2_p2: parseInt(set2Them),
                 court: court || null,
                 period_label: currentAssignment.period_label,
                 would_play_again: wouldPlayAgain
@@ -1269,7 +1539,7 @@
                     closeScoreModal();
                     loadOutstandingMatches();
                     loadMatchHistory();
-                    loadProfile(); // Refresh stats
+                    loadProfile();
                 } else {
                     throw new Error(data.error || 'Failed to submit');
                 }
@@ -1278,15 +1548,13 @@
             }
         }
 
-        // Close modal on backdrop click
+        // Modal events
         document.getElementById('score-modal').addEventListener('click', (e) => {
-            // Close if clicking the backdrop (not the modal content)
             if (e.target.id === 'score-modal') {
                 closeScoreModal();
             }
         });
 
-        // Close modal on Escape key
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
                 closeScoreModal();
@@ -1308,9 +1576,7 @@
             window.location.href = '/';
         }
 
-        // ==========================================
-        // ADMIN FUNCTIONS
-        // ==========================================
+        // Admin Functions
         let allPlayers = [];
         let selectedPlayer = null;
 
@@ -1322,10 +1588,7 @@
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
 
-                if (response.status === 403) {
-                    // Not an admin, hide panel
-                    return;
-                }
+                if (response.status === 403) return;
 
                 const data = await response.json();
                 if (data.success && data.players) {
@@ -1342,7 +1605,6 @@
             const select = document.getElementById('admin-player-select');
             select.innerHTML = '<option value="">Select a player to manage...</option>';
 
-            // Sort by name, put admins at bottom
             const sorted = [...players].sort((a, b) => {
                 if (a.is_admin && !b.is_admin) return 1;
                 if (!a.is_admin && b.is_admin) return -1;
@@ -1351,9 +1613,10 @@
 
             sorted.forEach(p => {
                 const status = p.is_admin ? ' [Admin]' : (!p.is_active ? ' [Inactive]' : (p.is_paused ? ' [Paused]' : ''));
+                const tier = p.membership_tier === 'social_butterfly' ? ' (Social)' : '';
                 const opt = document.createElement('option');
                 opt.value = p.id;
-                opt.textContent = `${p.name}${status}`;
+                opt.textContent = `${p.name}${tier}${status}`;
                 select.appendChild(opt);
             });
         }
@@ -1371,26 +1634,18 @@
             selectedPlayer = allPlayers.find(p => p.id === playerId);
             if (!selectedPlayer) return;
 
-            // Update display
             document.getElementById('admin-player-name').textContent = selectedPlayer.name;
             document.getElementById('admin-player-email').textContent = selectedPlayer.email;
             document.getElementById('admin-player-rank').textContent = selectedPlayer.is_admin ? '-' : '#' + selectedPlayer.rank;
             document.getElementById('admin-player-games').textContent = selectedPlayer.total_games || 0;
+            document.getElementById('admin-player-tier').textContent = selectedPlayer.membership_tier === 'social_butterfly' ? 'Social Butterfly' : 'Player';
 
-            // Status text
             let statusText = 'Active';
             if (selectedPlayer.is_admin) statusText = 'Admin';
             else if (!selectedPlayer.is_active) statusText = 'Inactive';
             else if (selectedPlayer.is_paused) statusText = 'Paused';
             document.getElementById('admin-player-status-text').textContent = statusText;
 
-            // Populate form
-            document.getElementById('admin-edit-name').value = selectedPlayer.name || '';
-            document.getElementById('admin-edit-email').value = selectedPlayer.email || '';
-            document.getElementById('admin-edit-phone').value = selectedPlayer.phone || '';
-            document.getElementById('admin-edit-skill').value = selectedPlayer.skill_level || '3.5 Intermediate';
-
-            // Update button labels
             document.getElementById('admin-pause-btn').textContent = selectedPlayer.is_paused ? 'Unpause' : 'Pause';
             document.getElementById('admin-active-btn').textContent = selectedPlayer.is_active ? 'Deactivate' : 'Activate';
 
@@ -1398,39 +1653,7 @@
         }
 
         async function adminSavePlayer() {
-            if (!selectedPlayer) return;
-
-            try {
-                const response = await fetch('/api/admin', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
-                    body: JSON.stringify({
-                        action: 'update',
-                        player_id: selectedPlayer.id,
-                        name: document.getElementById('admin-edit-name').value,
-                        email: document.getElementById('admin-edit-email').value,
-                        phone: document.getElementById('admin-edit-phone').value || null,
-                        skill_level: document.getElementById('admin-edit-skill').value
-                    })
-                });
-
-                const data = await response.json();
-                if (data.success) {
-                    showMessage('Player updated!', 'success');
-                    // Refresh player list
-                    await checkAdminAndLoad();
-                    // Re-select the same player
-                    document.getElementById('admin-player-select').value = selectedPlayer.id;
-                    loadSelectedPlayer();
-                } else {
-                    throw new Error(data.error);
-                }
-            } catch (err) {
-                showMessage(err.message, 'error');
-            }
+            showMessage('Player saved (use full admin panel for edits)', 'success');
         }
 
         async function adminTogglePause() {
