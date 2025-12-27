@@ -4,69 +4,49 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-    <title>Support | NET WORTH Tennis</title>
+    <title>Support | Net Worth Tennis</title>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700;800;900&family=IBM+Plex+Mono:wght@300;400;500;600;700&family=Cormorant+Garamond:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
     <style>
         :root {
-            --gold: #D4AF37;
-            --gold-bright: #FFD700;
-            --tennis-ball: #CCFF00;
-            --terminal-black: #0a0a0a;
-            --terminal-dark: #121212;
-            --terminal-gray: #1a1a1a;
-            --terminal-border: #2a2a2a;
-            --power-red: #DC143C;
-            --court-green: #228B22;
-            --text-primary: #e8e8e8;
-            --text-secondary: #888888;
-            --text-muted: #555555;
-            --font-display: 'Playfair Display', Georgia, serif;
-            --font-mono: 'IBM Plex Mono', 'Courier New', monospace;
-            --font-elegant: 'Cormorant Garamond', Georgia, serif;
+            --pink: #d165a4;
+            --orange: #ec613e;
+            --peach: #e7b4b5;
+            --bg-gradient: linear-gradient(135deg, var(--pink) 0%, var(--orange) 50%, var(--peach) 100%);
+            --text-white: #ffffff;
+            --text-dark: #1a1a1a;
+            --text-muted: rgba(255, 255, 255, 0.7);
+            --card-bg: rgba(255, 255, 255, 0.15);
+            --card-bg-solid: rgba(255, 255, 255, 0.95);
+            --card-border: rgba(255, 255, 255, 0.2);
+            --font-display: 'Poppins', 'Helvetica Neue', sans-serif;
+            --font-body: 'Inter', 'Helvetica Neue', sans-serif;
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
-        html {
-            cursor: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="%23CCFF00" stroke="%23228B22" stroke-width="1"/><path d="M12 2 Q6 12 12 22" fill="none" stroke="%23228B22" stroke-width="1.5"/><path d="M12 2 Q18 12 12 22" fill="none" stroke="%23228B22" stroke-width="1.5"/></svg>') 12 12, auto;
-        }
-
-        a, button {
-            cursor: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28"><circle cx="14" cy="14" r="12" fill="%23FFD700" stroke="%23228B22" stroke-width="2"/><path d="M14 2 Q6 14 14 26" fill="none" stroke="%23228B22" stroke-width="2"/><path d="M14 2 Q22 14 14 26" fill="none" stroke="%23228B22" stroke-width="2"/></svg>') 14 14, pointer;
-        }
-
         body {
-            font-family: var(--font-mono);
-            background: var(--terminal-black);
-            color: var(--text-primary);
+            font-family: var(--font-body);
+            background: var(--bg-gradient);
+            background-attachment: fixed;
+            color: var(--text-white);
             min-height: 100vh;
             line-height: 1.7;
             -webkit-font-smoothing: antialiased;
         }
 
+        /* Grainy Texture */
         body::before {
             content: '';
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px);
+            opacity: 0.12;
             pointer-events: none;
             z-index: 9999;
-        }
-
-        body::after {
-            content: '';
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background-image:
-                linear-gradient(rgba(212, 175, 55, 0.03) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(212, 175, 55, 0.03) 1px, transparent 1px);
-            background-size: 50px 50px;
-            pointer-events: none;
-            z-index: -1;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
         }
 
         .header {
@@ -74,17 +54,16 @@
             justify-content: space-between;
             align-items: center;
             padding: 1.5rem 2rem;
-            border-bottom: 1px solid var(--terminal-border);
-            background: var(--terminal-dark);
+            background: linear-gradient(180deg, rgba(209, 101, 164, 0.3) 0%, transparent 100%);
         }
 
         .logo {
             font-family: var(--font-display);
             font-size: 1.5rem;
             font-weight: 700;
-            color: var(--gold);
+            color: var(--text-white);
             text-decoration: none;
-            letter-spacing: 0.1em;
+            text-transform: lowercase;
         }
 
         .nav-links {
@@ -93,42 +72,37 @@
         }
 
         .nav-link {
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-            color: var(--text-muted);
+            font-size: 0.9rem;
+            color: var(--text-white);
             text-decoration: none;
-            transition: color 0.3s ease;
+            opacity: 0.8;
+            transition: opacity 0.3s ease;
         }
 
         .nav-link:hover {
-            color: var(--gold);
+            opacity: 1;
         }
 
         .main {
-            max-width: 900px;
+            max-width: 800px;
             margin: 0 auto;
-            padding: 4rem 2rem;
+            padding: 3rem 2rem;
         }
 
         .page-header {
+            text-align: center;
             margin-bottom: 3rem;
-            padding-bottom: 2rem;
-            border-bottom: 1px solid var(--terminal-border);
         }
 
         .page-title {
             font-family: var(--font-display);
-            font-size: 3rem;
+            font-size: 2.5rem;
             font-weight: 700;
-            color: var(--gold);
             margin-bottom: 0.5rem;
         }
 
         .page-subtitle {
-            font-family: var(--font-elegant);
-            font-size: 1.2rem;
-            font-style: italic;
+            font-size: 1rem;
             color: var(--text-muted);
         }
 
@@ -140,13 +114,14 @@
             font-family: var(--font-display);
             font-size: 1.5rem;
             font-weight: 600;
-            color: var(--text-primary);
             margin-bottom: 1.5rem;
         }
 
         .faq-item {
-            background: var(--terminal-dark);
-            border: 1px solid var(--terminal-border);
+            background: var(--card-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
             margin-bottom: 1rem;
             overflow: hidden;
         }
@@ -154,7 +129,7 @@
         .faq-question {
             padding: 1.25rem 1.5rem;
             font-weight: 500;
-            color: var(--text-primary);
+            color: var(--text-white);
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -163,25 +138,27 @@
         }
 
         .faq-question:hover {
-            background: rgba(212, 175, 55, 0.05);
+            background: rgba(255, 255, 255, 0.1);
         }
 
         .faq-icon {
-            color: var(--gold);
+            color: var(--text-white);
             font-size: 1.2rem;
             transition: transform 0.3s ease;
         }
 
         .faq-answer {
             padding: 0 1.5rem 1.25rem;
-            color: var(--text-secondary);
+            color: var(--text-muted);
             font-size: 0.9rem;
-            border-top: 1px solid var(--terminal-border);
+            border-top: 1px solid var(--card-border);
         }
 
         .contact-section {
-            background: var(--terminal-dark);
-            border: 1px solid var(--gold);
+            background: var(--card-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
             padding: 2rem;
             text-align: center;
         }
@@ -189,79 +166,82 @@
         .contact-title {
             font-family: var(--font-display);
             font-size: 1.5rem;
-            color: var(--gold);
+            font-weight: 600;
             margin-bottom: 1rem;
         }
 
         .contact-text {
-            color: var(--text-secondary);
+            color: var(--text-muted);
             margin-bottom: 1.5rem;
             font-size: 0.9rem;
         }
 
         .contact-email {
             display: inline-block;
-            font-family: var(--font-mono);
+            font-family: var(--font-body);
             font-size: 1rem;
-            color: var(--gold);
+            color: var(--pink);
             text-decoration: none;
-            border: 1px solid var(--gold);
-            padding: 0.75rem 2rem;
+            background: var(--text-white);
+            padding: 0.875rem 2rem;
+            border-radius: 50px;
+            font-weight: 600;
             transition: all 0.3s ease;
         }
 
         .contact-email:hover {
-            background: var(--gold);
-            color: var(--terminal-black);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(255, 255, 255, 0.3);
         }
 
         .footer {
             padding: 3rem 2rem;
-            border-top: 1px solid var(--terminal-border);
-            margin-top: 4rem;
+            border-top: 1px solid var(--card-border);
+            margin-top: 3rem;
         }
 
         .footer-content {
-            max-width: 900px;
+            max-width: 800px;
             margin: 0 auto;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
         }
 
         .footer-logo {
             font-family: var(--font-display);
             font-size: 1.2rem;
             font-weight: 700;
-            color: var(--gold);
+            text-transform: lowercase;
         }
 
         .footer-links {
             display: flex;
             gap: 2rem;
+            flex-wrap: wrap;
         }
 
         .footer-link {
-            font-size: 0.75rem;
+            font-size: 0.85rem;
             color: var(--text-muted);
             text-decoration: none;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
+            transition: color 0.3s ease;
         }
 
         .footer-link:hover {
-            color: var(--gold);
+            color: var(--text-white);
         }
 
         .footer-copy {
-            font-size: 0.7rem;
+            font-size: 0.8rem;
             color: var(--text-muted);
         }
 
         @media (max-width: 768px) {
             .footer-content {
                 flex-direction: column;
-                gap: 1.5rem;
                 text-align: center;
             }
 
@@ -273,10 +253,10 @@
 </head>
 <body>
     <header class="header">
-        <a href="/" class="logo">NET WORTH</a>
+        <a href="/" class="logo">net worth</a>
         <nav class="nav-links">
             <a href="/" class="nav-link">Home</a>
-            <a href="/login" class="nav-link">Login</a>
+            <a href="/login" class="nav-link">Sign In</a>
         </nav>
     </header>
 
@@ -291,11 +271,11 @@
 
             <div class="faq-item">
                 <div class="faq-question">
-                    <span>How do I join the ladder?</span>
+                    <span>How do I join the league?</span>
                     <span class="faq-icon">+</span>
                 </div>
                 <div class="faq-answer">
-                    <p>Contact the league organizer to get added. Once you're in, you'll receive an email at the start of each month with your match pairing.</p>
+                    <p>Head to our <a href="/join" style="color: var(--text-white);">Join page</a> and fill out the form. Choose between Player ($35) or Social Butterfly ($45) membership. Once you submit and send payment via Venmo to @NCOFFEN, you're in!</p>
                 </div>
             </div>
 
@@ -305,7 +285,7 @@
                     <span class="faq-icon">+</span>
                 </div>
                 <div class="faq-answer">
-                    <p>At the start of each month, you'll be paired with another player at a similar skill level. You'll receive an email with your opponent's contact info and availability. Just hit reply to email them directly and coordinate a time to play.</p>
+                    <p>At the start of each month, Player members are paired with another player. You'll receive an email connecting you both. Just reply all to coordinate when and where to play.</p>
                 </div>
             </div>
 
@@ -315,7 +295,7 @@
                     <span class="faq-icon">+</span>
                 </div>
                 <div class="faq-answer">
-                    <p>No problem! Before the 1st of the month, mark yourself as "unavailable" in your profile. You'll automatically be back in the pool the following month. Your ranking stays the same while you're away.</p>
+                    <p>No problem! Log into your dashboard and click "Sit Out This Month". You won't be assigned matches until you toggle back in. Your ranking stays the same while you're away.</p>
                 </div>
             </div>
 
@@ -325,7 +305,7 @@
                     <span class="faq-icon">+</span>
                 </div>
                 <div class="faq-answer">
-                    <p>After your match, log into your dashboard and enter both set scores (e.g., 6-4, 3-6). Either player can report the score. You'll also be asked if you'd like to play this person again - this helps us make better future pairings.</p>
+                    <p>After your match, log into your dashboard and click "Report Score" on your current match. Enter both set scores (e.g., 6-4, 3-6). Either player can report.</p>
                 </div>
             </div>
 
@@ -335,7 +315,7 @@
                     <span class="faq-icon">+</span>
                 </div>
                 <div class="faq-answer">
-                    <p>That's okay! Matches scheduled in December can be completed in January, February, or later. We'll send a friendly check-in reminder, but there's no penalty. Just report the score whenever you finish playing.</p>
+                    <p>That's okay! Matches can be completed later. We'll send a friendly reminder, but there's no penalty. Just report the score whenever you finish playing.</p>
                 </div>
             </div>
 
@@ -345,7 +325,7 @@
                     <span class="faq-icon">+</span>
                 </div>
                 <div class="faq-answer">
-                    <p>Rankings are based on total games won, not match wins. Every game counts! A close 7-6, 6-7 match gives both players nearly the same credit. This rewards competitive play and keeps things fair even when you lose.</p>
+                    <p>Rankings are based on total games won, not match wins. Every game counts! A close 7-6, 6-7 match gives both players nearly the same credit. This rewards competitive play.</p>
                 </div>
             </div>
 
@@ -355,37 +335,38 @@
                     <span class="faq-icon">+</span>
                 </div>
                 <div class="faq-answer">
-                    <p>Just enter your email on the login page and we'll send you a magic link. No password needed! Click the link in your email and you're in.</p>
+                    <p>Just enter your email on the login page and we'll send you a magic link. No password needed! Click the link in your email (from noreply@mail.app.supabase.io) and you're in.</p>
                 </div>
             </div>
 
             <div class="faq-item">
                 <div class="faq-question">
-                    <span>What courts can we play at?</span>
+                    <span>What's the difference between Player and Social Butterfly?</span>
                     <span class="faq-icon">+</span>
                 </div>
                 <div class="faq-answer">
-                    <p>Play at any approved East Side LA public court: Vermont Canyon, Griffith Park (Riverside or Merry-Go-Round), Echo Park, Hermon Park, Eagle Rock, Cheviot Hills, or Poinsettia Park.</p>
+                    <p><strong>Player ($35/year):</strong> Monthly match assignments, score tracking, rankings, plus events and community.<br><br><strong>Social Butterfly ($45/year):</strong> Events, clinics, watch parties, and community access without monthly match assignments.</p>
                 </div>
             </div>
         </section>
 
         <section class="contact-section">
             <h2 class="contact-title">Still Need Help?</h2>
-            <p class="contact-text">Can't find what you're looking for? Reach out to our ladder administrators.</p>
-            <a href="mailto:support@networthtennis.com" class="contact-email">support@networthtennis.com</a>
+            <p class="contact-text">Can't find what you're looking for? Reach out to us.</p>
+            <a href="mailto:ashleybrooke.kaufman@gmail.com,nmcoffen@gmail.com" class="contact-email">Contact Us</a>
         </section>
     </main>
 
     <footer class="footer">
         <div class="footer-content">
-            <span class="footer-logo">NET WORTH</span>
+            <span class="footer-logo">net worth</span>
             <nav class="footer-links">
-                <a href="/rules" class="footer-link">Rules</a>
-                <a href="/privacy" class="footer-link">Privacy</a>
-                <a href="/support" class="footer-link">Support</a>
+                <a href="/#how-it-works" class="footer-link">How It Works</a>
+                <a href="/#courts" class="footer-link">Courts</a>
+                <a href="/rules" class="footer-link">Game Play & Scoring</a>
+                <a href="mailto:ashleybrooke.kaufman@gmail.com,nmcoffen@gmail.com" class="footer-link">Contact Us</a>
             </nav>
-            <p class="footer-copy">&copy; 2025 Net Worth Tennis. East Side LA.</p>
+            <p class="footer-copy">Net Worth Tennis</p>
         </div>
     </footer>
 
