@@ -1,0 +1,70 @@
+{
+  "matching": {
+    "subject": "You're matched for {{month}} 🎾",
+    "greeting": "Hi {{player1}} and {{player2}},",
+    "body": [
+      "You've been matched for a league game in {{month}}.",
+      "",
+      "Go ahead… make the first move 😉",
+      "Please reply all with a few dates and times you're available so you can get your match on the calendar.",
+      "",
+      "You're free to choose the date, time, and location that work best for both of you.",
+      "",
+      "You can view match details and log your score here:",
+      "👉 {{leagueLink}}"
+    ],
+    "signoff": "Have fun and happy hitting,\nNet Worth"
+  },
+  "reminder": {
+    "subject": "Reminder: {{daysLeft}} days left to play your match!",
+    "greeting": "Hi {{playerName}},",
+    "body": [
+      "Just a friendly reminder that you have {{daysLeft}} days left to play your match with {{opponentName}} this month.",
+      "",
+      "If you haven't connected yet, now's a great time to reach out!",
+      "",
+      "Their email: {{opponentEmail}}",
+      "Their availability: {{opponentAvailability}}"
+    ],
+    "signoff": "Happy hitting,\nNet Worth"
+  },
+  "sitOutConfirmation": {
+    "subject": "You're sitting out {{month}}",
+    "greeting": "Hi {{playerName}},",
+    "body": [
+      "This confirms you've chosen to sit out match assignments for {{month}}.",
+      "",
+      "You won't be assigned a match until you toggle back in.",
+      "",
+      "To rejoin, just log into your dashboard and click the button to start playing again."
+    ],
+    "signoff": "See you back on the court soon!\nNet Worth"
+  },
+  "rejoinConfirmation": {
+    "subject": "Welcome back! You're in for {{month}}",
+    "greeting": "Hi {{playerName}},",
+    "body": [
+      "Great news! You're back in the match queue.",
+      "",
+      "You'll be assigned a match starting {{eligibleMonth}}."
+    ],
+    "signoff": "Looking forward to seeing you play!\nNet Worth"
+  },
+  "welcome": {
+    "subject": "Welcome to Net Worth Tennis! 🎾",
+    "greeting": "Hi {{playerName}},",
+    "body": [
+      "Welcome to Net Worth Tennis!",
+      "",
+      "You're officially part of LA's East Side women's tennis community.",
+      "",
+      "What happens next:",
+      "• You'll receive your first match assignment at the start of next month",
+      "• Log into your dashboard to set your availability preferences",
+      "• Connect with the community in our WhatsApp group",
+      "",
+      "Your dashboard: {{dashboardLink}}"
+    ],
+    "signoff": "Happy hitting!\nNet Worth"
+  }
+}

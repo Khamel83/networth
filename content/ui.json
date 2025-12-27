@@ -1,0 +1,147 @@
+{
+  "login": {
+    "pageTitle": "Sign In",
+    "heading": "Sign In",
+    "emailLabel": "Email Address",
+    "emailPlaceholder": "you@example.com",
+    "submitButton": "Send Sign-In Link",
+    "submittingButton": "Sending...",
+    "successHeading": "Check Your Email!",
+    "successMessage": "We've sent a sign-in link to your email. Click the link to access your profile. The link expires in 1 hour.",
+    "helpText": "After entering your email, you'll receive a sign-in link from Supabase Auth (noreply@mail.app.supabase.io). Click the link in that email to access your profile. No password required.",
+    "notInLeague": "Not in the league yet?",
+    "joinLink": "Join us",
+    "backLink": "Back to Net Worth"
+  },
+  "join": {
+    "pageTitle": "Join Net Worth",
+    "heading": "Join the League",
+    "fields": {
+      "name": {
+        "label": "Name",
+        "placeholder": "Your full name",
+        "required": true
+      },
+      "email": {
+        "label": "Email",
+        "placeholder": "you@example.com",
+        "required": true
+      },
+      "phone": {
+        "label": "Phone Number",
+        "placeholder": "(555) 555-5555",
+        "required": true
+      }
+    },
+    "membershipTier": {
+      "heading": "Membership Type",
+      "player": {
+        "label": "Player - $35",
+        "description": "Monthly match assignments plus access to all league events and community."
+      },
+      "socialButterfly": {
+        "label": "Social Butterfly - $45",
+        "description": "All the social events and community, with no matches assigned."
+      }
+    },
+    "availability": {
+      "heading": "Your Availability for Matches",
+      "helpText": "Select all times you're typically available",
+      "slots": {
+        "weekdayEarly": "Weekdays before 9am",
+        "weekdayDay": "Weekdays 9-5",
+        "weekdayLate": "Weekdays after 5pm",
+        "weekendEarly": "Weekends before 9am",
+        "weekendDay": "Weekends 9-5",
+        "weekendLate": "Weekends after 5pm"
+      }
+    },
+    "favoritePlayers": {
+      "label": "Favorite Players (optional)",
+      "placeholder": "Any players you especially enjoy playing with?"
+    },
+    "submitButton": "Join Now",
+    "submittingButton": "Submitting...",
+    "successHeading": "Request Sent!",
+    "successMessage": "We're so pumped for you to join us! Please send your membership fee via Venmo @NCOFFEN (Natalie) to complete your registration.",
+    "footer": "Have ideas for the league or want to help plan events? Get in touch with",
+    "footerContacts": {
+      "ashley": {
+        "name": "Ash",
+        "email": "ashleybrooke.kaufman@gmail.com"
+      },
+      "natalie": {
+        "name": "Natalie",
+        "email": "nmcoffen@gmail.com"
+      }
+    }
+  },
+  "dashboard": {
+    "pageTitle": "My Profile",
+    "sections": {
+      "sitOut": {
+        "heading": "Match Status",
+        "activeLabel": "You're active for matches",
+        "pausedLabel": "You're sitting out",
+        "sitOutButton": "Sit Out This Month",
+        "rejoinButton": "I'm Back!",
+        "sitOutHelp": "Clicking this button pauses match assignments until you click back in. If you rejoin mid-month, you'll be assigned starting the following month. You'll receive email confirmations for each month you're paused."
+      },
+      "myInfo": {
+        "heading": "My Info",
+        "fields": {
+          "name": "Name",
+          "email": "Email",
+          "phone": "Phone Number"
+        },
+        "saveButton": "Save My Info",
+        "savingButton": "Saving...",
+        "savedMessage": "Changes saved!"
+      },
+      "availability": {
+        "heading": "My Availability",
+        "helpText": "Select all times you're typically available for matches"
+      },
+      "currentMatch": {
+        "heading": "This Month's Match",
+        "noMatchMessage": "No match assigned for this month",
+        "opponentLabel": "Your opponent",
+        "availabilityLabel": "Their availability",
+        "contactLabel": "Contact",
+        "reportScoreButton": "Report Score"
+      },
+      "matchHistory": {
+        "heading": "Match History",
+        "noMatchesMessage": "No matches played yet"
+      }
+    },
+    "socialButterfly": {
+      "heading": "Social Butterfly",
+      "description": "You're enjoying the events and community without match assignments.",
+      "upgradeButton": "I want to start playing!",
+      "upgradeHelp": "Clicking this button adds you to the match queue for the following month. If you need to sit out in the future, be sure to return to your profile and update your status before each month's match assignments."
+    }
+  },
+  "profile": {
+    "pageTitle": "Player Profile",
+    "memberSince": "Member since",
+    "tier": {
+      "player": "Player",
+      "socialButterfly": "Social Butterfly"
+    },
+    "stats": {
+      "gamesWon": "Games Won",
+      "matchesPlayed": "Matches Played",
+      "ranking": "Ranking"
+    },
+    "availability": {
+      "heading": "Availability"
+    },
+    "backToRankings": "Back to Rankings"
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "Something went wrong. Please try again.",
+    "required": "Required"
+  }
+}

@@ -4,44 +4,37 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-    <title>Login | NET WORTH Tennis</title>
+    <title>Sign In | Net Worth Tennis</title>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700;800;900&family=IBM+Plex+Mono:wght@300;400;500;600;700&family=Cormorant+Garamond:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
     <style>
         :root {
-            --gold: #D4AF37;
-            --gold-bright: #FFD700;
-            --tennis-ball: #CCFF00;
-            --terminal-black: #0a0a0a;
-            --terminal-dark: #121212;
-            --terminal-gray: #1a1a1a;
-            --terminal-border: #2a2a2a;
-            --power-red: #DC143C;
-            --court-green: #228B22;
-            --text-primary: #e8e8e8;
-            --text-secondary: #888888;
-            --text-muted: #555555;
-            --font-display: 'Playfair Display', Georgia, serif;
-            --font-mono: 'IBM Plex Mono', 'Courier New', monospace;
+            --pink: #d165a4;
+            --orange: #ec613e;
+            --peach: #e7b4b5;
+            --bg-gradient: linear-gradient(135deg, var(--pink) 0%, var(--orange) 50%, var(--peach) 100%);
+            --text-white: #ffffff;
+            --text-dark: #1a1a1a;
+            --text-muted: rgba(255, 255, 255, 0.7);
+            --card-bg: rgba(255, 255, 255, 0.15);
+            --card-bg-solid: rgba(255, 255, 255, 0.95);
+            --card-border: rgba(255, 255, 255, 0.2);
+            --font-display: 'Poppins', 'Helvetica Neue', sans-serif;
+            --font-body: 'Inter', 'Helvetica Neue', sans-serif;
+            --success-green: #22c55e;
+            --error-red: #ef4444;
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
-        html {
-            cursor: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="%23CCFF00" stroke="%23228B22" stroke-width="1"/><path d="M12 2 Q6 12 12 22" fill="none" stroke="%23228B22" stroke-width="1.5"/><path d="M12 2 Q18 12 12 22" fill="none" stroke="%23228B22" stroke-width="1.5"/></svg>') 12 12, auto;
-        }
-
-        a, button, input[type="submit"] {
-            cursor: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28"><circle cx="14" cy="14" r="12" fill="%23FFD700" stroke="%23228B22" stroke-width="2"/><path d="M14 2 Q6 14 14 26" fill="none" stroke="%23228B22" stroke-width="2"/><path d="M14 2 Q22 14 14 26" fill="none" stroke="%23228B22" stroke-width="2"/></svg>') 14 14, pointer;
-        }
-
         body {
-            font-family: var(--font-mono);
-            background: var(--terminal-black);
-            color: var(--text-primary);
+            font-family: var(--font-body);
+            background: var(--bg-gradient);
+            background-attachment: fixed;
+            color: var(--text-white);
             min-height: 100vh;
             display: flex;
             align-items: center;
@@ -49,25 +42,15 @@
             -webkit-font-smoothing: antialiased;
         }
 
+        /* Grainy Texture */
         body::before {
             content: '';
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px);
+            opacity: 0.12;
             pointer-events: none;
             z-index: 9999;
-        }
-
-        body::after {
-            content: '';
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background-image:
-                linear-gradient(rgba(212, 175, 55, 0.03) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(212, 175, 55, 0.03) 1px, transparent 1px);
-            background-size: 50px 50px;
-            pointer-events: none;
-            z-index: -1;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
         }
 
         .login-container {
@@ -77,30 +60,30 @@
         }
 
         .login-card {
-            background: var(--terminal-dark);
-            border: 1px solid var(--terminal-border);
+            background: var(--card-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--card-border);
+            border-radius: 24px;
             padding: 3rem;
         }
 
         .login-header {
             text-align: center;
-            margin-bottom: 2.5rem;
+            margin-bottom: 2rem;
         }
 
         .login-logo {
             font-family: var(--font-display);
-            font-size: 2rem;
+            font-size: 2.5rem;
             font-weight: 700;
-            color: var(--gold);
+            color: var(--text-white);
             margin-bottom: 0.5rem;
-            letter-spacing: 0.1em;
+            text-transform: lowercase;
         }
 
         .login-subtitle {
-            font-size: 0.75rem;
+            font-size: 0.9rem;
             color: var(--text-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.2em;
         }
 
         .form-group {
@@ -109,27 +92,28 @@
 
         label {
             display: block;
-            font-size: 0.7rem;
-            text-transform: uppercase;
-            letter-spacing: 0.15em;
-            color: var(--text-muted);
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-white);
             margin-bottom: 0.5rem;
         }
 
         input[type="email"] {
             width: 100%;
             padding: 1rem;
-            background: var(--terminal-gray);
-            border: 1px solid var(--terminal-border);
-            color: var(--text-primary);
-            font-family: var(--font-mono);
-            font-size: 0.9rem;
-            transition: border-color 0.3s ease;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            color: var(--text-white);
+            font-family: var(--font-body);
+            font-size: 1rem;
+            transition: all 0.3s ease;
         }
 
         input:focus {
             outline: none;
-            border-color: var(--gold);
+            border-color: var(--text-white);
+            background: rgba(255, 255, 255, 0.2);
         }
 
         input::placeholder {
@@ -139,30 +123,33 @@
         .btn-login {
             width: 100%;
             padding: 1rem;
-            background: var(--gold);
+            background: var(--text-white);
             border: none;
-            color: var(--terminal-black);
-            font-family: var(--font-mono);
-            font-size: 0.8rem;
+            border-radius: 50px;
+            color: var(--pink);
+            font-family: var(--font-body);
+            font-size: 1rem;
             font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.15em;
+            cursor: pointer;
             transition: all 0.3s ease;
         }
 
         .btn-login:hover {
-            background: var(--gold-bright);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(255, 255, 255, 0.3);
         }
 
         .btn-login:disabled {
             opacity: 0.5;
             cursor: not-allowed;
+            transform: none;
         }
 
         .message {
-            padding: 0.75rem;
-            font-size: 0.8rem;
+            padding: 1rem;
+            font-size: 0.9rem;
             margin-bottom: 1.5rem;
+            border-radius: 12px;
             display: none;
         }
 
@@ -171,15 +158,26 @@
         }
 
         .message.error {
-            background: rgba(220, 20, 60, 0.1);
-            border: 1px solid var(--power-red);
-            color: var(--power-red);
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid var(--error-red);
+            color: #fecaca;
         }
 
         .message.success {
-            background: rgba(34, 139, 34, 0.1);
-            border: 1px solid var(--court-green);
-            color: var(--court-green);
+            background: rgba(34, 197, 94, 0.2);
+            border: 1px solid var(--success-green);
+            color: #bbf7d0;
+        }
+
+        .login-info {
+            margin-top: 1.5rem;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            text-align: center;
+            line-height: 1.6;
         }
 
         .login-footer {
@@ -189,68 +187,71 @@
 
         .login-footer p {
             color: var(--text-muted);
-            font-size: 0.75rem;
-            line-height: 1.6;
+            font-size: 0.9rem;
         }
 
-        .login-info {
-            margin-top: 1.5rem;
-            padding: 1rem;
-            background: rgba(212, 175, 55, 0.05);
-            border: 1px solid var(--terminal-border);
-            font-size: 0.75rem;
-            color: var(--text-secondary);
-            text-align: center;
+        .login-footer a {
+            color: var(--text-white);
+            text-decoration: none;
+            font-weight: 600;
         }
 
-        .login-info strong {
-            color: var(--gold);
+        .login-footer a:hover {
+            text-decoration: underline;
         }
 
         .back-link {
             display: inline-flex;
             align-items: center;
             gap: 0.5rem;
-            color: var(--text-muted);
+            color: var(--text-white);
             text-decoration: none;
-            font-size: 0.75rem;
-            margin-bottom: 2rem;
-            transition: color 0.3s ease;
+            font-size: 0.9rem;
+            margin-bottom: 1.5rem;
+            opacity: 0.8;
+            transition: opacity 0.3s ease;
         }
 
         .back-link:hover {
-            color: var(--gold);
+            opacity: 1;
         }
 
         /* Success state */
         .check-email {
             text-align: center;
-            padding: 2rem 0;
+            padding: 1rem 0;
         }
 
         .check-email svg {
             width: 64px;
             height: 64px;
-            color: var(--court-green);
+            color: var(--text-white);
             margin-bottom: 1.5rem;
         }
 
         .check-email h2 {
             font-family: var(--font-display);
-            font-size: 1.5rem;
-            color: var(--text-primary);
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--text-white);
             margin-bottom: 1rem;
         }
 
         .check-email p {
-            color: var(--text-secondary);
-            font-size: 0.85rem;
+            color: var(--text-muted);
+            font-size: 1rem;
             line-height: 1.6;
         }
 
         .check-email .email-sent {
-            color: var(--gold);
+            color: var(--text-white);
             font-weight: 600;
+        }
+
+        .check-email .small-text {
+            margin-top: 1.5rem;
+            font-size: 0.85rem;
+            color: var(--text-muted);
         }
     </style>
 </head>
@@ -260,14 +261,14 @@
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M19 12H5M12 19l-7-7 7-7"/>
             </svg>
-            Back to Ladder
+            Back to Net Worth
         </a>
 
         <div class="login-card">
             <div id="login-form-section">
                 <div class="login-header">
-                    <h1 class="login-logo">NET WORTH</h1>
-                    <p class="login-subtitle">Player Login</p>
+                    <h1 class="login-logo">net worth</h1>
+                    <p class="login-subtitle">Sign in to your account</p>
                 </div>
 
                 <div id="message" class="message"></div>
@@ -275,21 +276,20 @@
                 <form id="login-form">
                     <div class="form-group">
                         <label for="email">Email Address</label>
-                        <input type="email" id="email" name="email" placeholder="your@email.com" required autocomplete="email">
+                        <input type="email" id="email" name="email" placeholder="you@example.com" required autocomplete="email">
                     </div>
 
                     <button type="submit" class="btn-login" id="submit-btn">
-                        Send Login Link
+                        Send Sign-In Link
                     </button>
                 </form>
 
                 <div class="login-info">
-                    <strong>No password needed!</strong><br>
-                    We'll email you a secure login link.
+                    After entering your email, you'll receive a sign-in link from Supabase Auth (noreply@mail.app.supabase.io). Click the link in that email to access your profile. No password required.
                 </div>
 
                 <div class="login-footer">
-                    <p>Not in the league yet?<br>Contact the organizer to get added.</p>
+                    <p>Not in the league yet? <a href="/join">Join us</a></p>
                 </div>
             </div>
 
@@ -300,11 +300,20 @@
                         <path d="M22 6c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6zm-2 0l-8 5-8-5h16zm0 12H4V8l8 5 8-5v10z"/>
                     </svg>
                     <h2>Check Your Email!</h2>
-                    <p>We sent a login link to<br><span class="email-sent" id="sent-email"></span></p>
-                    <p style="margin-top: 1rem; font-size: 0.75rem; color: var(--text-muted);">
-                        Click the link in your email to sign in.<br>
+                    <p>We sent a sign-in link to<br><span class="email-sent" id="sent-email"></span></p>
+                    <p class="small-text">
+                        Click the link in your email to access your profile.<br>
                         Link expires in 1 hour.
                     </p>
+                </div>
+
+                <div class="login-footer" style="margin-top: 2rem;">
+                    <a href="/" class="back-link" style="justify-content: center;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M19 12H5M12 19l-7-7 7-7"/>
+                        </svg>
+                        Back to Net Worth
+                    </a>
                 </div>
             </div>
         </div>
@@ -321,13 +330,11 @@
         async function handleMagicLinkCallback() {
             const hash = window.location.hash;
             if (hash && hash.includes('access_token=')) {
-                // Parse the hash fragment
                 const params = new URLSearchParams(hash.substring(1));
                 const accessToken = params.get('access_token');
 
                 if (accessToken) {
                     try {
-                        // Verify token and get player data
                         const response = await fetch('/api/auth', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
@@ -337,11 +344,8 @@
                         const data = await response.json();
 
                         if (data.success && data.player) {
-                            // Store token and player data
                             localStorage.setItem('networth_token', accessToken);
                             localStorage.setItem('networth_player', JSON.stringify(data.player));
-
-                            // Redirect to dashboard
                             window.location.href = '/dashboard';
                             return true;
                         }
@@ -353,7 +357,6 @@
             return false;
         }
 
-        // Check for callback on page load
         handleMagicLinkCallback();
 
         form.addEventListener('submit', async (e) => {
@@ -374,7 +377,6 @@
                 const data = await response.json();
 
                 if (data.success) {
-                    // Show success state
                     document.getElementById('sent-email').textContent = email;
                     formSection.style.display = 'none';
                     successSection.style.display = 'block';
@@ -385,7 +387,7 @@
                 messageEl.textContent = err.message;
                 messageEl.className = 'message error show';
                 submitBtn.disabled = false;
-                submitBtn.textContent = 'Send Login Link';
+                submitBtn.textContent = 'Send Sign-In Link';
             }
         });
     </script>

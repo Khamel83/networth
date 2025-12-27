@@ -4,45 +4,42 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-    <title>NET WORTH | East Side Tennis Ladder</title>
-    <meta name="description" content="Competitive women's tennis ladder for East Side Los Angeles. Track rankings, report scores, and climb the ladder.">
+    <title>Net Worth | Women's Tennis League - LA East Side</title>
+    <meta name="description" content="A women's tennis league on LA's East Side. Tennis. Events. Community.">
 
-    <!-- 80s Wall Street Fonts - Distinctive, not generic -->
+    <!-- Modern Sans-Serif Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700;800;900&family=IBM+Plex+Mono:wght@300;400;500;600;700&family=Cormorant+Garamond:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
     <style>
-        /* CSS Variables - 80s Wall Street + Tennis */
+        /* CSS Variables - Ashley's Design Concept */
         :root {
-            /* Primary: Bloomberg Terminal Gold */
-            --gold: #D4AF37;
-            --gold-bright: #FFD700;
-            --gold-dark: #B8860B;
+            /* Primary Gradient Colors */
+            --pink: #d165a4;
+            --pink-light: #e087b8;
+            --orange: #ec613e;
+            --orange-light: #f07d5f;
+            --peach: #e7b4b5;
+            --peach-light: #f0c8c9;
 
-            /* Secondary: Tennis Court Green */
-            --court-green: #228B22;
-            --court-green-dark: #006400;
-            --tennis-ball: #CCFF00;
-
-            /* Background: Terminal Black */
-            --terminal-black: #0a0a0a;
-            --terminal-dark: #121212;
-            --terminal-gray: #1a1a1a;
-            --terminal-border: #2a2a2a;
-
-            /* Accent: Power Red (danger/urgency) */
-            --power-red: #DC143C;
+            /* Gradient */
+            --bg-gradient: linear-gradient(135deg, var(--pink) 0%, var(--orange) 50%, var(--peach) 100%);
+            --bg-gradient-subtle: linear-gradient(135deg, rgba(209, 101, 164, 0.1) 0%, rgba(236, 97, 62, 0.1) 50%, rgba(231, 180, 181, 0.1) 100%);
 
             /* Text */
-            --text-primary: #e8e8e8;
-            --text-secondary: #888888;
-            --text-muted: #555555;
+            --text-white: #ffffff;
+            --text-dark: #1a1a1a;
+            --text-muted: rgba(255, 255, 255, 0.7);
+
+            /* Card/Surface */
+            --card-bg: rgba(255, 255, 255, 0.15);
+            --card-bg-solid: rgba(255, 255, 255, 0.95);
+            --card-border: rgba(255, 255, 255, 0.2);
 
             /* Typography */
-            --font-display: 'Playfair Display', Georgia, serif;
-            --font-mono: 'IBM Plex Mono', 'Courier New', monospace;
-            --font-elegant: 'Cormorant Garamond', Georgia, serif;
+            --font-display: 'Poppins', 'Helvetica Neue', sans-serif;
+            --font-body: 'Inter', 'Helvetica Neue', sans-serif;
 
             /* Spacing */
             --space-xs: 0.25rem;
@@ -60,20 +57,12 @@
             box-sizing: border-box;
         }
 
-        /* Custom Tennis Ball Cursor */
-        html {
-            cursor: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="%23CCFF00" stroke="%23228B22" stroke-width="1"/><path d="M12 2 Q6 12 12 22" fill="none" stroke="%23228B22" stroke-width="1.5"/><path d="M12 2 Q18 12 12 22" fill="none" stroke="%23228B22" stroke-width="1.5"/></svg>') 12 12, auto;
-        }
-
-        a, button {
-            cursor: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28"><circle cx="14" cy="14" r="12" fill="%23FFD700" stroke="%23228B22" stroke-width="2"/><path d="M14 2 Q6 14 14 26" fill="none" stroke="%23228B22" stroke-width="2"/><path d="M14 2 Q22 14 14 26" fill="none" stroke="%23228B22" stroke-width="2"/></svg>') 14 14, pointer;
-        }
-
-        /* Body - Terminal aesthetic */
+        /* Body - Gradient Background */
         body {
-            font-family: var(--font-mono);
-            background: var(--terminal-black);
-            color: var(--text-primary);
+            font-family: var(--font-body);
+            background: var(--bg-gradient);
+            background-attachment: fixed;
+            color: var(--text-white);
             min-height: 100vh;
             overflow-x: hidden;
             line-height: 1.6;
@@ -81,7 +70,7 @@
             -moz-osx-font-smoothing: grayscale;
         }
 
-        /* Scanline overlay - subtle CRT effect */
+        /* Grainy Texture Overlay */
         body::before {
             content: '';
             position: fixed;
@@ -89,45 +78,24 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: repeating-linear-gradient(
-                0deg,
-                transparent,
-                transparent 2px,
-                rgba(0, 0, 0, 0.03) 2px,
-                rgba(0, 0, 0, 0.03) 4px
-            );
+            opacity: 0.12;
             pointer-events: none;
             z-index: 9999;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
         }
 
-        /* Grid pattern background */
-        body::after {
-            content: '';
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-image:
-                linear-gradient(rgba(212, 175, 55, 0.03) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(212, 175, 55, 0.03) 1px, transparent 1px);
-            background-size: 50px 50px;
-            pointer-events: none;
-            z-index: -1;
-        }
-
-        /* Header - Centered Menu Tyler McGillivary Style */
+        /* Header */
         header {
             position: fixed;
             top: 0;
             left: 0;
             right: 0;
             z-index: 1000;
-            padding: var(--space-lg) var(--space-xl);
+            padding: var(--space-md) var(--space-xl);
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background: linear-gradient(180deg, var(--terminal-black) 0%, transparent 100%);
+            background: linear-gradient(180deg, rgba(209, 101, 164, 0.3) 0%, transparent 100%);
         }
 
         .header-flex {
@@ -137,32 +105,19 @@
             align-items: center;
         }
 
-        /* Logo on left */
+        /* Logo */
         .logo {
             order: 1;
             font-family: var(--font-display);
             font-size: 1.5rem;
             font-weight: 700;
-            letter-spacing: 0.1em;
-            color: var(--gold);
+            letter-spacing: 0.02em;
+            color: var(--text-white);
             text-decoration: none;
-            display: flex;
-            align-items: center;
-            gap: var(--space-sm);
+            text-transform: lowercase;
         }
 
-        .logo-icon {
-            width: 32px;
-            height: 32px;
-            border: 2px solid var(--gold);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.8rem;
-        }
-
-        /* Center Navigation - The Tyler McGillivary Way */
+        /* Center Navigation */
         .nav-center {
             order: 2;
             display: flex;
@@ -173,37 +128,20 @@
         }
 
         .nav-link {
-            font-family: var(--font-mono);
-            font-size: 0.75rem;
+            font-family: var(--font-body);
+            font-size: 0.85rem;
             font-weight: 500;
-            letter-spacing: 0.15em;
-            text-transform: uppercase;
-            color: var(--text-secondary);
+            color: var(--text-white);
             text-decoration: none;
-            transition: color 0.3s ease, transform 0.3s ease;
-            position: relative;
-        }
-
-        .nav-link::after {
-            content: '';
-            position: absolute;
-            bottom: -4px;
-            left: 0;
-            width: 0;
-            height: 1px;
-            background: var(--gold);
-            transition: width 0.3s ease;
+            transition: opacity 0.3s ease;
+            opacity: 0.9;
         }
 
         .nav-link:hover {
-            color: var(--gold);
+            opacity: 1;
         }
 
-        .nav-link:hover::after {
-            width: 100%;
-        }
-
-        /* Auth buttons on right */
+        /* Auth buttons */
         .nav-auth {
             order: 3;
             display: flex;
@@ -212,32 +150,33 @@
         }
 
         .btn {
-            font-family: var(--font-mono);
-            font-size: 0.7rem;
+            font-family: var(--font-body);
+            font-size: 0.85rem;
             font-weight: 600;
-            letter-spacing: 0.1em;
-            text-transform: uppercase;
-            padding: var(--space-sm) var(--space-md);
-            border: 1px solid var(--gold);
+            padding: var(--space-sm) var(--space-lg);
+            border: 2px solid var(--text-white);
             background: transparent;
-            color: var(--gold);
+            color: var(--text-white);
             text-decoration: none;
+            border-radius: 50px;
             transition: all 0.3s ease;
+            cursor: pointer;
         }
 
         .btn:hover {
-            background: var(--gold);
-            color: var(--terminal-black);
+            background: var(--text-white);
+            color: var(--pink);
         }
 
         .btn-primary {
-            background: var(--gold);
-            color: var(--terminal-black);
+            background: var(--text-white);
+            color: var(--pink);
+            border-color: var(--text-white);
         }
 
         .btn-primary:hover {
-            background: var(--gold-bright);
-            border-color: var(--gold-bright);
+            background: transparent;
+            color: var(--text-white);
         }
 
         /* Hero Section */
@@ -252,31 +191,13 @@
             position: relative;
         }
 
-        /* Animated tennis ball decoration */
-        .hero::before {
-            content: '';
-            position: absolute;
-            width: 300px;
-            height: 300px;
-            background: radial-gradient(circle at 30% 30%, var(--tennis-ball) 0%, #9ACD32 100%);
-            border-radius: 50%;
-            right: 10%;
-            top: 20%;
-            opacity: 0.1;
-            animation: float 6s ease-in-out infinite;
-        }
-
-        @keyframes float {
-            0%, 100% { transform: translateY(0) rotate(0deg); }
-            50% { transform: translateY(-30px) rotate(10deg); }
-        }
-
         .hero-eyebrow {
-            font-family: var(--font-mono);
-            font-size: 0.75rem;
-            letter-spacing: 0.3em;
+            font-family: var(--font-body);
+            font-size: 0.9rem;
+            font-weight: 500;
+            letter-spacing: 0.1em;
             text-transform: uppercase;
-            color: var(--gold);
+            color: var(--text-white);
             margin-bottom: var(--space-lg);
             opacity: 0;
             animation: fadeInUp 0.8s ease forwards;
@@ -285,32 +206,26 @@
 
         .hero-title {
             font-family: var(--font-display);
-            font-size: clamp(3rem, 10vw, 8rem);
-            font-weight: 800;
-            line-height: 0.95;
+            font-size: clamp(4rem, 15vw, 12rem);
+            font-weight: 700;
+            line-height: 0.9;
             letter-spacing: -0.02em;
-            margin-bottom: var(--space-lg);
+            margin-bottom: var(--space-md);
             opacity: 0;
             animation: fadeInUp 0.8s ease forwards;
             animation-delay: 0.4s;
+            text-transform: lowercase;
         }
 
         .hero-title span {
             display: block;
         }
 
-        .hero-title .gold {
-            color: var(--gold);
-            text-shadow: 0 0 60px rgba(212, 175, 55, 0.3);
-        }
-
-        .hero-subtitle {
-            font-family: var(--font-elegant);
-            font-size: clamp(1.1rem, 2vw, 1.5rem);
+        .hero-tagline {
+            font-family: var(--font-body);
+            font-size: clamp(1rem, 2vw, 1.3rem);
             font-weight: 400;
-            font-style: italic;
-            color: var(--text-secondary);
-            max-width: 600px;
+            color: var(--text-white);
             margin-bottom: var(--space-xl);
             opacity: 0;
             animation: fadeInUp 0.8s ease forwards;
@@ -327,7 +242,7 @@
 
         .hero-cta .btn {
             padding: var(--space-md) var(--space-xl);
-            font-size: 0.8rem;
+            font-size: 0.9rem;
         }
 
         @keyframes fadeInUp {
@@ -341,244 +256,248 @@
             }
         }
 
-        /* Stats Ticker - Bloomberg Style */
-        .ticker {
-            position: absolute;
-            bottom: var(--space-xl);
-            left: 0;
-            right: 0;
-            border-top: 1px solid var(--terminal-border);
-            border-bottom: 1px solid var(--terminal-border);
-            padding: var(--space-md) 0;
-            overflow: hidden;
-        }
-
-        .ticker-content {
-            display: flex;
-            gap: var(--space-2xl);
-            animation: scroll 20s linear infinite;
-        }
-
-        @keyframes scroll {
-            0% { transform: translateX(0); }
-            100% { transform: translateX(-50%); }
-        }
-
-        .ticker-item {
-            display: flex;
-            align-items: center;
-            gap: var(--space-sm);
-            white-space: nowrap;
-            font-size: 0.75rem;
-        }
-
-        .ticker-label {
-            color: var(--text-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-        }
-
-        .ticker-value {
-            color: var(--gold);
-            font-weight: 600;
-        }
-
-        .ticker-change {
-            font-size: 0.65rem;
-        }
-
-        .ticker-change.up {
-            color: var(--court-green);
-        }
-
-        .ticker-change.down {
-            color: var(--power-red);
-        }
-
-        /* Rankings Section */
+        /* Section */
         .section {
             padding: var(--space-2xl) var(--space-xl);
-            max-width: 1400px;
+            max-width: 1200px;
             margin: 0 auto;
         }
 
         .section-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-end;
+            text-align: center;
             margin-bottom: var(--space-xl);
-            border-bottom: 1px solid var(--terminal-border);
-            padding-bottom: var(--space-lg);
         }
 
         .section-title {
             font-family: var(--font-display);
             font-size: 2.5rem;
             font-weight: 700;
-            color: var(--text-primary);
+            color: var(--text-white);
+            margin-bottom: var(--space-sm);
         }
 
         .section-subtitle {
-            font-family: var(--font-mono);
-            font-size: 0.75rem;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.2em;
-        }
-
-        /* Ladder Table - Terminal Style */
-        .ladder {
-            background: var(--terminal-dark);
-            border: 1px solid var(--terminal-border);
-        }
-
-        .ladder-scroll {
-            max-height: 600px;
-            overflow-y: auto;
-            scroll-behavior: smooth;
-        }
-
-        /* Custom scrollbar */
-        .ladder-scroll::-webkit-scrollbar {
-            width: 8px;
-        }
-
-        .ladder-scroll::-webkit-scrollbar-track {
-            background: var(--terminal-gray);
-        }
-
-        .ladder-scroll::-webkit-scrollbar-thumb {
-            background: var(--gold);
-            border-radius: 4px;
-        }
-
-        .ladder-scroll::-webkit-scrollbar-thumb:hover {
-            background: var(--gold-bright);
-        }
-
-        .ladder-header {
-            display: grid;
-            grid-template-columns: 80px 1fr 120px 100px 100px;
-            padding: var(--space-md) var(--space-lg);
-            background: var(--terminal-gray);
-            border-bottom: 1px solid var(--terminal-border);
-            font-size: 0.7rem;
-            text-transform: uppercase;
-            letter-spacing: 0.15em;
+            font-family: var(--font-body);
+            font-size: 1rem;
             color: var(--text-muted);
         }
 
-        .ladder-row {
+        /* Membership Section */
+        .membership {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: var(--space-xl);
+            margin-bottom: var(--space-xl);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--card-border);
+        }
+
+        .membership-intro {
+            text-align: center;
+            margin-bottom: var(--space-xl);
+        }
+
+        .membership-intro h2 {
+            font-family: var(--font-display);
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: var(--space-md);
+        }
+
+        .membership-intro p {
+            font-size: 1rem;
+            color: var(--text-muted);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .tiers-grid {
             display: grid;
-            grid-template-columns: 80px 1fr 120px 100px 100px;
-            padding: var(--space-md) var(--space-lg);
-            border-bottom: 1px solid var(--terminal-border);
-            transition: background 0.2s ease;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: var(--space-lg);
+            margin-bottom: var(--space-lg);
+        }
+
+        .tier-card {
+            background: var(--card-bg-solid);
+            color: var(--text-dark);
+            border-radius: 16px;
+            padding: var(--space-lg);
+            text-align: center;
+            transition: transform 0.3s ease;
+        }
+
+        .tier-card:hover {
+            transform: translateY(-4px);
+        }
+
+        .tier-name {
+            font-family: var(--font-display);
+            font-size: 1.1rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--pink);
+            margin-bottom: var(--space-sm);
+        }
+
+        .tier-price {
+            font-family: var(--font-display);
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--text-dark);
+            margin-bottom: var(--space-md);
+        }
+
+        .tier-features {
+            list-style: none;
+            text-align: left;
+            font-size: 0.9rem;
+            color: var(--text-dark);
+        }
+
+        .tier-features li {
+            padding: var(--space-sm) 0;
+            border-bottom: 1px solid rgba(0,0,0,0.1);
+            display: flex;
+            align-items: flex-start;
+            gap: var(--space-sm);
+        }
+
+        .tier-features li:last-child {
+            border-bottom: none;
+        }
+
+        .tier-features li::before {
+            content: '✓';
+            color: var(--pink);
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .membership-cta {
+            text-align: center;
+        }
+
+        .membership-cta .btn {
+            background: var(--text-white);
+            color: var(--pink);
+            border-color: var(--text-white);
+            padding: var(--space-md) var(--space-2xl);
+            font-size: 1rem;
+        }
+
+        .membership-cta .btn:hover {
+            background: transparent;
+            color: var(--text-white);
+        }
+
+        /* Rankings Section */
+        .rankings {
+            background: var(--card-bg);
+            border-radius: 24px;
+            padding: var(--space-xl);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--card-border);
+        }
+
+        .rankings-table {
+            width: 100%;
+        }
+
+        .rankings-header {
+            display: grid;
+            grid-template-columns: 60px 1fr 100px 100px;
+            padding: var(--space-md) 0;
+            border-bottom: 1px solid var(--card-border);
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-muted);
+        }
+
+        .rankings-row {
+            display: grid;
+            grid-template-columns: 60px 1fr 100px 100px;
+            padding: var(--space-md) 0;
+            border-bottom: 1px solid var(--card-border);
             align-items: center;
+            transition: background 0.2s ease;
         }
 
-        .ladder-row:hover {
-            background: rgba(212, 175, 55, 0.05);
+        .rankings-row:hover {
+            background: rgba(255, 255, 255, 0.1);
         }
 
-        .ladder-row:last-child {
+        .rankings-row:last-child {
             border-bottom: none;
         }
 
         .rank {
             font-family: var(--font-display);
-            font-size: 1.5rem;
+            font-size: 1.3rem;
             font-weight: 700;
-            color: var(--gold);
         }
 
-        .rank-1 { color: var(--gold-bright); text-shadow: 0 0 20px rgba(255, 215, 0, 0.5); }
+        .rank-1 { color: #FFD700; }
         .rank-2 { color: #C0C0C0; }
         .rank-3 { color: #CD7F32; }
 
         .player-info {
             display: flex;
-            flex-direction: column;
-            gap: 2px;
+            align-items: center;
+            gap: var(--space-md);
+        }
+
+        .player-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--card-bg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            flex-shrink: 0;
         }
 
         .player-name {
             font-weight: 600;
-            color: var(--text-primary);
         }
 
-        .player-level {
-            font-size: 0.7rem;
-            color: var(--text-muted);
-        }
-
-        .player-points {
-            font-family: var(--font-mono);
+        .player-games {
+            font-family: var(--font-display);
             font-weight: 600;
-            color: var(--tennis-ball);
+            text-align: center;
         }
 
-        .player-record {
-            font-size: 0.85rem;
-            color: var(--text-secondary);
-        }
-
-        .player-trend {
-            display: flex;
-            align-items: center;
-            gap: var(--space-xs);
-            font-size: 0.8rem;
-        }
-
-        .trend-up {
-            color: var(--court-green);
-        }
-
-        .trend-down {
-            color: var(--power-red);
-        }
-
-        .trend-neutral {
+        .player-matches {
+            text-align: center;
             color: var(--text-muted);
         }
 
-        /* How It Works Section */
-        .how-it-works {
-            background: linear-gradient(180deg, var(--terminal-black) 0%, var(--terminal-dark) 100%);
-        }
-
+        /* How It Works */
         .steps-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: var(--space-xl);
+            gap: var(--space-lg);
         }
 
         .step-card {
+            background: var(--card-bg);
+            border-radius: 16px;
             padding: var(--space-xl);
-            border: 1px solid var(--terminal-border);
-            background: var(--terminal-gray);
-            position: relative;
-            transition: all 0.3s ease;
-        }
-
-        .step-card:hover {
-            border-color: var(--gold);
-            transform: translateY(-4px);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--card-border);
+            text-align: center;
         }
 
         .step-number {
             font-family: var(--font-display);
-            font-size: 4rem;
+            font-size: 3rem;
             font-weight: 800;
-            color: var(--terminal-border);
-            position: absolute;
-            top: var(--space-md);
-            right: var(--space-lg);
-            line-height: 1;
-        }
-
-        .step-card:hover .step-number {
-            color: rgba(212, 175, 55, 0.2);
+            color: rgba(255, 255, 255, 0.3);
+            margin-bottom: var(--space-md);
         }
 
         .step-title {
@@ -586,26 +505,68 @@
             font-size: 1.3rem;
             font-weight: 600;
             margin-bottom: var(--space-md);
-            color: var(--text-primary);
         }
 
         .step-description {
-            font-size: 0.9rem;
-            color: var(--text-secondary);
+            font-size: 0.95rem;
+            color: var(--text-muted);
             line-height: 1.7;
+        }
+
+        .extra-info {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: var(--space-xl);
+            margin-top: var(--space-xl);
+            text-align: center;
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--card-border);
+        }
+
+        .extra-info h3 {
+            font-family: var(--font-display);
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: var(--space-md);
+        }
+
+        .extra-info p {
+            color: var(--text-muted);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .extra-info ul {
+            text-align: left;
+            max-width: 500px;
+            margin: var(--space-md) auto;
+            list-style: none;
+        }
+
+        .extra-info ul li {
+            padding: var(--space-sm) 0;
+            color: var(--text-muted);
+        }
+
+        .extra-info ul li::before {
+            content: '•';
+            color: var(--text-white);
+            margin-right: var(--space-sm);
         }
 
         /* Courts Section */
         .courts-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: var(--space-lg);
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: var(--space-md);
         }
 
         .court-card {
+            background: var(--card-bg);
+            border-radius: 12px;
             padding: var(--space-lg);
-            border: 1px solid var(--terminal-border);
-            background: var(--terminal-dark);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--card-border);
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -613,79 +574,84 @@
         }
 
         .court-card:hover {
-            border-color: var(--court-green);
-            background: rgba(34, 139, 34, 0.05);
+            background: rgba(255, 255, 255, 0.2);
         }
 
         .court-name {
             font-weight: 600;
-            color: var(--text-primary);
             margin-bottom: var(--space-xs);
         }
 
         .court-location {
-            font-size: 0.8rem;
+            font-size: 0.85rem;
             color: var(--text-muted);
         }
 
         .court-link {
-            font-size: 0.7rem;
-            color: var(--court-green);
+            font-size: 0.8rem;
+            color: var(--text-white);
             text-decoration: none;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-            border: 1px solid var(--court-green);
+            border: 1px solid var(--text-white);
             padding: var(--space-sm) var(--space-md);
+            border-radius: 50px;
             transition: all 0.3s ease;
         }
 
         .court-link:hover {
-            background: var(--court-green);
-            color: var(--terminal-black);
+            background: var(--text-white);
+            color: var(--pink);
+        }
+
+        .courts-disclaimer {
+            text-align: center;
+            margin-top: var(--space-lg);
+            color: var(--text-muted);
+            font-style: italic;
         }
 
         /* Footer */
         footer {
-            padding: var(--space-2xl) var(--space-xl);
-            border-top: 1px solid var(--terminal-border);
+            padding: var(--space-xl);
             margin-top: var(--space-2xl);
+            border-top: 1px solid var(--card-border);
         }
 
         .footer-content {
-            max-width: 1400px;
+            max-width: 1200px;
             margin: 0 auto;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            flex-wrap: wrap;
+            gap: var(--space-lg);
         }
 
         .footer-logo {
             font-family: var(--font-display);
             font-size: 1.2rem;
             font-weight: 700;
-            color: var(--gold);
+            text-transform: lowercase;
         }
 
         .footer-links {
             display: flex;
             gap: var(--space-lg);
+            flex-wrap: wrap;
         }
 
         .footer-link {
-            font-size: 0.75rem;
+            font-size: 0.85rem;
             color: var(--text-muted);
             text-decoration: none;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
             transition: color 0.3s ease;
         }
 
         .footer-link:hover {
-            color: var(--gold);
+            color: var(--text-white);
         }
 
         .footer-copy {
-            font-size: 0.7rem;
+            font-size: 0.8rem;
             color: var(--text-muted);
         }
 
@@ -693,12 +659,14 @@
         .mobile-menu-btn {
             display: none;
             background: none;
-            border: 1px solid var(--gold);
+            border: 1px solid var(--text-white);
             padding: var(--space-sm);
-            color: var(--gold);
+            color: var(--text-white);
+            border-radius: 4px;
+            cursor: pointer;
         }
 
-        /* Tablet */
+        /* Responsive */
         @media (max-width: 900px) {
             .nav-center {
                 display: none;
@@ -708,55 +676,24 @@
                 display: block;
             }
 
-            .header-flex {
-                flex-wrap: wrap;
+            .rankings-header,
+            .rankings-row {
+                grid-template-columns: 50px 1fr 80px;
             }
 
-            .hero-title {
-                font-size: clamp(2.5rem, 12vw, 5rem);
-            }
-
-            .ladder-header,
-            .ladder-row {
-                grid-template-columns: 50px 1fr 70px;
-            }
-
-            .ladder-header > *:nth-child(4),
-            .ladder-header > *:nth-child(5),
-            .ladder-row > *:nth-child(4),
-            .ladder-row > *:nth-child(5) {
+            .rankings-header > *:nth-child(4),
+            .rankings-row > *:nth-child(4) {
                 display: none;
-            }
-
-            .footer-content {
-                flex-direction: column;
-                gap: var(--space-lg);
-                text-align: center;
-            }
-
-            .section {
-                padding: var(--space-xl) var(--space-md);
-            }
-
-            .courts-grid {
-                grid-template-columns: 1fr;
             }
         }
 
-        /* Mobile */
         @media (max-width: 600px) {
             header {
                 padding: var(--space-md);
             }
 
             .logo {
-                font-size: 1.1rem;
-            }
-
-            .logo-icon {
-                width: 24px;
-                height: 24px;
-                font-size: 0.7rem;
+                font-size: 1.2rem;
             }
 
             .nav-auth {
@@ -769,24 +706,13 @@
                 min-height: auto;
             }
 
-            .hero-eyebrow {
-                font-size: 0.65rem;
-                letter-spacing: 0.15em;
-            }
-
             .hero-title {
-                font-size: clamp(2rem, 15vw, 3.5rem);
-            }
-
-            .hero-subtitle {
-                font-size: 0.9rem;
-                padding: 0 var(--space-sm);
+                font-size: clamp(3rem, 18vw, 5rem);
             }
 
             .hero-cta {
                 flex-direction: column;
                 width: 100%;
-                padding: 0 var(--space-md);
             }
 
             .hero-cta .btn {
@@ -794,63 +720,46 @@
                 text-align: center;
             }
 
-            .ticker {
-                display: none;
-            }
-
             .section {
                 padding: var(--space-lg) var(--space-md);
-            }
-
-            .section-header {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: var(--space-sm);
             }
 
             .section-title {
                 font-size: 1.75rem;
             }
 
-            .ladder {
-                margin: 0 calc(-1 * var(--space-md));
-                border-left: none;
-                border-right: none;
+            .membership {
+                padding: var(--space-lg);
             }
 
-            .ladder-header,
-            .ladder-row {
+            .rankings {
+                padding: var(--space-lg);
+            }
+
+            .rankings-header,
+            .rankings-row {
                 grid-template-columns: 40px 1fr 60px;
-                padding: var(--space-sm) var(--space-md);
+                font-size: 0.85rem;
             }
 
             .rank {
-                font-size: 1.1rem;
+                font-size: 1rem;
             }
 
-            .player-name {
-                font-size: 0.85rem;
+            .player-avatar {
+                display: none;
             }
 
-            .player-level {
-                font-size: 0.6rem;
-            }
-
-            .player-points {
-                font-size: 0.85rem;
+            .tiers-grid {
+                grid-template-columns: 1fr;
             }
 
             .steps-grid {
                 grid-template-columns: 1fr;
-                gap: var(--space-md);
             }
 
-            .step-card {
-                padding: var(--space-lg);
-            }
-
-            .step-number {
-                font-size: 2.5rem;
+            .courts-grid {
+                grid-template-columns: 1fr;
             }
 
             .court-card {
@@ -868,14 +777,17 @@
                 padding: var(--space-lg) var(--space-md);
             }
 
+            .footer-content {
+                flex-direction: column;
+                text-align: center;
+            }
+
             .footer-links {
-                flex-wrap: wrap;
                 justify-content: center;
-                gap: var(--space-md);
             }
         }
 
-        /* Animations on scroll */
+        /* Animations */
         .animate-on-scroll {
             opacity: 0;
             transform: translateY(20px);
@@ -887,7 +799,7 @@
             transform: translateY(0);
         }
 
-        /* Loading state */
+        /* Loading */
         .loading {
             display: flex;
             align-items: center;
@@ -898,8 +810,8 @@
         .loading-spinner {
             width: 40px;
             height: 40px;
-            border: 3px solid var(--terminal-border);
-            border-top-color: var(--gold);
+            border: 3px solid var(--card-border);
+            border-top-color: var(--text-white);
             border-radius: 50%;
             animation: spin 1s linear infinite;
         }
@@ -910,24 +822,20 @@
     </style>
 </head>
 <body>
-    <!-- Header with Centered Navigation -->
+    <!-- Header -->
     <header>
         <div class="header-flex">
-            <a href="/" class="logo">
-                <span class="logo-icon">$</span>
-                NET WORTH
-            </a>
+            <a href="/" class="logo">net worth</a>
 
             <nav class="nav-center">
-                <a href="#ladder" class="nav-link">Ladder</a>
-                <a href="#how-it-works" class="nav-link">How It Works</a>
+                <a href="/rules" class="nav-link">How It Works</a>
                 <a href="#courts" class="nav-link">Courts</a>
-                <a href="#rules" class="nav-link">Rules</a>
+                <a href="/rules" class="nav-link">Game Play & Scoring</a>
             </nav>
 
             <div class="nav-auth">
-                <a href="/login" class="btn">Log In</a>
-                <a href="/join" class="btn btn-primary">Join Ladder</a>
+                <a href="/login" class="btn">Sign In</a>
+                <a href="/join" class="btn btn-primary">Join Now</a>
             </div>
 
             <button class="mobile-menu-btn" aria-label="Menu">
@@ -942,73 +850,74 @@
 
     <!-- Hero Section -->
     <section class="hero">
-        <p class="hero-eyebrow">East Side Los Angeles Women's Tennis</p>
+        <p class="hero-eyebrow">A Women's Tennis League on LA's East Side</p>
         <h1 class="hero-title">
-            <span>Climb The</span>
-            <span class="gold">Ladder</span>
+            <span>net</span>
+            <span>worth</span>
         </h1>
-        <p class="hero-subtitle">
-            "Greed, for lack of a better word, is good. Greed for wins. Greed for ranking points. Greed for that number one spot."
-        </p>
+        <p class="hero-tagline">Tennis. Events. Community.</p>
         <div class="hero-cta">
-            <a href="#ladder" class="btn btn-primary">View Rankings</a>
-            <a href="/join" class="btn">Join The Game</a>
+            <a href="/join" class="btn btn-primary">Join Now</a>
+            <a href="/login" class="btn">Sign In</a>
         </div>
+    </section>
 
-        <!-- Bloomberg-style Ticker -->
-        <div class="ticker">
-            <div class="ticker-content">
-                <div class="ticker-item">
-                    <span class="ticker-label">Active Players</span>
-                    <span class="ticker-value" id="player-count">16</span>
+    <!-- Membership Section -->
+    <section id="membership" class="section">
+        <div class="membership">
+            <div class="membership-intro">
+                <h2>Join the league!</h2>
+                <p>Create your player profile and send your membership fee via Venmo @NCOFFEN (Natalie). If you join after the month has started, you'll be matched in the next month.</p>
+            </div>
+
+            <h3 style="text-align: center; font-family: var(--font-display); font-size: 1.3rem; margin-bottom: var(--space-lg); color: var(--text-white);">Membership Options</h3>
+
+            <div class="tiers-grid">
+                <div class="tier-card">
+                    <p class="tier-name">Tier 1: The Players</p>
+                    <p class="tier-price">$35/year</p>
+                    <ul class="tier-features">
+                        <li>Monthly match assignments</li>
+                        <li>New website for match coordination + score submission</li>
+                        <li>Two Grand Slam watch parties</li>
+                        <li>Access to additional clinics, training sessions, and events</li>
+                        <li>Access to the WhatsApp community</li>
+                    </ul>
                 </div>
-                <div class="ticker-item">
-                    <span class="ticker-label">Season 2025</span>
-                    <span class="ticker-value">ACTIVE</span>
-                    <span class="ticker-change up">OPEN</span>
+
+                <div class="tier-card">
+                    <p class="tier-name">Tier 2: The Social Butterflies</p>
+                    <p class="tier-price">$45/year</p>
+                    <ul class="tier-features">
+                        <li>Two Grand Slam watch parties</li>
+                        <li>Access to additional clinics, training sessions, and events</li>
+                        <li>Access to the WhatsApp community</li>
+                        <li>No matches included in this tier</li>
+                    </ul>
                 </div>
-                <div class="ticker-item">
-                    <span class="ticker-label">Ladder Leader</span>
-                    <span class="ticker-value" id="top-mover">Kim N.</span>
-                    <span class="ticker-change up" id="top-games">51 games</span>
-                </div>
-                <div class="ticker-item">
-                    <span class="ticker-label">Total Matches</span>
-                    <span class="ticker-value" id="total-matches">91</span>
-                </div>
-                <div class="ticker-item">
-                    <span class="ticker-label">Active Players</span>
-                    <span class="ticker-value">16</span>
-                </div>
-                <div class="ticker-item">
-                    <span class="ticker-label">Skill Range</span>
-                    <span class="ticker-value">3.5 - 4.5</span>
-                </div>
+            </div>
+
+            <div class="membership-cta">
+                <a href="/join" class="btn">Join Us!</a>
             </div>
         </div>
     </section>
 
-    <!-- Ladder Rankings -->
-    <section id="ladder" class="section">
+    <!-- Rankings Section -->
+    <section id="rankings" class="section">
         <div class="section-header">
-            <div>
-                <p class="section-subtitle">Monthly Rankings</p>
-                <h2 class="section-title">The Ladder</h2>
-            </div>
-            <p class="section-subtitle">Updated after each match</p>
+            <h2 class="section-title">League Rankings</h2>
         </div>
 
-        <div class="ladder">
-            <div class="ladder-header">
-                <span>Rank</span>
-                <span>Player</span>
-                <span>Games Won</span>
-                <span>Matches</span>
-                <span>Trend</span>
-            </div>
-            <div class="ladder-scroll">
-                <div id="ladder-rows">
-                    <!-- Populated by JavaScript -->
+        <div class="rankings">
+            <div class="rankings-table">
+                <div class="rankings-header">
+                    <span>#</span>
+                    <span>Player</span>
+                    <span>Games Won</span>
+                    <span>Matches</span>
+                </div>
+                <div id="rankings-rows">
                     <div class="loading">
                         <div class="loading-spinner"></div>
                     </div>
@@ -1018,12 +927,9 @@
     </section>
 
     <!-- How It Works -->
-    <section id="how-it-works" class="section how-it-works">
+    <section id="how-it-works" class="section">
         <div class="section-header">
-            <div>
-                <p class="section-subtitle">The System</p>
-                <h2 class="section-title">How It Works</h2>
-            </div>
+            <h2 class="section-title">How It Works</h2>
         </div>
 
         <div class="steps-grid">
@@ -1031,35 +937,47 @@
                 <span class="step-number">01</span>
                 <h3 class="step-title">Get Paired</h3>
                 <p class="step-description">
-                    Each month, we pair you with another player at your skill level. You'll get an email with their contact info and availability. Just hit reply to coordinate.
+                    At the start of each month, you'll be automatically paired with an opponent through our league platform. You'll both receive an email connecting you, so all you need to do is reply and coordinate availability.
                 </p>
             </div>
 
             <div class="step-card animate-on-scroll">
                 <span class="step-number">02</span>
-                <h3 class="step-title">Play 2 Sets</h3>
+                <h3 class="step-title">Play Your Match</h3>
                 <p class="step-description">
-                    Meet up at any approved court and play 2 sets. No pressure to finish by month's end - life happens. Play when it works for both of you.
+                    You decide the date, time, and location that work best for both of you.
                 </p>
             </div>
 
             <div class="step-card animate-on-scroll">
                 <span class="step-number">03</span>
-                <h3 class="step-title">Report & Climb</h3>
+                <h3 class="step-title">Log Your Score</h3>
                 <p class="step-description">
-                    Log your scores on the dashboard. Every game you win counts toward your total. The more you play, the higher you climb. It's that simple.
+                    After your match, simply log into the league website and record your score.
                 </p>
             </div>
+        </div>
+
+        <div class="extra-info animate-on-scroll">
+            <p>Want to play more than just one match? Go for it! Feel free to reach out to other players and set up additional matches. Just note that only one match per month counts toward your ranking.</p>
+        </div>
+
+        <div class="extra-info animate-on-scroll">
+            <h3>Need to Take a Month Off?</h3>
+            <p>Life happens. If you need to sit out for a month (or more), you can toggle your availability directly in your player dashboard.</p>
+            <ul>
+                <li>Simply mark yourself as unavailable for the upcoming month</li>
+                <li>You'll receive a reminder at the end of each month to update your availability</li>
+                <li>Toggling off ensures you won't be assigned a match while you're away</li>
+            </ul>
+            <p style="margin-top: var(--space-md);">We ask everyone to please be thoughtful about updating their availability so match assignments stay smooth for the whole league.</p>
         </div>
     </section>
 
     <!-- Courts -->
     <section id="courts" class="section">
         <div class="section-header">
-            <div>
-                <p class="section-subtitle">Home Turf</p>
-                <h2 class="section-title">Approved Courts</h2>
-            </div>
+            <h2 class="section-title">Recommended Courts</h2>
         </div>
 
         <div class="courts-grid">
@@ -1127,76 +1045,62 @@
                 <a href="https://maps.google.com/?q=Poinsettia+Park+Tennis+West+Hollywood" target="_blank" class="court-link">Directions</a>
             </div>
         </div>
+
+        <p class="courts-disclaimer">Feel free to work out other options with your opponent!</p>
     </section>
 
     <!-- Footer -->
     <footer>
         <div class="footer-content">
-            <span class="footer-logo">NET WORTH</span>
+            <span class="footer-logo">net worth</span>
             <nav class="footer-links">
-                <a href="/rules" class="footer-link">Rules</a>
-                <a href="/privacy" class="footer-link">Privacy</a>
-                <a href="/support" class="footer-link">Support</a>
+                <a href="#how-it-works" class="footer-link">How It Works</a>
+                <a href="#courts" class="footer-link">Courts</a>
+                <a href="/rules" class="footer-link">Game Play & Scoring</a>
+                <a href="mailto:ashleybrooke.kaufman@gmail.com,nmcoffen@gmail.com" class="footer-link">Contact Us</a>
             </nav>
-            <p class="footer-copy">&copy; 2025 Net Worth Tennis. East Side LA.</p>
+            <p class="footer-copy">Net Worth Tennis</p>
         </div>
     </footer>
 
     <script>
-        // Fallback data in case API fails
+        // Fallback data
         const fallbackPlayers = [
-            { rank: 1, name: "Kim Ndombe", skill_level: "4.5 Advanced+", total_games: 51, matches_played: 5, trend: "up" },
-            { rank: 2, name: "Natalie Coffen", skill_level: "4.5 Advanced+", total_games: 50, matches_played: 6, trend: "up" },
-            { rank: 3, name: "Sara Chrisman", skill_level: "4.5 Advanced+", total_games: 49, matches_played: 5, trend: "neutral" },
+            { rank: 1, name: "Kim Ndombe", total_games: 51, matches_played: 5 },
+            { rank: 2, name: "Natalie Coffen", total_games: 50, matches_played: 6 },
+            { rank: 3, name: "Sara Chrisman", total_games: 49, matches_played: 5 },
         ];
 
-        function renderLadder(players) {
-            const container = document.getElementById('ladder-rows');
+        function renderRankings(players) {
+            const container = document.getElementById('rankings-rows');
             container.innerHTML = players.map(player => `
-                <div class="ladder-row">
-                    <span class="rank rank-${player.rank}">#${player.rank}</span>
+                <div class="rankings-row">
+                    <span class="rank rank-${player.rank}">${player.rank}</span>
                     <div class="player-info">
+                        <div class="player-avatar">🎾</div>
                         <span class="player-name">${player.name}</span>
-                        <span class="player-level">${player.skill_level || player.level || ''}</span>
                     </div>
-                    <span class="player-points">${player.total_games || 0}</span>
-                    <span class="player-record">${player.matches_played || 0}</span>
-                    <span class="player-trend trend-${player.trend || 'neutral'}">
-                        ${player.trend === 'up' ? '&#9650;' : player.trend === 'down' ? '&#9660;' : '&#8212;'}
-                    </span>
+                    <span class="player-games">${player.total_games || 0}</span>
+                    <span class="player-matches">${player.matches_played || 0}</span>
                 </div>
             `).join('');
         }
 
-        // Fetch real data from API
         async function loadPlayers() {
             try {
                 const response = await fetch('/api/players');
                 const data = await response.json();
                 if (data.success && data.players && data.players.length > 0) {
-                    // Filter out admin and sort by rank
                     const activePlayers = data.players
                         .filter(p => p.rank < 99)
                         .sort((a, b) => a.rank - b.rank);
-                    renderLadder(activePlayers);
-
-                    // Update ticker with real stats
-                    document.getElementById('player-count').textContent = activePlayers.length;
-                    if (activePlayers[0]) {
-                        document.getElementById('top-mover').textContent = activePlayers[0].name.split(' ')[0] + ' ' + activePlayers[0].name.split(' ')[1]?.charAt(0) + '.';
-                        document.getElementById('top-games').textContent = activePlayers[0].total_games + ' games';
-                    }
-                    // Calculate total matches
-                    const totalMatches = activePlayers.reduce((sum, p) => sum + (p.matches_played || 0), 0) / 2;
-                    document.getElementById('total-matches').textContent = Math.round(totalMatches);
-
-                    console.log('Loaded', activePlayers.length, 'players from', data.source);
+                    renderRankings(activePlayers);
                 } else {
-                    renderLadder(fallbackPlayers);
+                    renderRankings(fallbackPlayers);
                 }
             } catch (err) {
                 console.error('Failed to load players:', err);
-                renderLadder(fallbackPlayers);
+                renderRankings(fallbackPlayers);
             }
         }
 
@@ -1214,7 +1118,7 @@
             elements.forEach(el => observer.observe(el));
         }
 
-        // Smooth scroll for anchor links
+        // Smooth scroll
         document.querySelectorAll('a[href^="#"]').forEach(anchor => {
             anchor.addEventListener('click', function (e) {
                 e.preventDefault();
@@ -1229,15 +1133,6 @@
         document.addEventListener('DOMContentLoaded', () => {
             loadPlayers();
             handleScrollAnimations();
-
-            // Update timestamp
-            document.getElementById('last-updated').textContent = new Date().toLocaleDateString('en-US', {
-                month: 'short',
-                day: 'numeric',
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-            });
         });
     </script>
 </body>
