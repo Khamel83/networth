@@ -596,7 +596,8 @@
                 document.getElementById('stat-matches').textContent = player.matches_played || 0;
             }
 
-            // Availability
+            // Availability (handle nested object from API)
+            const avail = player.availability || {};
             const slots = [
                 { id: 'avail-weekday-early', field: 'avail_weekday_early' },
                 { id: 'avail-weekday-day', field: 'avail_weekday_day' },
@@ -608,7 +609,8 @@
 
             slots.forEach(slot => {
                 const el = document.getElementById(slot.id);
-                if (player[slot.field]) {
+                // Check both nested and flat formats
+                if (avail[slot.field] || player[slot.field]) {
                     el.classList.add('active');
                 }
             });
