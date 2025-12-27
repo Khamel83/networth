@@ -1,0 +1,81 @@
+{
+  "pageTitle": "Game Play and Scoring",
+  "sections": [
+    {
+      "id": "match-format",
+      "heading": "How Scoring Works",
+      "subheading": "Match Format",
+      "content": "Matches are played as two sets. Rankings are based on total games won, not on winning or losing the match.",
+      "example": {
+        "title": "Example:",
+        "lines": [
+          "Player 1 wins Set 1 6–2 and loses Set 2 4–6",
+          "Player 1 total games won: 10",
+          "Player 2 total games won: 8"
+        ]
+      }
+    },
+    {
+      "id": "how-sets-end",
+      "heading": "How Sets End",
+      "content": "Each set is played to 6 games. If the score reaches 6–5, one additional game is played to determine how the set ends.",
+      "bullets": [
+        "If the leading player wins the next game, the set ends 7–5.",
+        "If the trailing player wins the next game, the set ends 6–6.",
+        "There are no tiebreakers."
+      ],
+      "example": {
+        "title": "Example:",
+        "lines": [
+          "Player A leads 6–5.",
+          "Player A wins the next game → 7–5, set over.",
+          "Player B wins the next game → 6–6, set ends as a draw."
+        ]
+      }
+    },
+    {
+      "id": "max-score",
+      "heading": "Maximum Possible Score",
+      "content": "Because matches consist of two sets and each set can end with a maximum of 7 games won, the highest possible total score in a match is 14 games.",
+      "example": {
+        "title": "Example:",
+        "lines": [
+          "Set 1: 7–5",
+          "Set 2: 7–5",
+          "Total games won by the winner: 14"
+        ]
+      }
+    },
+    {
+      "id": "reporting",
+      "heading": "Reporting Your Score",
+      "content": "After your match, report your total games won in the appropriate month.",
+      "guidelines": {
+        "title": "Guidelines:",
+        "items": [
+          "Scores must be recorded in the correct month.",
+          "Always report a score, even if your total is 0."
+        ]
+      }
+    },
+    {
+      "id": "forfeits",
+      "heading": "Forfeits & Special Situations",
+      "subsections": [
+        {
+          "title": "Forfeit Without Playing",
+          "bullets": [
+            "Opponent receives 6 points.",
+            "You receive 0 points.",
+            "If feasible, rescheduling is encouraged, even if the month has already passed."
+          ]
+        },
+        {
+          "title": "Match Ends Early Due to Injury",
+          "content": "You and your opponent may agree to record the score as-is or reschedule to finish the match.",
+          "note": "If the injured player chooses to forfeit, the winner receives either 6 points or the number of games already won, whichever is higher."
+        }
+      ]
+    }
+  ]
+}

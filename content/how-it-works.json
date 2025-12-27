@@ -1,0 +1,37 @@
+{
+  "pageTitle": "How It Works",
+  "blocks": [
+    {
+      "id": "get-paired",
+      "title": "Get Paired",
+      "icon": "calendar",
+      "content": "At the start of each month, you'll be automatically paired with an opponent through our league platform. You'll both receive an email connecting you, so all you need to do is reply and coordinate availability.\n\nYou can also check each other's player profiles to see stated availability, but scheduling is always at your mutual convenience."
+    },
+    {
+      "id": "play-match",
+      "title": "Play Your Match",
+      "icon": "tennis",
+      "content": "You decide the date, time, and location that work best for both of you."
+    },
+    {
+      "id": "log-score",
+      "title": "Log Your Score",
+      "icon": "clipboard",
+      "content": "After your match, simply log into the league website and record your score."
+    }
+  ],
+  "extraMatches": {
+    "heading": "Want More?",
+    "content": "Want to play more than just one match? Go for it! Feel free to reach out to other players and set up additional matches. Just note that only one match per month counts toward your ranking."
+  },
+  "sitOut": {
+    "heading": "Need to Take a Month Off?",
+    "content": "Life happens. If you need to sit out for a month (or more), you can toggle your availability directly in your player dashboard.",
+    "bullets": [
+      "Simply mark yourself as unavailable for the upcoming month",
+      "You'll receive a reminder at the end of each month to update your availability",
+      "Toggling off ensures you won't be assigned a match while you're away"
+    ],
+    "footer": "We ask everyone to please be thoughtful about updating their availability so match assignments stay smooth for the whole league."
+  }
+}

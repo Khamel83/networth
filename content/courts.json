@@ -1,0 +1,47 @@
+{
+  "pageTitle": "Courts",
+  "heading": "Recommended Courts",
+  "courts": [
+    {
+      "name": "Vermont Canyon Tennis Courts",
+      "address": "2715 Vermont Canyon Rd, Los Angeles, CA 90027",
+      "notes": "Beautiful courts in Griffith Park. Reservations recommended on weekends."
+    },
+    {
+      "name": "Griffith Park - Riverside",
+      "address": "3401 Riverside Dr, Los Angeles, CA 90027",
+      "notes": "Next to the river, nice shaded areas."
+    },
+    {
+      "name": "Griffith Park - Merry-Go-Round",
+      "address": "4730 Crystal Springs Dr, Los Angeles, CA 90027",
+      "notes": "Near the carousel, easy parking."
+    },
+    {
+      "name": "Echo Park Recreation Center",
+      "address": "1632 Bellevue Ave, Los Angeles, CA 90026",
+      "notes": "Community courts, first-come first-served."
+    },
+    {
+      "name": "Hermon Park",
+      "address": "5566 Via Marisol, Los Angeles, CA 90042",
+      "notes": "Hidden gem in Highland Park."
+    },
+    {
+      "name": "Eagle Rock Recreation Center",
+      "address": "1100 Eagle Vista Dr, Los Angeles, CA 90041",
+      "notes": "Well-maintained courts."
+    },
+    {
+      "name": "Cheviot Hills Tennis Courts",
+      "address": "2551 Motor Ave, Los Angeles, CA 90064",
+      "notes": "Westside option, reservations available."
+    },
+    {
+      "name": "Poinsettia Park",
+      "address": "7341 Willoughby Ave, West Hollywood, CA 90046",
+      "notes": "WeHo courts, nicely lit for evening play."
+    }
+  ],
+  "disclaimer": "Feel free to work out other options with your opponent!"
+}

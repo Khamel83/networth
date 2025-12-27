@@ -1,0 +1,68 @@
+{
+  "hero": {
+    "subtitle": "A WOMEN'S TENNIS LEAGUE ON LA'S EAST SIDE",
+    "title": "Net Worth",
+    "tagline": "Tennis. Events. Community."
+  },
+  "membership": {
+    "intro": "Join the league!",
+    "description": "Create your player profile and send your membership fee via Venmo @NCOFFEN (Natalie). If you join after the month has started, you'll be matched in the next month.",
+    "heading": "Membership Options",
+    "tier1": {
+      "name": "THE PLAYERS",
+      "price": "$35/year",
+      "features": [
+        "Monthly match assignments",
+        "New website for match coordination + score submission",
+        "Two Grand Slam watch parties",
+        "Access to additional clinics, training sessions, and events",
+        "Access to the WhatsApp community"
+      ]
+    },
+    "tier2": {
+      "name": "THE SOCIAL BUTTERFLIES",
+      "price": "$45/year",
+      "features": [
+        "Two Grand Slam watch parties",
+        "Access to additional clinics, training sessions, and events",
+        "Access to the WhatsApp community",
+        "No matches included in this tier"
+      ]
+    },
+    "cta": "Join Us!"
+  },
+  "nav": {
+    "logo": "Net Worth",
+    "links": {
+      "rankings": "Rankings",
+      "howItWorks": "How It Works",
+      "courts": "Courts",
+      "rules": "Game Play & Scoring"
+    },
+    "buttons": {
+      "join": "Join Now",
+      "signIn": "Sign In",
+      "myProfile": "My Profile",
+      "signOut": "Sign Out"
+    }
+  },
+  "rankings": {
+    "heading": "League Rankings",
+    "columns": {
+      "rank": "#",
+      "player": "Player",
+      "gamesWon": "Games Won",
+      "matchesPlayed": "Matches"
+    }
+  },
+  "footer": {
+    "links": {
+      "howItWorks": "How It Works",
+      "courts": "Courts",
+      "rules": "Game Play & Scoring",
+      "contact": "Contact Us"
+    },
+    "contactEmail": "ashleybrooke.kaufman@gmail.com,nmcoffen@gmail.com",
+    "copyright": "Net Worth Tennis"
+  }
+}
