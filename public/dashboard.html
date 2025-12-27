@@ -372,6 +372,57 @@
             border: 1px solid var(--card-border);
         }
 
+        /* Avatar Upload */
+        .avatar-upload-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 1px solid var(--card-border);
+        }
+
+        .avatar-preview {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            overflow: hidden;
+            background: rgba(255, 255, 255, 0.1);
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .avatar-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .avatar-preview .avatar-default {
+            width: 80%;
+            height: 80%;
+        }
+
+        .avatar-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .avatar-btn {
+            padding: 0.5rem 1rem;
+            font-size: 0.85rem;
+            margin-top: 0;
+            width: auto;
+        }
+
+        .avatar-help {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 0.5rem;
+        }
+
         /* Forms */
         .form-group {
             margin-bottom: 1rem;
@@ -870,6 +921,29 @@
                 <div class="section-card">
                     <h2 class="section-title">My Info</h2>
 
+                    <!-- Avatar Upload -->
+                    <div class="avatar-upload-section">
+                        <div class="avatar-preview" id="avatar-preview">
+                            <svg class="avatar-default" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <circle cx="50" cy="50" r="48" fill="#f0f0f0"/>
+                                <circle cx="50" cy="50" r="20" fill="#c4e538"/>
+                                <path d="M30 70 Q50 55 70 70" stroke="#c4e538" stroke-width="4" fill="none"/>
+                                <circle cx="38" cy="45" r="3" fill="#333"/>
+                                <circle cx="62" cy="45" r="3" fill="#333"/>
+                            </svg>
+                        </div>
+                        <div class="avatar-actions">
+                            <button type="button" class="btn btn-secondary avatar-btn" onclick="triggerPhotoUpload()">
+                                Change Photo
+                            </button>
+                            <button type="button" class="btn btn-secondary avatar-btn" id="remove-photo-btn" onclick="removePhoto()" style="display: none;">
+                                Remove
+                            </button>
+                        </div>
+                        <input type="file" id="photo-input" accept="image/jpeg,image/png,image/webp" style="display: none;" onchange="handlePhotoSelect(event)">
+                        <p class="avatar-help">Max 2MB. Will be cropped to square.</p>
+                    </div>
+
                     <div class="form-row">
                         <div class="form-group">
                             <label for="name-input">Name</label>
@@ -1136,13 +1210,18 @@
                 document.getElementById('phone-input').value = profile.phone;
             }
 
+            // Update avatar
+            if (profile.avatar_url) {
+                updateAvatarPreview(profile.avatar_url);
+            }
+
             // Update availability checkboxes
-            document.getElementById('avail-weekday-early').checked = profile.avail_weekday_early || false;
-            document.getElementById('avail-weekday-day').checked = profile.avail_weekday_day || false;
-            document.getElementById('avail-weekday-late').checked = profile.avail_weekday_late || false;
-            document.getElementById('avail-weekend-early').checked = profile.avail_weekend_early || false;
-            document.getElementById('avail-weekend-day').checked = profile.avail_weekend_day || false;
-            document.getElementById('avail-weekend-late').checked = profile.avail_weekend_late || false;
+            document.getElementById('avail-weekday-early').checked = profile.avail_weekday_early || profile.availability?.weekday_early || false;
+            document.getElementById('avail-weekday-day').checked = profile.avail_weekday_day || profile.availability?.weekday_day || false;
+            document.getElementById('avail-weekday-late').checked = profile.avail_weekday_late || profile.availability?.weekday_late || false;
+            document.getElementById('avail-weekend-early').checked = profile.avail_weekend_early || profile.availability?.weekend_early || false;
+            document.getElementById('avail-weekend-day').checked = profile.avail_weekend_day || profile.availability?.weekend_day || false;
+            document.getElementById('avail-weekend-late').checked = profile.avail_weekend_late || profile.availability?.weekend_late || false;
 
             // Update pause state
             updatePauseUI(profile.is_paused);
@@ -1717,6 +1796,122 @@
                 }
             } catch (err) {
                 showMessage(err.message, 'error');
+            }
+        }
+
+        // Photo Upload Functions
+        function triggerPhotoUpload() {
+            document.getElementById('photo-input').click();
+        }
+
+        async function handlePhotoSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            // Validate file size (2MB max)
+            if (file.size > 2 * 1024 * 1024) {
+                showMessage('Photo too large. Maximum size is 2MB.', 'error');
+                return;
+            }
+
+            // Validate file type
+            if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+                showMessage('Invalid file type. Please use JPEG, PNG, or WebP.', 'error');
+                return;
+            }
+
+            // Show preview immediately
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                updateAvatarPreview(e.target.result);
+            };
+            reader.readAsDataURL(file);
+
+            if (isTestMode) {
+                showMessage('Photo uploaded (test mode)', 'success');
+                document.getElementById('remove-photo-btn').style.display = 'block';
+                return;
+            }
+
+            // Upload to server
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+
+                const response = await fetch('/api/upload', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: formData
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    showMessage('Photo uploaded!', 'success');
+                    document.getElementById('remove-photo-btn').style.display = 'block';
+                    // Update local player data
+                    player.avatar_url = data.avatar_url;
+                    localStorage.setItem('networth_player', JSON.stringify(player));
+                } else {
+                    throw new Error(data.error || 'Upload failed');
+                }
+            } catch (err) {
+                showMessage(err.message, 'error');
+            }
+
+            // Clear the input so the same file can be selected again
+            event.target.value = '';
+        }
+
+        async function removePhoto() {
+            if (isTestMode) {
+                updateAvatarPreview(null);
+                document.getElementById('remove-photo-btn').style.display = 'none';
+                showMessage('Photo removed (test mode)', 'success');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/upload', {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    updateAvatarPreview(null);
+                    document.getElementById('remove-photo-btn').style.display = 'none';
+                    showMessage('Photo removed', 'success');
+                    // Update local player data
+                    player.avatar_url = null;
+                    localStorage.setItem('networth_player', JSON.stringify(player));
+                } else {
+                    throw new Error(data.error || 'Failed to remove');
+                }
+            } catch (err) {
+                showMessage(err.message, 'error');
+            }
+        }
+
+        function updateAvatarPreview(url) {
+            const preview = document.getElementById('avatar-preview');
+            if (url) {
+                preview.innerHTML = `<img src="${url}" alt="Your avatar">`;
+                document.getElementById('remove-photo-btn').style.display = 'block';
+            } else {
+                preview.innerHTML = `
+                    <svg class="avatar-default" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="50" cy="50" r="48" fill="#f0f0f0"/>
+                        <circle cx="50" cy="50" r="20" fill="#c4e538"/>
+                        <path d="M30 70 Q50 55 70 70" stroke="#c4e538" stroke-width="4" fill="none"/>
+                        <circle cx="38" cy="45" r="3" fill="#333"/>
+                        <circle cx="62" cy="45" r="3" fill="#333"/>
+                    </svg>
+                `;
+                document.getElementById('remove-photo-btn').style.display = 'none';
             }
         }
 
