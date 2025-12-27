@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <title>Player Profile | Net Worth Tennis</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --pink: #d165a4;
+            --orange: #ec613e;
+            --peach: #e7b4b5;
+            --bg-gradient: linear-gradient(135deg, var(--pink) 0%, var(--orange) 50%, var(--peach) 100%);
+            --text-white: #ffffff;
+            --text-dark: #1a1a1a;
+            --text-muted: rgba(255, 255, 255, 0.7);
+            --card-bg: rgba(255, 255, 255, 0.15);
+            --card-bg-solid: rgba(255, 255, 255, 0.95);
+            --card-border: rgba(255, 255, 255, 0.2);
+            --font-display: 'Poppins', 'Helvetica Neue', sans-serif;
+            --font-body: 'Inter', 'Helvetica Neue', sans-serif;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: var(--font-body);
+            background: var(--bg-gradient);
+            background-attachment: fixed;
+            color: var(--text-white);
+            min-height: 100vh;
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* Grainy Texture */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            opacity: 0.12;
+            pointer-events: none;
+            z-index: 9999;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.5rem 2rem;
+            background: linear-gradient(180deg, rgba(209, 101, 164, 0.3) 0%, transparent 100%);
+        }
+
+        .logo {
+            font-family: var(--font-display);
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-white);
+            text-decoration: none;
+            text-transform: lowercase;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+        }
+
+        .nav-link {
+            font-size: 0.9rem;
+            color: var(--text-white);
+            text-decoration: none;
+            opacity: 0.8;
+            transition: opacity 0.3s ease;
+        }
+
+        .nav-link:hover {
+            opacity: 1;
+        }
+
+        .main {
+            max-width: 700px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text-white);
+            text-decoration: none;
+            font-size: 0.9rem;
+            margin-bottom: 1.5rem;
+            opacity: 0.8;
+            transition: opacity 0.3s ease;
+        }
+
+        .back-link:hover {
+            opacity: 1;
+        }
+
+        /* Profile Card */
+        .profile-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--card-border);
+            border-radius: 24px;
+            padding: 3rem;
+            text-align: center;
+        }
+
+        .profile-avatar {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            margin: 0 auto 1.5rem;
+            overflow: hidden;
+            border: 4px solid var(--text-white);
+            background: var(--card-bg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .profile-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .profile-avatar .tennis-ball {
+            font-size: 4rem;
+        }
+
+        .profile-name {
+            font-family: var(--font-display);
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .profile-tier {
+            display: inline-block;
+            font-size: 0.85rem;
+            font-weight: 600;
+            padding: 0.4rem 1rem;
+            border-radius: 50px;
+            background: var(--text-white);
+            color: var(--pink);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 2rem;
+        }
+
+        .tier-social {
+            background: var(--peach);
+            color: var(--text-dark);
+        }
+
+        /* Stats Row */
+        .stats-row {
+            display: flex;
+            justify-content: center;
+            gap: 3rem;
+            margin-bottom: 2rem;
+            padding-bottom: 2rem;
+            border-bottom: 1px solid var(--card-border);
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-family: var(--font-display);
+            font-size: 2rem;
+            font-weight: 700;
+        }
+
+        .stat-label {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        /* Availability Section */
+        .section-title {
+            font-family: var(--font-display);
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            text-align: left;
+        }
+
+        .availability-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .avail-column {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 1rem;
+        }
+
+        .avail-column-title {
+            font-weight: 600;
+            font-size: 0.9rem;
+            margin-bottom: 0.75rem;
+            text-align: center;
+        }
+
+        .avail-slot {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 0;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .avail-slot.active {
+            color: var(--text-white);
+        }
+
+        .avail-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .avail-slot.active .avail-indicator {
+            background: #22c55e;
+        }
+
+        /* Favorite Players */
+        .favorite-players {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 1rem;
+            text-align: left;
+        }
+
+        .favorite-players p {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            font-style: italic;
+        }
+
+        /* Not Found */
+        .not-found {
+            text-align: center;
+            padding: 4rem 2rem;
+        }
+
+        .not-found h2 {
+            font-family: var(--font-display);
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .not-found p {
+            color: var(--text-muted);
+        }
+
+        /* Loading */
+        .loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 4rem 2rem;
+            gap: 1rem;
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--card-border);
+            border-top-color: var(--text-white);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Access Denied */
+        .access-denied {
+            text-align: center;
+            padding: 4rem 2rem;
+        }
+
+        .access-denied h2 {
+            font-family: var(--font-display);
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .access-denied p {
+            color: var(--text-muted);
+            margin-bottom: 1.5rem;
+        }
+
+        .btn {
+            display: inline-block;
+            font-family: var(--font-body);
+            font-size: 0.9rem;
+            font-weight: 600;
+            padding: 0.75rem 2rem;
+            background: var(--text-white);
+            color: var(--pink);
+            text-decoration: none;
+            border-radius: 50px;
+            transition: all 0.3s ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(255, 255, 255, 0.3);
+        }
+
+        .footer {
+            padding: 3rem 2rem;
+            border-top: 1px solid var(--card-border);
+            margin-top: 3rem;
+        }
+
+        .footer-content {
+            max-width: 800px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .footer-logo {
+            font-family: var(--font-display);
+            font-size: 1.2rem;
+            font-weight: 700;
+            text-transform: lowercase;
+        }
+
+        .footer-links {
+            display: flex;
+            gap: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .footer-link {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        .footer-link:hover {
+            color: var(--text-white);
+        }
+
+        .footer-copy {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        @media (max-width: 768px) {
+            .footer-content {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .profile-card {
+                padding: 2rem;
+            }
+
+            .profile-avatar {
+                width: 120px;
+                height: 120px;
+            }
+
+            .profile-name {
+                font-size: 1.5rem;
+            }
+
+            .stats-row {
+                gap: 2rem;
+            }
+
+            .stat-value {
+                font-size: 1.5rem;
+            }
+
+            .availability-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <a href="/" class="logo">net worth</a>
+        <nav class="nav-links">
+            <a href="/" class="nav-link">Home</a>
+            <a href="/dashboard" class="nav-link" id="nav-dashboard" style="display: none;">Dashboard</a>
+            <a href="/login" class="nav-link" id="nav-signin">Sign In</a>
+            <a href="#" class="nav-link" id="nav-signout" style="display: none;" onclick="signOut()">Sign Out</a>
+        </nav>
+    </header>
+
+    <main class="main">
+        <a href="/" class="back-link">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M19 12H5M12 19l-7-7 7-7"/>
+            </svg>
+            Back to Rankings
+        </a>
+
+        <!-- Loading State -->
+        <div id="loading-state" class="profile-card">
+            <div class="loading">
+                <div class="loading-spinner"></div>
+                <p>Loading profile...</p>
+            </div>
+        </div>
+
+        <!-- Access Denied State -->
+        <div id="access-denied-state" class="profile-card" style="display: none;">
+            <div class="access-denied">
+                <h2>Sign In Required</h2>
+                <p>You need to be logged in to view player profiles.</p>
+                <a href="/login" class="btn">Sign In</a>
+            </div>
+        </div>
+
+        <!-- Not Found State -->
+        <div id="not-found-state" class="profile-card" style="display: none;">
+            <div class="not-found">
+                <h2>Player Not Found</h2>
+                <p>We couldn't find this player in the league.</p>
+                <a href="/" class="btn" style="margin-top: 1rem;">Back to Home</a>
+            </div>
+        </div>
+
+        <!-- Profile Content -->
+        <div id="profile-content" class="profile-card" style="display: none;">
+            <div class="profile-avatar" id="profile-avatar">
+                <span class="tennis-ball">🎾</span>
+            </div>
+
+            <h1 class="profile-name" id="profile-name">-</h1>
+
+            <span class="profile-tier" id="profile-tier">Player</span>
+
+            <div class="stats-row">
+                <div class="stat">
+                    <span class="stat-value" id="stat-rank">-</span>
+                    <span class="stat-label">Rank</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-value" id="stat-games">-</span>
+                    <span class="stat-label">Games Won</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-value" id="stat-matches">-</span>
+                    <span class="stat-label">Matches</span>
+                </div>
+            </div>
+
+            <h3 class="section-title">Availability</h3>
+            <div class="availability-grid">
+                <div class="avail-column">
+                    <p class="avail-column-title">Weekdays</p>
+                    <div class="avail-slot" id="avail-weekday-early">
+                        <span class="avail-indicator"></span>
+                        <span>Before 9am</span>
+                    </div>
+                    <div class="avail-slot" id="avail-weekday-day">
+                        <span class="avail-indicator"></span>
+                        <span>9am - 5pm</span>
+                    </div>
+                    <div class="avail-slot" id="avail-weekday-late">
+                        <span class="avail-indicator"></span>
+                        <span>After 5pm</span>
+                    </div>
+                </div>
+                <div class="avail-column">
+                    <p class="avail-column-title">Weekends</p>
+                    <div class="avail-slot" id="avail-weekend-early">
+                        <span class="avail-indicator"></span>
+                        <span>Before 9am</span>
+                    </div>
+                    <div class="avail-slot" id="avail-weekend-day">
+                        <span class="avail-indicator"></span>
+                        <span>9am - 5pm</span>
+                    </div>
+                    <div class="avail-slot" id="avail-weekend-late">
+                        <span class="avail-indicator"></span>
+                        <span>After 5pm</span>
+                    </div>
+                </div>
+            </div>
+
+            <h3 class="section-title">Favorite Players</h3>
+            <div class="favorite-players">
+                <p id="favorite-players-text">-</p>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="footer-content">
+            <span class="footer-logo">net worth</span>
+            <nav class="footer-links">
+                <a href="/#how-it-works" class="footer-link">How It Works</a>
+                <a href="/#courts" class="footer-link">Courts</a>
+                <a href="/rules" class="footer-link">Game Play & Scoring</a>
+                <a href="mailto:ashleybrooke.kaufman@gmail.com,nmcoffen@gmail.com" class="footer-link">Contact Us</a>
+            </nav>
+            <p class="footer-copy">Net Worth Tennis</p>
+        </div>
+    </footer>
+
+    <script>
+        const loadingState = document.getElementById('loading-state');
+        const accessDeniedState = document.getElementById('access-denied-state');
+        const notFoundState = document.getElementById('not-found-state');
+        const profileContent = document.getElementById('profile-content');
+
+        function showState(state) {
+            loadingState.style.display = 'none';
+            accessDeniedState.style.display = 'none';
+            notFoundState.style.display = 'none';
+            profileContent.style.display = 'none';
+            state.style.display = 'block';
+        }
+
+        function isLoggedIn() {
+            return !!localStorage.getItem('networth_token');
+        }
+
+        function updateNav() {
+            const loggedIn = isLoggedIn();
+            document.getElementById('nav-dashboard').style.display = loggedIn ? 'inline' : 'none';
+            document.getElementById('nav-signin').style.display = loggedIn ? 'none' : 'inline';
+            document.getElementById('nav-signout').style.display = loggedIn ? 'inline' : 'none';
+        }
+
+        function signOut() {
+            localStorage.removeItem('networth_token');
+            localStorage.removeItem('networth_player');
+            window.location.href = '/';
+        }
+
+        function getPlayerId() {
+            const params = new URLSearchParams(window.location.search);
+            return params.get('id');
+        }
+
+        function renderProfile(player) {
+            // Avatar
+            const avatarContainer = document.getElementById('profile-avatar');
+            if (player.avatar_url) {
+                avatarContainer.innerHTML = `<img src="${player.avatar_url}" alt="${player.name}">`;
+            } else {
+                avatarContainer.innerHTML = `<span class="tennis-ball">🎾</span>`;
+            }
+
+            // Name
+            document.getElementById('profile-name').textContent = player.name;
+
+            // Tier
+            const tierEl = document.getElementById('profile-tier');
+            const isSocial = player.membership_tier === 'social_butterfly';
+            tierEl.textContent = isSocial ? 'Social Butterfly' : 'Player';
+            tierEl.className = 'profile-tier' + (isSocial ? ' tier-social' : '');
+
+            // Stats (hide for social butterflies)
+            if (isSocial) {
+                document.querySelector('.stats-row').style.display = 'none';
+            } else {
+                document.getElementById('stat-rank').textContent = player.rank < 99 ? '#' + player.rank : '-';
+                document.getElementById('stat-games').textContent = player.total_games || 0;
+                document.getElementById('stat-matches').textContent = player.matches_played || 0;
+            }
+
+            // Availability
+            const slots = [
+                { id: 'avail-weekday-early', field: 'avail_weekday_early' },
+                { id: 'avail-weekday-day', field: 'avail_weekday_day' },
+                { id: 'avail-weekday-late', field: 'avail_weekday_late' },
+                { id: 'avail-weekend-early', field: 'avail_weekend_early' },
+                { id: 'avail-weekend-day', field: 'avail_weekend_day' },
+                { id: 'avail-weekend-late', field: 'avail_weekend_late' }
+            ];
+
+            slots.forEach(slot => {
+                const el = document.getElementById(slot.id);
+                if (player[slot.field]) {
+                    el.classList.add('active');
+                }
+            });
+
+            // Favorite players
+            const favText = document.getElementById('favorite-players-text');
+            if (player.favorite_players) {
+                favText.textContent = player.favorite_players;
+                favText.style.fontStyle = 'normal';
+            } else {
+                favText.textContent = 'No favorites specified';
+            }
+
+            showState(profileContent);
+        }
+
+        async function loadProfile() {
+            updateNav();
+
+            // Check if logged in
+            if (!isLoggedIn()) {
+                showState(accessDeniedState);
+                return;
+            }
+
+            const playerId = getPlayerId();
+            if (!playerId) {
+                showState(notFoundState);
+                return;
+            }
+
+            try {
+                const token = localStorage.getItem('networth_token');
+                const response = await fetch(`/api/profile?id=${playerId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.success && data.player) {
+                    renderProfile(data.player);
+                } else {
+                    showState(notFoundState);
+                }
+            } catch (err) {
+                console.error('Failed to load profile:', err);
+                showState(notFoundState);
+            }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', loadProfile);
+    </script>
+</body>
+</html>
