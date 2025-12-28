@@ -32,26 +32,41 @@ def get_supabase_client():
     return None
 
 
-def get_user_from_token(supabase, auth_header):
-    """Extract and verify user from Authorization header and set session"""
+def get_authenticated_client(auth_header):
+    """Create a Supabase client with user's auth token for storage operations"""
     if not auth_header or not auth_header.startswith('Bearer '):
-        return None
+        return None, None
 
     token = auth_header.replace('Bearer ', '')
-    try:
-        # Set the session so storage operations use this auth
-        supabase.postgrest.auth(token)
 
-        user = supabase.auth.get_user(token)
-        if user and user.user:
-            # Also set auth headers for storage
-            supabase._storage._client.headers.update({
-                "Authorization": f"Bearer {token}"
-            })
-            return user.user
-    except Exception:
-        pass
-    return None
+    try:
+        from supabase import create_client
+        url = os.environ.get('SUPABASE_URL')
+        key = os.environ.get('SUPABASE_ANON_KEY')
+
+        if not url or not key:
+            return None, None
+
+        # Create client and verify user
+        supabase = create_client(url, key)
+        user_response = supabase.auth.get_user(token)
+
+        if not user_response or not user_response.user:
+            return None, None
+
+        # Create a new client with the user's token for authenticated operations
+        # This ensures storage operations use the user's auth
+        auth_client = create_client(
+            url,
+            key,
+            options={"headers": {"Authorization": f"Bearer {token}"}}
+        )
+
+        return user_response.user, auth_client
+
+    except Exception as e:
+        print(f"Auth error: {e}")
+        return None, None
 
 
 def process_image(image_data, content_type):
@@ -188,22 +203,17 @@ class handler(BaseHTTPRequestHandler):
     def do_OPTIONS(self):
         self.send_response(200)
         self.send_header('Access-Control-Allow-Origin', '*')
-        self.send_header('Access-Control-Allow-Methods', 'POST, OPTIONS')
+        self.send_header('Access-Control-Allow-Methods', 'POST, DELETE, OPTIONS')
         self.send_header('Access-Control-Allow-Headers', 'Content-Type, Authorization')
         self.end_headers()
 
     def do_POST(self):
         """Handle photo upload"""
         try:
-            supabase = get_supabase_client()
-            if not supabase:
-                self._send_error(503, "Database not available")
-                return
-
             auth_header = self.headers.get('Authorization')
-            user = get_user_from_token(supabase, auth_header)
+            user, supabase = get_authenticated_client(auth_header)
 
-            if not user:
+            if not user or not supabase:
                 self._send_error(401, "Authentication required")
                 return
 
@@ -302,15 +312,10 @@ class handler(BaseHTTPRequestHandler):
     def do_DELETE(self):
         """Remove avatar photo"""
         try:
-            supabase = get_supabase_client()
-            if not supabase:
-                self._send_error(503, "Database not available")
-                return
-
             auth_header = self.headers.get('Authorization')
-            user = get_user_from_token(supabase, auth_header)
+            user, supabase = get_authenticated_client(auth_header)
 
-            if not user:
+            if not user or not supabase:
                 self._send_error(401, "Authentication required")
                 return
 
