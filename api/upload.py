@@ -5,7 +5,7 @@ Handles avatar photo uploads:
 - Accepts image files (JPEG, PNG, WebP)
 - Validates file size (max 2MB)
 - Resizes to 200x200 thumbnail
-- Uploads to Supabase Storage 'avatars' bucket
+- Uploads to Supabase Storage 'avatar' bucket
 - Updates player.avatar_url
 
 Updated for Ashley's Christmas 2025 feedback.
@@ -261,19 +261,19 @@ class handler(BaseHTTPRequestHandler):
                     try:
                         # Extract filename from URL
                         old_filename = old_avatar_url.split('/')[-1]
-                        supabase.storage.from_('avatars').remove([old_filename])
+                        supabase.storage.from_('avatar').remove([old_filename])
                     except Exception:
                         pass  # Ignore errors deleting old file
 
                 # Upload new avatar
-                result = supabase.storage.from_('avatars').upload(
+                result = supabase.storage.from_('avatar').upload(
                     filename,
                     processed_image,
                     file_options={"content-type": "image/jpeg"}
                 )
 
                 # Get public URL
-                public_url = supabase.storage.from_('avatars').get_public_url(filename)
+                public_url = supabase.storage.from_('avatar').get_public_url(filename)
 
                 # Update player record
                 supabase.table('players').update({
@@ -320,7 +320,7 @@ class handler(BaseHTTPRequestHandler):
                 try:
                     # Extract filename from URL
                     filename = avatar_url.split('/')[-1]
-                    supabase.storage.from_('avatars').remove([filename])
+                    supabase.storage.from_('avatar').remove([filename])
                 except Exception:
                     pass  # Ignore errors deleting file
 
