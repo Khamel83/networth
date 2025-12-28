@@ -1113,6 +1113,7 @@
                 <a href="/#how-it-works" class="footer-link">How It Works</a>
                 <a href="/#courts" class="footer-link">Courts</a>
                 <a href="/rules" class="footer-link">Game Play & Scoring</a>
+                <a href="/profiles" class="footer-link">Players</a>
                 <a href="mailto:ashleybrooke.kaufman@gmail.com,nmcoffen@gmail.com" class="footer-link">Contact Us</a>
             </nav>
             <p class="footer-copy">Net Worth Tennis</p>
@@ -1193,10 +1194,11 @@
                     avatarContent = `<img src="${player.avatar_url}" alt="${player.name}">`;
                 }
 
-                // Make clickable if logged in
-                const clickableClass = loggedIn ? 'clickable' : '';
-                const avatarClick = loggedIn ? `onclick="window.location.href='/profile?id=${player.id}'"` : '';
-                const nameHtml = loggedIn
+                // Make clickable if logged in AND player has an id
+                const canClick = loggedIn && player.id;
+                const clickableClass = canClick ? 'clickable' : '';
+                const avatarClick = canClick ? `onclick="window.location.href='/profile?id=${player.id}'"` : '';
+                const nameHtml = canClick
                     ? `<a href="/profile?id=${player.id}" class="player-name-link"><span class="player-name">${player.name}</span></a>`
                     : `<span class="player-name">${player.name}</span>`;
 
