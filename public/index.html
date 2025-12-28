@@ -886,6 +886,7 @@
                 <a href="/#how-it-works" class="nav-link">How It Works</a>
                 <a href="/#courts" class="nav-link">Courts</a>
                 <a href="/rules" class="nav-link">Game Play & Scoring</a>
+                <a href="/profiles" class="nav-link">Players</a>
             </nav>
 
             <div class="nav-auth">
@@ -1133,12 +1134,13 @@
             const rankingsSection = document.getElementById('rankings');
 
             if (loggedIn) {
-                // Update nav links per spec: Rankings, How It Works, Courts, Game Play & Scoring
+                // Update nav links per spec: Rankings, How It Works, Courts, Game Play & Scoring, Players
                 navCenter.innerHTML = `
                     <a href="/#rankings" class="nav-link">Rankings</a>
                     <a href="/#how-it-works" class="nav-link">How It Works</a>
                     <a href="/#courts" class="nav-link">Courts</a>
                     <a href="/rules" class="nav-link">Game Play & Scoring</a>
+                    <a href="/profiles" class="nav-link">Players</a>
                 `;
 
                 // Update auth buttons: My Profile + Sign Out

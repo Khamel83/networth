@@ -414,18 +414,19 @@
         <a href="/" class="logo">net worth</a>
         <nav class="nav-links">
             <a href="/" class="nav-link">Home</a>
-            <a href="/dashboard" class="nav-link" id="nav-dashboard" style="display: none;">Dashboard</a>
+            <a href="/profiles" class="nav-link">Players</a>
+            <a href="/dashboard" class="nav-link" id="nav-dashboard" style="display: none;">My Profile</a>
             <a href="/login" class="nav-link" id="nav-signin">Sign In</a>
             <a href="#" class="nav-link" id="nav-signout" style="display: none;" onclick="signOut()">Sign Out</a>
         </nav>
     </header>
 
     <main class="main">
-        <a href="/" class="back-link">
+        <a href="/profiles" class="back-link">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M19 12H5M12 19l-7-7 7-7"/>
             </svg>
-            Back to Rankings
+            Back to Players
         </a>
 
         <!-- Loading State -->
@@ -479,6 +480,19 @@
                 </div>
             </div>
 
+            <!-- Contact Info -->
+            <div class="contact-info" id="contact-info" style="margin-bottom: 2rem;">
+                <h3 class="section-title">Contact</h3>
+                <div style="background: rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 1rem;">
+                    <p style="font-size: 0.9rem; margin-bottom: 0.5rem;">
+                        <strong>Email:</strong> <a href="#" id="contact-email" style="color: var(--text-white);"></a>
+                    </p>
+                    <p style="font-size: 0.9rem;" id="contact-phone-row">
+                        <strong>Phone:</strong> <a href="#" id="contact-phone" style="color: var(--text-white);"></a>
+                    </p>
+                </div>
+            </div>
+
             <h3 class="section-title">Availability</h3>
             <div class="availability-grid">
                 <div class="avail-column">
@@ -527,6 +541,7 @@
                 <a href="/#how-it-works" class="footer-link">How It Works</a>
                 <a href="/#courts" class="footer-link">Courts</a>
                 <a href="/rules" class="footer-link">Game Play & Scoring</a>
+                <a href="/profiles" class="footer-link">Players</a>
                 <a href="mailto:ashleybrooke.kaufman@gmail.com,nmcoffen@gmail.com" class="footer-link">Contact Us</a>
             </nav>
             <p class="footer-copy">Net Worth Tennis</p>
@@ -614,6 +629,27 @@
                     el.classList.add('active');
                 }
             });
+
+            // Contact info
+            const emailEl = document.getElementById('contact-email');
+            const phoneEl = document.getElementById('contact-phone');
+            const phoneRow = document.getElementById('contact-phone-row');
+
+            if (player.email) {
+                emailEl.textContent = player.email;
+                emailEl.href = `mailto:${player.email}`;
+            } else {
+                emailEl.textContent = 'Not available';
+                emailEl.removeAttribute('href');
+            }
+
+            if (player.phone) {
+                phoneEl.textContent = player.phone;
+                phoneEl.href = `tel:${player.phone.replace(/\D/g, '')}`;
+                phoneRow.style.display = 'block';
+            } else {
+                phoneRow.style.display = 'none';
+            }
 
             // Favorite players
             const favText = document.getElementById('favorite-players-text');
