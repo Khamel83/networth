@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <title>Meet the Players | Net Worth Tennis</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --pink: #d165a4;
+            --orange: #ec613e;
+            --peach: #e7b4b5;
+            --bg-gradient: linear-gradient(135deg, var(--pink) 0%, var(--orange) 50%, var(--peach) 100%);
+            --text-white: #ffffff;
+            --text-dark: #1a1a1a;
+            --text-muted: rgba(255, 255, 255, 0.7);
+            --card-bg: rgba(255, 255, 255, 0.15);
+            --card-bg-solid: rgba(255, 255, 255, 0.95);
+            --card-border: rgba(255, 255, 255, 0.2);
+            --font-display: 'Poppins', 'Helvetica Neue', sans-serif;
+            --font-body: 'Inter', 'Helvetica Neue', sans-serif;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: var(--font-body);
+            background: var(--bg-gradient);
+            background-attachment: fixed;
+            color: var(--text-white);
+            min-height: 100vh;
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* Grainy Texture */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            opacity: 0.12;
+            pointer-events: none;
+            z-index: 9999;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.5rem 2rem;
+            background: linear-gradient(180deg, rgba(209, 101, 164, 0.3) 0%, transparent 100%);
+        }
+
+        .logo {
+            font-family: var(--font-display);
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--text-white);
+            text-decoration: none;
+            text-transform: lowercase;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 1.5rem;
+            align-items: center;
+        }
+
+        .nav-link {
+            font-size: 0.9rem;
+            color: var(--text-white);
+            text-decoration: none;
+            opacity: 0.8;
+            transition: opacity 0.3s ease;
+        }
+
+        .nav-link:hover {
+            opacity: 1;
+        }
+
+        .main {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .page-header {
+            text-align: center;
+            margin-bottom: 2.5rem;
+        }
+
+        .page-title {
+            font-family: var(--font-display);
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .page-subtitle {
+            color: var(--text-muted);
+            font-size: 1rem;
+        }
+
+        /* Player Grid */
+        .players-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .player-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: 1.5rem;
+            text-align: center;
+            text-decoration: none;
+            color: var(--text-white);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .player-card:hover {
+            transform: translateY(-4px);
+            background: rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .player-avatar {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            margin: 0 auto 1rem;
+            overflow: hidden;
+            background: rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 3px solid var(--text-white);
+        }
+
+        .player-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .player-avatar .tennis-ball {
+            font-size: 2.5rem;
+        }
+
+        .player-name {
+            font-family: var(--font-display);
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .player-tier {
+            display: inline-block;
+            font-size: 0.7rem;
+            font-weight: 600;
+            padding: 0.25rem 0.75rem;
+            border-radius: 50px;
+            background: var(--text-white);
+            color: var(--pink);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .player-tier.tier-social {
+            background: var(--peach);
+            color: var(--text-dark);
+        }
+
+        .player-rank {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-top: 0.5rem;
+        }
+
+        /* Loading & States */
+        .loading-state,
+        .login-required {
+            text-align: center;
+            padding: 4rem 2rem;
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--card-border);
+            border-top-color: var(--text-white);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .login-required h2 {
+            font-family: var(--font-display);
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .login-required p {
+            color: var(--text-muted);
+            margin-bottom: 1.5rem;
+        }
+
+        .btn {
+            display: inline-block;
+            font-family: var(--font-body);
+            font-size: 0.9rem;
+            font-weight: 600;
+            padding: 0.75rem 2rem;
+            background: var(--text-white);
+            color: var(--pink);
+            text-decoration: none;
+            border-radius: 50px;
+            transition: all 0.3s ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(255, 255, 255, 0.3);
+        }
+
+        .footer {
+            padding: 3rem 2rem;
+            border-top: 1px solid var(--card-border);
+            margin-top: 3rem;
+        }
+
+        .footer-content {
+            max-width: 800px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .footer-logo {
+            font-family: var(--font-display);
+            font-size: 1.2rem;
+            font-weight: 700;
+            text-transform: lowercase;
+        }
+
+        .footer-links {
+            display: flex;
+            gap: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .footer-link {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        .footer-link:hover {
+            color: var(--text-white);
+        }
+
+        .footer-copy {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        @media (max-width: 768px) {
+            .footer-content {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .page-title {
+                font-size: 2rem;
+            }
+
+            .players-grid {
+                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+                gap: 1rem;
+            }
+
+            .player-card {
+                padding: 1rem;
+            }
+
+            .player-avatar {
+                width: 80px;
+                height: 80px;
+            }
+
+            .player-name {
+                font-size: 1rem;
+            }
+
+            .nav-links {
+                gap: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <a href="/" class="logo">net worth</a>
+        <nav class="nav-links">
+            <a href="/" class="nav-link">Home</a>
+            <a href="/profiles" class="nav-link" style="opacity: 1;">Players</a>
+            <a href="/dashboard" class="nav-link" id="nav-dashboard" style="display: none;">My Profile</a>
+            <a href="/login" class="nav-link" id="nav-signin">Sign In</a>
+        </nav>
+    </header>
+
+    <main class="main">
+        <header class="page-header">
+            <h1 class="page-title">Meet the Players</h1>
+            <p class="page-subtitle">Your NET WORTH Tennis community</p>
+        </header>
+
+        <!-- Login Required State -->
+        <div id="login-required" class="login-required" style="display: none;">
+            <h2>Members Only</h2>
+            <p>Sign in to view player profiles and connect with your tennis community.</p>
+            <a href="/login" class="btn">Sign In</a>
+        </div>
+
+        <!-- Loading State -->
+        <div id="loading-state" class="loading-state">
+            <div class="loading-spinner"></div>
+            <p>Loading players...</p>
+        </div>
+
+        <!-- Players Grid -->
+        <div id="players-grid" class="players-grid" style="display: none;"></div>
+    </main>
+
+    <footer class="footer">
+        <div class="footer-content">
+            <span class="footer-logo">net worth</span>
+            <nav class="footer-links">
+                <a href="/#how-it-works" class="footer-link">How It Works</a>
+                <a href="/#courts" class="footer-link">Courts</a>
+                <a href="/rules" class="footer-link">Game Play & Scoring</a>
+                <a href="/profiles" class="footer-link">Players</a>
+                <a href="mailto:ashleybrooke.kaufman@gmail.com,nmcoffen@gmail.com" class="footer-link">Contact Us</a>
+            </nav>
+            <p class="footer-copy">Net Worth Tennis</p>
+        </div>
+    </footer>
+
+    <script>
+        const loadingState = document.getElementById('loading-state');
+        const loginRequired = document.getElementById('login-required');
+        const playersGrid = document.getElementById('players-grid');
+
+        function isLoggedIn() {
+            return !!localStorage.getItem('networth_token');
+        }
+
+        function updateNav() {
+            const loggedIn = isLoggedIn();
+            document.getElementById('nav-dashboard').style.display = loggedIn ? 'inline' : 'none';
+            document.getElementById('nav-signin').style.display = loggedIn ? 'none' : 'inline';
+        }
+
+        function showState(state) {
+            loadingState.style.display = 'none';
+            loginRequired.style.display = 'none';
+            playersGrid.style.display = 'none';
+            state.style.display = state === playersGrid ? 'grid' : 'block';
+        }
+
+        async function loadPlayers() {
+            updateNav();
+
+            // Check if logged in
+            if (!isLoggedIn()) {
+                showState(loginRequired);
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/players');
+                const data = await response.json();
+
+                if (!data.success || !data.players || data.players.length === 0) {
+                    playersGrid.innerHTML = '<p style="text-align: center; grid-column: 1/-1;">No players found</p>';
+                    showState(playersGrid);
+                    return;
+                }
+
+                // Sort by rank (players with rank first, then social butterflies)
+                const sortedPlayers = data.players.sort((a, b) => {
+                    // Players come before social butterflies
+                    const aIsPlayer = a.membership_tier !== 'social_butterfly';
+                    const bIsPlayer = b.membership_tier !== 'social_butterfly';
+                    if (aIsPlayer && !bIsPlayer) return -1;
+                    if (!aIsPlayer && bIsPlayer) return 1;
+                    // Within same tier, sort by rank
+                    return (a.rank || 999) - (b.rank || 999);
+                });
+
+                playersGrid.innerHTML = sortedPlayers.map(player => {
+                    const isSocial = player.membership_tier === 'social_butterfly';
+                    const avatarHtml = player.avatar_url
+                        ? `<img src="${player.avatar_url}" alt="${player.name}">`
+                        : `<span class="tennis-ball">🎾</span>`;
+                    const tierClass = isSocial ? 'tier-social' : '';
+                    const tierText = isSocial ? 'Social' : 'Player';
+                    const rankHtml = !isSocial && player.rank ? `<p class="player-rank">#${player.rank} · ${player.total_games || 0} games</p>` : '';
+
+                    return `
+                        <a href="/profile?id=${player.id}" class="player-card">
+                            <div class="player-avatar">
+                                ${avatarHtml}
+                            </div>
+                            <h3 class="player-name">${player.name}</h3>
+                            <span class="player-tier ${tierClass}">${tierText}</span>
+                            ${rankHtml}
+                        </a>
+                    `;
+                }).join('');
+
+                showState(playersGrid);
+
+            } catch (err) {
+                console.error('Failed to load players:', err);
+                playersGrid.innerHTML = '<p style="text-align: center; grid-column: 1/-1;">Failed to load players. Please try again.</p>';
+                showState(playersGrid);
+            }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', loadPlayers);
+    </script>
+</body>
+</html>
