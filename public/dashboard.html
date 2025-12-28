@@ -372,6 +372,12 @@
             border: 1px solid var(--card-border);
         }
 
+        .btn-secondary.has-changes {
+            background: var(--text-white);
+            color: var(--pink);
+            border-color: var(--text-white);
+        }
+
         /* Avatar Upload */
         .avatar-upload-section {
             display: flex;
@@ -1201,6 +1207,9 @@
             }
         }
 
+        // Track original form values for change detection
+        let originalFormValues = {};
+
         function updatePreferencesUI(profile) {
             // Update name
             document.getElementById('name-input').value = profile.name || '';
@@ -1225,6 +1234,62 @@
 
             // Update pause state
             updatePauseUI(profile.is_paused);
+
+            // Store original values and setup change tracking
+            storeOriginalValues();
+            setupChangeTracking();
+        }
+
+        function storeOriginalValues() {
+            originalFormValues = {
+                name: document.getElementById('name-input').value,
+                phone: document.getElementById('phone-input').value,
+                avail_weekday_early: document.getElementById('avail-weekday-early').checked,
+                avail_weekday_day: document.getElementById('avail-weekday-day').checked,
+                avail_weekday_late: document.getElementById('avail-weekday-late').checked,
+                avail_weekend_early: document.getElementById('avail-weekend-early').checked,
+                avail_weekend_day: document.getElementById('avail-weekend-day').checked,
+                avail_weekend_late: document.getElementById('avail-weekend-late').checked
+            };
+        }
+
+        function checkForChanges() {
+            const currentValues = {
+                name: document.getElementById('name-input').value,
+                phone: document.getElementById('phone-input').value,
+                avail_weekday_early: document.getElementById('avail-weekday-early').checked,
+                avail_weekday_day: document.getElementById('avail-weekday-day').checked,
+                avail_weekday_late: document.getElementById('avail-weekday-late').checked,
+                avail_weekend_early: document.getElementById('avail-weekend-early').checked,
+                avail_weekend_day: document.getElementById('avail-weekend-day').checked,
+                avail_weekend_late: document.getElementById('avail-weekend-late').checked
+            };
+
+            const hasChanges = Object.keys(originalFormValues).some(key =>
+                originalFormValues[key] !== currentValues[key]
+            );
+
+            const saveBtn = document.getElementById('save-info-btn');
+            if (hasChanges) {
+                saveBtn.classList.add('has-changes');
+            } else {
+                saveBtn.classList.remove('has-changes');
+            }
+        }
+
+        function setupChangeTracking() {
+            // Track text inputs
+            document.getElementById('name-input').addEventListener('input', checkForChanges);
+            document.getElementById('phone-input').addEventListener('input', checkForChanges);
+
+            // Track checkboxes
+            const checkboxIds = [
+                'avail-weekday-early', 'avail-weekday-day', 'avail-weekday-late',
+                'avail-weekend-early', 'avail-weekend-day', 'avail-weekend-late'
+            ];
+            checkboxIds.forEach(id => {
+                document.getElementById(id).addEventListener('change', checkForChanges);
+            });
         }
 
         function updatePauseUI(isPaused) {
@@ -1267,6 +1332,8 @@
                 setTimeout(() => {
                     btn.textContent = 'Save My Info';
                     btn.disabled = false;
+                    btn.classList.remove('has-changes');
+                    storeOriginalValues();
                     feedback.classList.add('show');
                     setTimeout(() => feedback.classList.remove('show'), 3000);
                 }, 500);
@@ -1286,6 +1353,9 @@
                 if (data.success) {
                     feedback.classList.add('show');
                     setTimeout(() => feedback.classList.remove('show'), 3000);
+                    // Reset change tracking
+                    storeOriginalValues();
+                    btn.classList.remove('has-changes');
                 } else {
                     throw new Error(data.error);
                 }
