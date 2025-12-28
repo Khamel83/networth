@@ -43,6 +43,10 @@
       "dest": "/profile.html"
     },
     {
+      "src": "/profiles",
+      "dest": "/profiles.html"
+    },
+    {
       "src": "/admin",
       "dest": "/admin.html"
     }
