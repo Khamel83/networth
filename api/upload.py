@@ -33,14 +33,21 @@ def get_supabase_client():
 
 
 def get_user_from_token(supabase, auth_header):
-    """Extract and verify user from Authorization header"""
+    """Extract and verify user from Authorization header and set session"""
     if not auth_header or not auth_header.startswith('Bearer '):
         return None
 
     token = auth_header.replace('Bearer ', '')
     try:
+        # Set the session so storage operations use this auth
+        supabase.postgrest.auth(token)
+
         user = supabase.auth.get_user(token)
         if user and user.user:
+            # Also set auth headers for storage
+            supabase._storage._client.headers.update({
+                "Authorization": f"Bearer {token}"
+            })
             return user.user
     except Exception:
         pass
