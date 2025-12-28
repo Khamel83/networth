@@ -29,7 +29,7 @@
 - [x] Header: "A WOMEN'S TENNIS LEAGUE ON LA'S EAST SIDE"
 - [x] Title: "Net Worth" (was "Climb the Ladder")
 - [x] Tagline: "Tennis. Events. Community."
-- [ ] Nav links go to actual pages, not anchors (line 66) - PARTIAL: Courts still #anchor
+- [x] Nav links use /#anchor format (works from any page)
 - [x] Membership section with tiers
 - [x] Tier 1: Players - $35/year with all features listed
 - [x] Tier 2: Social Butterflies - $45/year with features listed
@@ -75,7 +75,7 @@
 - [x] Sit out explanatory text
 - [x] Section title: "My Info" (was "Preferences")
 - [x] Name field (editable, cannot be blank)
-- [ ] Email field (editable, cannot be blank) - ISSUE: Currently read-only
+- [x] Email field (editable, cannot be blank, triggers Supabase verification)
 - [x] Phone field (cannot be blank)
 - [x] 6-slot availability checkboxes
 - [x] Favorite players field
@@ -174,11 +174,13 @@
 ---
 
 ## KNOWN LIMITATIONS
-- Email editing disabled (would require Supabase auth email change)
-- Courts nav uses anchor instead of separate page (no courts.html exists)
+- Email changes require user to click verification link in new email
+- Courts/How It Works are sections on index.html, not separate pages (using /#anchor links)
 
 ---
 
 ## STILL NEEDS WORK
 1. ~~Social Butterfly dashboard JS (populate form, save, upgrade flow)~~ DONE
-2. Test Social Butterfly view end-to-end (manual testing needed)
+2. ~~Nav links fixed to use /#anchor format~~ DONE
+3. ~~Email editing implemented~~ DONE
+4. Manual testing needed: Social Butterfly upgrade flow, email change flow
