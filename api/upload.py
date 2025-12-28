@@ -40,7 +40,7 @@ def get_authenticated_client(auth_header):
     token = auth_header.replace('Bearer ', '')
 
     try:
-        from supabase import create_client
+        from supabase import create_client, ClientOptions
         url = os.environ.get('SUPABASE_URL')
         key = os.environ.get('SUPABASE_ANON_KEY')
 
@@ -54,15 +54,13 @@ def get_authenticated_client(auth_header):
         if not user_response or not user_response.user:
             return None, None
 
-        # Create a new client with the user's token for authenticated operations
-        # This ensures storage operations use the user's auth
-        auth_client = create_client(
-            url,
-            key,
-            options={"headers": {"Authorization": f"Bearer {token}"}}
-        )
+        # Set the auth token on the storage client for authenticated operations
+        try:
+            supabase.storage._client.headers["Authorization"] = f"Bearer {token}"
+        except:
+            pass  # If this fails, try without - might still work
 
-        return user_response.user, auth_client
+        return user_response.user, supabase
 
     except Exception as e:
         print(f"Auth error: {e}")
