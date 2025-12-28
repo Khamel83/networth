@@ -1101,11 +1101,42 @@
         function updateAuthNav() {
             const loggedIn = isLoggedIn();
             const authNav = document.querySelector('.nav-auth');
+            const navCenter = document.querySelector('.nav-center');
+            const heroCta = document.querySelector('.hero-cta');
+            const rankingsSection = document.getElementById('rankings');
+
             if (loggedIn) {
+                // Update nav links per spec: Rankings, How It Works, Courts, Game Play & Scoring
+                navCenter.innerHTML = `
+                    <a href="#rankings" class="nav-link">Rankings</a>
+                    <a href="#how-it-works" class="nav-link">How It Works</a>
+                    <a href="#courts" class="nav-link">Courts</a>
+                    <a href="/rules" class="nav-link">Game Play & Scoring</a>
+                `;
+
+                // Update auth buttons: My Profile + Sign Out
                 authNav.innerHTML = `
-                    <a href="/dashboard" class="btn">My Dashboard</a>
+                    <a href="/dashboard" class="btn">My Profile</a>
                     <a href="#" class="btn btn-primary" onclick="signOut(); return false;">Sign Out</a>
                 `;
+
+                // Update hero CTA for logged-in users
+                if (heroCta) {
+                    heroCta.innerHTML = `
+                        <a href="/dashboard" class="btn btn-primary">My Profile</a>
+                        <a href="#rankings" class="btn">View Rankings</a>
+                    `;
+                }
+
+                // Show rankings section
+                if (rankingsSection) {
+                    rankingsSection.style.display = '';
+                }
+            } else {
+                // Not logged in: hide rankings section
+                if (rankingsSection) {
+                    rankingsSection.style.display = 'none';
+                }
             }
         }
 
@@ -1187,15 +1218,16 @@
             elements.forEach(el => observer.observe(el));
         }
 
-        // Smooth scroll
-        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-            anchor.addEventListener('click', function (e) {
+        // Smooth scroll (using event delegation to handle dynamically added links)
+        document.addEventListener('click', function(e) {
+            const anchor = e.target.closest('a[href^="#"]');
+            if (anchor) {
                 e.preventDefault();
-                const target = document.querySelector(this.getAttribute('href'));
+                const target = document.querySelector(anchor.getAttribute('href'));
                 if (target) {
                     target.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 }
-            });
+            }
         });
 
         // Initialize
