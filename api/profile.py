@@ -155,8 +155,19 @@ class handler(BaseHTTPRequestHandler):
 
             action = data.get('action', 'update')
 
-            # Get current player
-            player = supabase.table('players').select('*').eq('email', user.email).single().execute()
+            # Get current player - try by auth email first
+            player = supabase.table('players').select('*').eq('email', user.email).maybeSingle().execute()
+
+            # If not found by email, try by player_id from request (for email change scenarios)
+            if not player.data:
+                player_id = data.get('player_id')
+                if player_id:
+                    player = supabase.table('players').select('*').eq('id', player_id).single().execute()
+                    # Sync email if found by ID but email doesn't match
+                    if player.data and player.data.get('email') != user.email:
+                        supabase.table('players').update({'email': user.email}).eq('id', player_id).execute()
+                        player = supabase.table('players').select('*').eq('id', player_id).single().execute()
+
             if not player.data:
                 self._send_error(404, "Player profile not found")
                 return

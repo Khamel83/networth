@@ -1033,8 +1033,11 @@
                     </div>
 
                     <div class="form-group">
-                        <label for="email-display">Email</label>
-                        <input type="email" id="email-display" disabled style="opacity: 0.7; cursor: not-allowed;">
+                        <label for="email-input">Email <span style="color: var(--error-red);">*</span></label>
+                        <input type="email" id="email-input" placeholder="your@email.com" required>
+                        <p class="input-help" style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">
+                            Changing email will send a verification link to the new address
+                        </p>
                     </div>
 
                     <div class="form-row">
@@ -1447,9 +1450,13 @@
         // Track original form values for change detection
         let originalFormValues = {};
 
+        // Store original email for change detection
+        let originalEmail = '';
+
         function updatePreferencesUI(profile) {
-            // Update email (read-only display)
-            document.getElementById('email-display').value = profile.email || '';
+            // Update email
+            document.getElementById('email-input').value = profile.email || '';
+            originalEmail = profile.email || '';
 
             // Update name
             document.getElementById('name-input').value = profile.name || '';
@@ -1485,6 +1492,7 @@
 
         function storeOriginalValues() {
             originalFormValues = {
+                email: document.getElementById('email-input').value,
                 name: document.getElementById('name-input').value,
                 phone: document.getElementById('phone-input').value,
                 favorite_players: document.getElementById('favorite-players-input').value,
@@ -1499,6 +1507,7 @@
 
         function checkForChanges() {
             const currentValues = {
+                email: document.getElementById('email-input').value,
                 name: document.getElementById('name-input').value,
                 phone: document.getElementById('phone-input').value,
                 favorite_players: document.getElementById('favorite-players-input').value,
@@ -1524,6 +1533,7 @@
 
         function setupChangeTracking() {
             // Track text inputs
+            document.getElementById('email-input').addEventListener('input', checkForChanges);
             document.getElementById('name-input').addEventListener('input', checkForChanges);
             document.getElementById('phone-input').addEventListener('input', checkForChanges);
             document.getElementById('favorite-players-input').addEventListener('input', checkForChanges);
@@ -1560,10 +1570,16 @@
             const btn = document.getElementById('save-info-btn');
             const feedback = document.getElementById('save-feedback');
 
+            const email = document.getElementById('email-input').value.trim();
             const name = document.getElementById('name-input').value.trim();
             const phone = document.getElementById('phone-input').value.trim();
 
-            // Validation: name and phone cannot be blank
+            // Validation: email, name, and phone cannot be blank
+            if (!email) {
+                showMessage('Email cannot be blank', 'error');
+                document.getElementById('email-input').focus();
+                return;
+            }
             if (!name) {
                 showMessage('Name cannot be blank', 'error');
                 document.getElementById('name-input').focus();
@@ -1575,6 +1591,7 @@
                 return;
             }
 
+            const emailChanged = email !== originalEmail;
             const favorite_players = document.getElementById('favorite-players-input').value.trim();
             const availability = {
                 avail_weekday_early: document.getElementById('avail-weekday-early').checked,
@@ -1601,21 +1618,59 @@
             }
 
             try {
+                // If email changed, trigger Supabase auth email update
+                if (emailChanged) {
+                    try {
+                        const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
+                        const supabaseUrl = 'https://bwfunodgmlfspddlkycd.supabase.co';
+                        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ3ZnVub2RnbWxmc3BkZGxreWNkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzI2NzM0MDIsImV4cCI6MjA0ODI0OTQwMn0.zMqRhSXw9TYxuOAGpLWVNaLGmGSgLgimpSHXuHwNyOg';
+                        const supabase = createClient(supabaseUrl, supabaseKey);
+
+                        // Set the session
+                        await supabase.auth.setSession({
+                            access_token: token,
+                            refresh_token: localStorage.getItem('networth_refresh_token') || ''
+                        });
+
+                        // Update auth email (will send verification)
+                        const { error } = await supabase.auth.updateUser({ email: email });
+                        if (error) {
+                            throw new Error(`Email update failed: ${error.message}`);
+                        }
+                    } catch (authErr) {
+                        showMessage(`Email change failed: ${authErr.message}. Other changes saved.`, 'error');
+                        // Continue to save other changes
+                    }
+                }
+
+                // Save profile data (include player_id for email sync scenarios)
                 const response = await fetch('/api/profile', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${token}`
                     },
-                    body: JSON.stringify({ action: 'update', name, phone, favorite_players, ...availability })
+                    body: JSON.stringify({
+                        action: 'update',
+                        player_id: player.id,
+                        name,
+                        phone,
+                        favorite_players,
+                        ...availability
+                    })
                 });
                 const data = await response.json();
                 if (data.success) {
                     feedback.classList.add('show');
                     setTimeout(() => feedback.classList.remove('show'), 3000);
                     // Reset change tracking
+                    originalEmail = email;
                     storeOriginalValues();
                     btn.classList.remove('has-changes');
+
+                    if (emailChanged) {
+                        showMessage('Check your new email for a verification link', 'info');
+                    }
                 } else {
                     throw new Error(data.error);
                 }
