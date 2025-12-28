@@ -83,6 +83,11 @@
             opacity: 1;
         }
 
+        .nav-auth {
+            display: flex;
+            gap: 1rem;
+        }
+
         .main {
             max-width: 800px;
             margin: 0 auto;
@@ -256,9 +261,26 @@
         <a href="/" class="logo">net worth</a>
         <nav class="nav-links">
             <a href="/" class="nav-link">Home</a>
-            <a href="/login" class="nav-link">Sign In</a>
         </nav>
+        <div class="nav-auth">
+            <a href="/login" class="nav-link">Sign In</a>
+        </div>
     </header>
+
+    <script>
+        function isLoggedIn() {
+            return !!localStorage.getItem('networth_token');
+        }
+
+        function updateAuthNav() {
+            const authNav = document.querySelector('.nav-auth');
+            if (isLoggedIn()) {
+                authNav.innerHTML = `<a href="/dashboard" class="nav-link">My Profile</a>`;
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', updateAuthNav);
+    </script>
 
     <main class="main">
         <header class="page-header">

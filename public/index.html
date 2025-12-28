@@ -695,6 +695,33 @@
         }
 
         /* Responsive */
+        @media (max-width: 1200px) {
+            .nav-center {
+                gap: var(--space-md);
+            }
+
+            .nav-link {
+                font-size: 0.8rem;
+            }
+
+            .nav-auth .btn {
+                font-size: 0.8rem;
+                padding: var(--space-xs) var(--space-md);
+            }
+        }
+
+        @media (max-width: 1000px) {
+            .nav-center {
+                position: static;
+                transform: none;
+                gap: var(--space-sm);
+            }
+
+            .header-flex {
+                gap: var(--space-md);
+            }
+        }
+
         @media (max-width: 900px) {
             .nav-center {
                 display: none;
