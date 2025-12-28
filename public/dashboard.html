@@ -871,13 +871,95 @@
         </div>
 
         <!-- Social Butterfly View (hidden by default) -->
-        <div id="social-butterfly-section" class="social-butterfly-card hidden">
-            <h2>Social Butterfly</h2>
-            <p>You're enjoying the events and community without match assignments.</p>
-            <button class="btn" onclick="upgradeTier()">I want to start playing!</button>
-            <p class="status-help" style="margin-top: 1rem;">
-                Clicking this button adds you to the match queue for the following month. If you need to sit out in the future, be sure to return to your profile and update your status before each month's match assignments.
-            </p>
+        <div id="social-butterfly-section" class="hidden">
+            <!-- Upgrade Card -->
+            <div class="section-card" style="margin-bottom: 1.5rem; text-align: center;">
+                <h2 class="section-title">Social Butterfly</h2>
+                <p style="color: var(--text-muted); margin-bottom: 1rem;">You're enjoying the events and community without match assignments.</p>
+                <button class="btn btn-primary" onclick="startUpgradeTier()" id="upgrade-tier-btn">I want to start playing!</button>
+                <p class="status-help" style="margin-top: 1rem;">
+                    Clicking this button adds you to the match queue for the following month. If you need to sit out in the future, be sure to return to your profile and update your status before each month's match assignments.
+                </p>
+            </div>
+
+            <!-- My Info Section for Social Butterflies -->
+            <section class="section">
+                <div class="section-card">
+                    <h2 class="section-title">My Info</h2>
+
+                    <div class="form-group">
+                        <label for="sb-email-display">Email</label>
+                        <input type="email" id="sb-email-display" disabled style="opacity: 0.7; cursor: not-allowed;">
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="sb-name-input">Name <span style="color: var(--error-red);">*</span></label>
+                            <input type="text" id="sb-name-input" placeholder="Your name" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="sb-phone-input">Phone Number <span style="color: var(--error-red);">*</span></label>
+                            <input type="tel" id="sb-phone-input" placeholder="(555) 555-5555" required>
+                        </div>
+                    </div>
+
+                    <!-- Favorite Players -->
+                    <div class="form-group" style="margin-top: 1rem;">
+                        <label for="sb-favorite-players-input">Favorite Players</label>
+                        <input type="text" id="sb-favorite-players-input" placeholder="Players you especially enjoy playing with">
+                    </div>
+
+                    <!-- Availability (greyed out until upgrade) -->
+                    <div class="availability-section" id="sb-availability-section" style="opacity: 0.4; pointer-events: none; margin-top: 1.5rem;">
+                        <h4>My Availability</h4>
+                        <p class="availability-help">Select all times you're typically available for matches</p>
+                        <p style="text-align: center; color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1rem;">
+                            Availability is only needed when you start playing
+                        </p>
+                        <div class="availability-grid">
+                            <div class="availability-column">
+                                <h5>Weekdays</h5>
+                                <div class="checkbox-group">
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="sb-avail-weekday-early" disabled>
+                                        <label for="sb-avail-weekday-early">Before 9am</label>
+                                    </div>
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="sb-avail-weekday-day" disabled>
+                                        <label for="sb-avail-weekday-day">9am - 5pm</label>
+                                    </div>
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="sb-avail-weekday-late" disabled>
+                                        <label for="sb-avail-weekday-late">After 5pm</label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="availability-column">
+                                <h5>Weekends</h5>
+                                <div class="checkbox-group">
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="sb-avail-weekend-early" disabled>
+                                        <label for="sb-avail-weekend-early">Before 9am</label>
+                                    </div>
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="sb-avail-weekend-day" disabled>
+                                        <label for="sb-avail-weekend-day">9am - 5pm</label>
+                                    </div>
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="sb-avail-weekend-late" disabled>
+                                        <label for="sb-avail-weekend-late">After 5pm</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button class="btn btn-secondary" onclick="saveSocialButterflyInfo()" id="sb-save-btn">
+                        Save My Info
+                    </button>
+                    <span class="save-feedback" id="sb-save-feedback">Changes saved!</span>
+                </div>
+            </section>
         </div>
 
         <!-- Player View -->
@@ -1191,10 +1273,152 @@
             }
         }
 
+        // Update Social Butterfly form with profile data
+        function updateSocialButterflyUI(profile) {
+            document.getElementById('sb-email-display').value = profile.email || '';
+            document.getElementById('sb-name-input').value = profile.name || '';
+            document.getElementById('sb-phone-input').value = profile.phone || '';
+            document.getElementById('sb-favorite-players-input').value = profile.favorite_players || '';
+        }
+
+        // Track if user clicked "I want to start playing!"
+        let upgradeInProgress = false;
+
+        // Start upgrade process - enable availability
+        function startUpgradeTier() {
+            upgradeInProgress = true;
+            const availSection = document.getElementById('sb-availability-section');
+            const upgradeBtn = document.getElementById('upgrade-tier-btn');
+
+            // Enable availability section
+            availSection.style.opacity = '1';
+            availSection.style.pointerEvents = 'auto';
+
+            // Enable all checkboxes
+            ['sb-avail-weekday-early', 'sb-avail-weekday-day', 'sb-avail-weekday-late',
+             'sb-avail-weekend-early', 'sb-avail-weekend-day', 'sb-avail-weekend-late'].forEach(id => {
+                document.getElementById(id).disabled = false;
+            });
+
+            // Change button text
+            upgradeBtn.textContent = 'Select availability below, then save';
+            upgradeBtn.disabled = true;
+            upgradeBtn.style.opacity = '0.6';
+
+            // Update help text
+            availSection.querySelector('p[style*="text-align: center"]').textContent =
+                'Select at least one availability slot to start playing';
+
+            showMessage('Select your availability below and click Save to complete upgrade', 'info');
+        }
+
+        // Save Social Butterfly info
+        async function saveSocialButterflyInfo() {
+            const btn = document.getElementById('sb-save-btn');
+            const feedback = document.getElementById('sb-save-feedback');
+
+            const name = document.getElementById('sb-name-input').value.trim();
+            const phone = document.getElementById('sb-phone-input').value.trim();
+            const favorite_players = document.getElementById('sb-favorite-players-input').value.trim();
+
+            // Validation
+            if (!name) {
+                showMessage('Name cannot be blank', 'error');
+                document.getElementById('sb-name-input').focus();
+                return;
+            }
+            if (!phone) {
+                showMessage('Phone number cannot be blank', 'error');
+                document.getElementById('sb-phone-input').focus();
+                return;
+            }
+
+            // If upgrading, check availability
+            if (upgradeInProgress) {
+                const hasAvailability =
+                    document.getElementById('sb-avail-weekday-early').checked ||
+                    document.getElementById('sb-avail-weekday-day').checked ||
+                    document.getElementById('sb-avail-weekday-late').checked ||
+                    document.getElementById('sb-avail-weekend-early').checked ||
+                    document.getElementById('sb-avail-weekend-day').checked ||
+                    document.getElementById('sb-avail-weekend-late').checked;
+
+                if (!hasAvailability) {
+                    showMessage('Please select at least one availability slot to start playing', 'error');
+                    return;
+                }
+            }
+
+            btn.textContent = 'Saving...';
+            btn.disabled = true;
+
+            if (isTestMode) {
+                setTimeout(() => {
+                    btn.textContent = 'Save My Info';
+                    btn.disabled = false;
+                    feedback.classList.add('show');
+                    setTimeout(() => feedback.classList.remove('show'), 3000);
+                    if (upgradeInProgress) {
+                        showMessage('Upgraded to Player! You will be matched next month.', 'success');
+                        setTimeout(() => window.location.reload(), 1500);
+                    }
+                }, 500);
+                return;
+            }
+
+            try {
+                // Build request
+                const requestData = {
+                    action: upgradeInProgress ? 'upgrade_tier' : 'update',
+                    name,
+                    phone,
+                    favorite_players
+                };
+
+                // Add availability if upgrading
+                if (upgradeInProgress) {
+                    requestData.availability = {
+                        weekday_early: document.getElementById('sb-avail-weekday-early').checked,
+                        weekday_day: document.getElementById('sb-avail-weekday-day').checked,
+                        weekday_late: document.getElementById('sb-avail-weekday-late').checked,
+                        weekend_early: document.getElementById('sb-avail-weekend-early').checked,
+                        weekend_day: document.getElementById('sb-avail-weekend-day').checked,
+                        weekend_late: document.getElementById('sb-avail-weekend-late').checked
+                    };
+                }
+
+                const response = await fetch('/api/profile', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(requestData)
+                });
+                const data = await response.json();
+                if (data.success) {
+                    feedback.classList.add('show');
+                    setTimeout(() => feedback.classList.remove('show'), 3000);
+                    if (upgradeInProgress) {
+                        showMessage('Upgraded to Player! You will be matched next month.', 'success');
+                        setTimeout(() => window.location.reload(), 1500);
+                    }
+                } else {
+                    throw new Error(data.error);
+                }
+            } catch (err) {
+                showMessage(err.message, 'error');
+            }
+
+            btn.textContent = 'Save My Info';
+            btn.disabled = false;
+        }
+
         // Load full profile
         async function loadProfile() {
             if (isTestMode) {
                 updatePreferencesUI(player);
+                updateSocialButterflyUI(player);
                 updateTierView(player.membership_tier);
                 return;
             }
@@ -1207,6 +1431,7 @@
                 if (data.success && data.profile) {
                     player = { ...player, ...data.profile };
                     updatePreferencesUI(data.profile);
+                    updateSocialButterflyUI(data.profile);
                     updateTierView(data.profile.membership_tier || 'player');
 
                     // Update stats
