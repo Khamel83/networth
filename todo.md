@@ -88,14 +88,14 @@
 ---
 
 ## DASHBOARD - SOCIAL BUTTERFLY TIER
-- [ ] No match status/stats/matches sections - FIXED in HTML
-- [ ] My Info section with Name, Email, Phone - FIXED in HTML
-- [ ] "I want to start playing!" button - FIXED in HTML
-- [ ] Explanatory text under button - FIXED in HTML
-- [ ] Availability greyed out until upgrade clicked - FIXED in HTML
-- [ ] When upgrade clicked: availability becomes required - NEEDS JS
-- [ ] Favorite players field - FIXED in HTML
-- [ ] Save My Info button - FIXED in HTML
+- [x] No match status/stats/matches sections
+- [x] My Info section with Name, Email, Phone
+- [x] "I want to start playing!" button
+- [x] Explanatory text under button
+- [x] Availability greyed out until upgrade clicked
+- [x] When upgrade clicked: availability becomes required
+- [x] Favorite players field
+- [x] Save My Info button
 
 ---
 
@@ -180,5 +180,5 @@
 ---
 
 ## STILL NEEDS WORK
-1. Social Butterfly dashboard JS (populate form, save, upgrade flow)
-2. Test Social Butterfly view end-to-end
+1. ~~Social Butterfly dashboard JS (populate form, save, upgrade flow)~~ DONE
+2. Test Social Butterfly view end-to-end (manual testing needed)
