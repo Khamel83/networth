@@ -1,5 +1,8 @@
 # Ashley Christmas 2025 - Implementation Checklist
 
+**Last Updated:** December 28, 2025
+**Status:** ✅ COMPLETE - Ready for manual testing
+
 ## GLOBAL
 - [x] Color scheme: pink #d165a4, orange #ec613e, peach #e7b4b5
 - [x] Grainy texture overlay
@@ -183,4 +186,47 @@
 1. ~~Social Butterfly dashboard JS (populate form, save, upgrade flow)~~ DONE
 2. ~~Nav links fixed to use /#anchor format~~ DONE
 3. ~~Email editing implemented~~ DONE
-4. Manual testing needed: Social Butterfly upgrade flow, email change flow
+4. ~~Auth nav on all pages (rules, support, privacy)~~ DONE
+5. ~~Nav overlap CSS fix for medium screens~~ DONE
+
+---
+
+## MANUAL TESTING CHECKLIST
+
+### Basic Navigation Tests
+- [ ] Go to homepage while logged out → should see "Sign In" and "Join Now"
+- [ ] Go to homepage while logged in → should see "My Profile" and "Sign Out"
+- [ ] Click "Rankings" in nav (logged in) → should scroll to rankings
+- [ ] Go to /rules page while logged in → should see "My Profile" not "Sign In"
+
+### Join Flow (use NEW email not in system)
+- [ ] Go to /join
+- [ ] Select "Player" tier → availability checkboxes active
+- [ ] Select "Social Butterfly" tier → availability checkboxes grey out
+- [ ] Fill out form, submit → success message
+- [ ] Check email for magic link → click to log in
+
+### Dashboard - Player Tests
+- [ ] Log in as Player tier
+- [ ] See: Match Status card, Stats, My Info form
+- [ ] Change name → Save → "Changes saved!"
+- [ ] Save with blank name → error "Name cannot be blank"
+- [ ] Change checkboxes → Save button turns white
+- [ ] Click "Sit Out This Month" → confirmation
+
+### Dashboard - Social Butterfly Tests
+- [ ] Log in as Social Butterfly
+- [ ] See: My Info form with greyed-out availability
+- [ ] NOT see: stats or match sections
+- [ ] Click "I want to start playing!" → availability becomes active
+- [ ] Select availability → Save → upgrades to Player
+
+### Photo Upload Test
+- [ ] Dashboard → Click "Change Photo" → select image
+- [ ] See "Photo uploaded!" and avatar appears
+- [ ] Check Rankings → photo shows there too
+
+### Email Change Test
+- [ ] Dashboard → change email field → Save
+- [ ] Check NEW email for verification link
+- [ ] Click link → email updated
