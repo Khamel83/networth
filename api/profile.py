@@ -194,6 +194,11 @@ class handler(BaseHTTPRequestHandler):
                     if 'evening' in avail:
                         updates['available_evening'] = bool(avail['evening'])
 
+                # Update name
+                if 'name' in data:
+                    if data['name'] and data['name'].strip():
+                        updates['name'] = data['name'].strip()
+
                 # Update phone number
                 if 'phone' in data:
                     updates['phone'] = data['phone'] if data['phone'] else None
