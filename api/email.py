@@ -1134,6 +1134,587 @@ def get_last_chance_email_html(player_name, opponent_name, opponent_email, perio
     """
 
 
+def get_monthly_availability_email_html():
+    """Generate HTML for monthly availability check email (sent on 27th)"""
+    site_url = os.environ.get('SITE_URL', 'https://networthtennis.com')
+
+    return f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <style>
+            body {{
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+                background: linear-gradient(135deg, #d165a4 0%, #ec613e 50%, #e7b4b5 100%);
+                color: #ffffff;
+                padding: 40px 20px;
+                margin: 0;
+            }}
+            .container {{
+                max-width: 600px;
+                margin: 0 auto;
+                background: rgba(255, 255, 255, 0.15);
+                border-radius: 24px;
+                padding: 40px;
+            }}
+            .header {{
+                text-align: center;
+                margin-bottom: 30px;
+            }}
+            .logo {{
+                font-size: 32px;
+                font-weight: 700;
+                text-transform: lowercase;
+            }}
+            .tagline {{
+                color: rgba(255, 255, 255, 0.7);
+                font-size: 14px;
+                margin-top: 5px;
+            }}
+            .card {{
+                background: rgba(255, 255, 255, 0.95);
+                color: #1a1a1a;
+                border-radius: 16px;
+                padding: 30px;
+                margin: 20px 0;
+            }}
+            .card-title {{
+                color: #d165a4;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.1em;
+                font-weight: 600;
+                margin-bottom: 15px;
+            }}
+            .message {{
+                color: #666;
+                font-size: 15px;
+                line-height: 1.7;
+                margin-bottom: 15px;
+            }}
+            .bullet-list {{
+                color: #666;
+                font-size: 14px;
+                line-height: 1.8;
+                margin: 15px 0;
+                padding-left: 20px;
+            }}
+            .bullet-list li {{
+                margin-bottom: 8px;
+            }}
+            .highlight {{
+                color: #1a1a1a;
+                font-weight: 600;
+            }}
+            .btn {{
+                display: inline-block;
+                background: #d165a4;
+                color: #ffffff;
+                padding: 14px 32px;
+                text-decoration: none;
+                font-weight: 600;
+                border-radius: 50px;
+                margin-top: 20px;
+            }}
+            .signoff {{
+                margin-top: 25px;
+                color: #666;
+                font-size: 15px;
+            }}
+            .footer {{
+                text-align: center;
+                margin-top: 30px;
+                color: rgba(255, 255, 255, 0.7);
+                font-size: 13px;
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <div class="logo">net worth</div>
+                <p class="tagline">Tennis. Events. Community.</p>
+            </div>
+
+            <div class="card">
+                <div class="card-title">Quick Check</div>
+
+                <p class="message">Hi there,</p>
+
+                <p class="message">Quick housekeeping note as we head into next month.</p>
+
+                <p class="message">If you'd like to play next month, please make sure you're marked as <span class="highlight">active</span> in your player profile.</p>
+
+                <p class="message">If you need to sit next month out, head to your profile and mark yourself as <span class="highlight">unavailable</span>.</p>
+
+                <p class="message">A few things to keep in mind:</p>
+                <ul class="bullet-list">
+                    <li>Availability is player-controlled and does not reset automatically</li>
+                    <li>If you pause, you'll stay paused until you turn playing back on</li>
+                    <li>Pausing ensures you won't be assigned a match while you're away</li>
+                </ul>
+
+                <p class="message">We ask everyone to be thoughtful about updating their status so match assignments stay smooth for the whole league.</p>
+
+                <a href="{site_url}/dashboard" class="btn">Update Your Status</a>
+
+                <div class="signoff">
+                    <p>Thanks,</p>
+                    <p class="highlight">Net Worth Girlies</p>
+                </div>
+            </div>
+
+            <div class="footer">
+                <p>Net Worth Tennis</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+
+
+def get_final_availability_email_html():
+    """Generate HTML for final availability reminder (sent on last day of month)"""
+    site_url = os.environ.get('SITE_URL', 'https://networthtennis.com')
+
+    return f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <style>
+            body {{
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+                background: linear-gradient(135deg, #d165a4 0%, #ec613e 50%, #e7b4b5 100%);
+                color: #ffffff;
+                padding: 40px 20px;
+                margin: 0;
+            }}
+            .container {{
+                max-width: 600px;
+                margin: 0 auto;
+                background: rgba(255, 255, 255, 0.15);
+                border-radius: 24px;
+                padding: 40px;
+            }}
+            .header {{
+                text-align: center;
+                margin-bottom: 30px;
+            }}
+            .logo {{
+                font-size: 32px;
+                font-weight: 700;
+                text-transform: lowercase;
+            }}
+            .card {{
+                background: rgba(255, 255, 255, 0.95);
+                color: #1a1a1a;
+                border-radius: 16px;
+                padding: 30px;
+                margin: 20px 0;
+                border: 2px solid #ec613e;
+            }}
+            .card-title {{
+                color: #ec613e;
+                font-size: 16px;
+                text-transform: uppercase;
+                letter-spacing: 0.1em;
+                font-weight: 700;
+                margin-bottom: 15px;
+            }}
+            .message {{
+                color: #666;
+                font-size: 15px;
+                line-height: 1.7;
+                margin-bottom: 15px;
+            }}
+            .highlight {{
+                color: #1a1a1a;
+                font-weight: 600;
+            }}
+            .bullet-list {{
+                color: #666;
+                font-size: 14px;
+                line-height: 1.8;
+                margin: 15px 0;
+                padding-left: 20px;
+            }}
+            .bullet-list li {{
+                margin-bottom: 8px;
+            }}
+            .note {{
+                color: #888;
+                font-size: 14px;
+                font-style: italic;
+                margin-top: 20px;
+            }}
+            .btn {{
+                display: inline-block;
+                background: #ec613e;
+                color: #ffffff;
+                padding: 14px 32px;
+                text-decoration: none;
+                font-weight: 600;
+                border-radius: 50px;
+                margin-top: 20px;
+            }}
+            .signoff {{
+                margin-top: 25px;
+                color: #666;
+                font-size: 15px;
+            }}
+            .footer {{
+                text-align: center;
+                margin-top: 30px;
+                color: rgba(255, 255, 255, 0.7);
+                font-size: 13px;
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <div class="logo">net worth</div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">Last Call</div>
+
+                <p class="message">Hi there,</p>
+
+                <p class="message">This is your <span class="highlight">final reminder</span> to check your playing status for next month.</p>
+
+                <p class="message">Match assignments will be created tomorrow, so please visit your player profile today to confirm:</p>
+
+                <ul class="bullet-list">
+                    <li>You're marked <span class="highlight">active</span> if you want to play, or</li>
+                    <li>You're marked <span class="highlight">unavailable</span> if you need to sit next month out</li>
+                </ul>
+
+                <p class="note">If no changes are made, your current status will carry over.</p>
+
+                <a href="{site_url}/dashboard" class="btn">Update Your Status</a>
+
+                <div class="signoff">
+                    <p>Thanks for helping keep things running smoothly,</p>
+                    <p class="highlight">Net Worth Girlies</p>
+                </div>
+            </div>
+
+            <div class="footer">
+                <p>Net Worth Tennis</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+
+
+def get_match_assignment_email_html(player1_name, player2_name, player1_availability, player2_availability,
+                                     player1_phone, player2_phone, month_label):
+    """Generate HTML for match assignment email (sent when matches are created)"""
+    site_url = os.environ.get('SITE_URL', 'https://networthtennis.com')
+
+    return f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <style>
+            body {{
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+                background: linear-gradient(135deg, #d165a4 0%, #ec613e 50%, #e7b4b5 100%);
+                color: #ffffff;
+                padding: 40px 20px;
+                margin: 0;
+            }}
+            .container {{
+                max-width: 600px;
+                margin: 0 auto;
+                background: rgba(255, 255, 255, 0.15);
+                border-radius: 24px;
+                padding: 40px;
+            }}
+            .header {{
+                text-align: center;
+                margin-bottom: 30px;
+            }}
+            .logo {{
+                font-size: 32px;
+                font-weight: 700;
+                text-transform: lowercase;
+            }}
+            .tagline {{
+                color: rgba(255, 255, 255, 0.7);
+                font-size: 14px;
+                margin-top: 5px;
+            }}
+            .card {{
+                background: rgba(255, 255, 255, 0.95);
+                color: #1a1a1a;
+                border-radius: 16px;
+                padding: 30px;
+                margin: 20px 0;
+            }}
+            .card-title {{
+                color: #d165a4;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.1em;
+                font-weight: 600;
+                margin-bottom: 15px;
+            }}
+            .greeting {{
+                font-size: 18px;
+                line-height: 1.6;
+                color: #1a1a1a;
+                margin-bottom: 20px;
+            }}
+            .cta-text {{
+                font-size: 16px;
+                font-weight: 600;
+                color: #d165a4;
+                margin: 20px 0;
+            }}
+            .message {{
+                color: #666;
+                font-size: 15px;
+                line-height: 1.7;
+                margin-bottom: 15px;
+            }}
+            .info-box {{
+                background: #f8f8f8;
+                border-radius: 12px;
+                padding: 20px;
+                margin: 20px 0;
+            }}
+            .info-title {{
+                color: #d165a4;
+                font-size: 12px;
+                text-transform: uppercase;
+                letter-spacing: 0.1em;
+                font-weight: 600;
+                margin-bottom: 12px;
+            }}
+            .info-row {{
+                color: #666;
+                font-size: 14px;
+                margin: 8px 0;
+            }}
+            .info-name {{
+                font-weight: 600;
+                color: #1a1a1a;
+            }}
+            .btn {{
+                display: inline-block;
+                background: #d165a4;
+                color: #ffffff;
+                padding: 14px 32px;
+                text-decoration: none;
+                font-weight: 600;
+                border-radius: 50px;
+                margin-top: 20px;
+            }}
+            .signoff {{
+                margin-top: 25px;
+                color: #666;
+                font-size: 15px;
+            }}
+            .signoff-name {{
+                font-weight: 600;
+                color: #1a1a1a;
+            }}
+            .footer {{
+                text-align: center;
+                margin-top: 30px;
+                color: rgba(255, 255, 255, 0.7);
+                font-size: 13px;
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <div class="logo">net worth</div>
+                <p class="tagline">Tennis. Events. Community.</p>
+            </div>
+
+            <div class="card">
+                <div class="card-title">You're Matched for {month_label}</div>
+
+                <p class="greeting">Hi {player1_name} and {player2_name},</p>
+
+                <p class="message">You're matched for a Net Worth in {month_label}!</p>
+
+                <p class="cta-text">Go ahead... make the first move 😉</p>
+
+                <p class="message">Please reply all to this email to start coordinating a time to play.</p>
+
+                <p class="message">Here's some info to help get things started:</p>
+
+                <div class="info-box">
+                    <div class="info-title">Availability</div>
+                    <div class="info-row"><span class="info-name">{player1_name}:</span> {player1_availability or "Check their profile"}</div>
+                    <div class="info-row"><span class="info-name">{player2_name}:</span> {player2_availability or "Check their profile"}</div>
+                </div>
+
+                <p class="message">You're always free to coordinate directly, and texting works too:</p>
+
+                <div class="info-box">
+                    <div class="info-title">Contact Info</div>
+                    <div class="info-row"><span class="info-name">{player1_name}:</span> {player1_phone or "See profile"}</div>
+                    <div class="info-row"><span class="info-name">{player2_name}:</span> {player2_phone or "See profile"}</div>
+                </div>
+
+                <p class="message">You can also view your current match and match history in your player profile.</p>
+
+                <a href="{site_url}/dashboard" class="btn">Visit Your Dashboard</a>
+
+                <div class="signoff">
+                    <p>Have fun and happy hitting,</p>
+                    <p class="signoff-name">Net Worth Girlies</p>
+                </div>
+            </div>
+
+            <div class="footer">
+                <p>Net Worth Tennis</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+
+
+def get_mid_month_reminder_email_html(player1_name, player2_name, month_label):
+    """Generate HTML for mid-month match reminder email"""
+    site_url = os.environ.get('SITE_URL', 'https://networthtennis.com')
+
+    return f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <style>
+            body {{
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+                background: linear-gradient(135deg, #d165a4 0%, #ec613e 50%, #e7b4b5 100%);
+                color: #ffffff;
+                padding: 40px 20px;
+                margin: 0;
+            }}
+            .container {{
+                max-width: 600px;
+                margin: 0 auto;
+                background: rgba(255, 255, 255, 0.15);
+                border-radius: 24px;
+                padding: 40px;
+            }}
+            .header {{
+                text-align: center;
+                margin-bottom: 30px;
+            }}
+            .logo {{
+                font-size: 32px;
+                font-weight: 700;
+                text-transform: lowercase;
+            }}
+            .card {{
+                background: rgba(255, 255, 255, 0.95);
+                color: #1a1a1a;
+                border-radius: 16px;
+                padding: 30px;
+                margin: 20px 0;
+            }}
+            .card-title {{
+                color: #d165a4;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.1em;
+                font-weight: 600;
+                margin-bottom: 15px;
+            }}
+            .greeting {{
+                font-size: 18px;
+                line-height: 1.6;
+                color: #1a1a1a;
+                margin-bottom: 20px;
+            }}
+            .message {{
+                color: #666;
+                font-size: 15px;
+                line-height: 1.7;
+                margin-bottom: 15px;
+            }}
+            .highlight {{
+                color: #d165a4;
+                font-weight: 600;
+            }}
+            .note {{
+                color: #888;
+                font-size: 14px;
+                font-style: italic;
+                margin-top: 15px;
+            }}
+            .btn {{
+                display: inline-block;
+                background: #d165a4;
+                color: #ffffff;
+                padding: 14px 32px;
+                text-decoration: none;
+                font-weight: 600;
+                border-radius: 50px;
+                margin-top: 20px;
+            }}
+            .signoff {{
+                margin-top: 25px;
+                color: #666;
+                font-size: 15px;
+            }}
+            .signoff-name {{
+                font-weight: 600;
+                color: #1a1a1a;
+            }}
+            .footer {{
+                text-align: center;
+                margin-top: 30px;
+                color: rgba(255, 255, 255, 0.7);
+                font-size: 13px;
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <div class="logo">net worth</div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">Friendly Reminder</div>
+
+                <p class="greeting">Hi {player1_name} and {player2_name},</p>
+
+                <p class="message">Just a friendly reminder to get your <span class="highlight">{month_label}</span> match on the calendar.</p>
+
+                <p class="message">If you've already played, feel free to ignore this note (and nice work!).</p>
+
+                <p class="message">If not, there's still plenty of time to coordinate and get out on the court.</p>
+
+                <p class="note">You can always find match details in your player profile.</p>
+
+                <a href="{site_url}/dashboard" class="btn">Visit Your Dashboard</a>
+
+                <div class="signoff">
+                    <p>See you out there,</p>
+                    <p class="signoff-name">Net Worth Girlies</p>
+                </div>
+            </div>
+
+            <div class="footer">
+                <p>Net Worth Tennis</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+
+
 class handler(BaseHTTPRequestHandler):
     def do_OPTIONS(self):
         self.send_response(200)
@@ -1198,6 +1779,21 @@ class handler(BaseHTTPRequestHandler):
                     self._send_success(result)
                 else:
                     self._send_error(500, result['error'])
+
+            elif action == 'send_monthly_availability':
+                # Send monthly availability reminder (27th of month)
+                result = self._send_monthly_availability_emails()
+                self._send_success(result)
+
+            elif action == 'send_final_availability':
+                # Send final availability reminder (last day of month)
+                result = self._send_final_availability_emails()
+                self._send_success(result)
+
+            elif action == 'send_mid_month_reminder':
+                # Send mid-month match reminder
+                result = self._send_mid_month_reminder_emails(data.get('period_label'))
+                self._send_success(result)
 
             else:
                 self._send_error(400, f"Unknown action: {action}")
@@ -1554,6 +2150,127 @@ class handler(BaseHTTPRequestHandler):
                     sent_count += 1
                 elif result.get('error'):
                     errors.append(f"{player['email']}: {result['error']}")
+
+        return {
+            'sent': sent_count,
+            'pending_matches': len(assignments.data),
+            'errors': errors if errors else None
+        }
+
+    def _send_monthly_availability_emails(self):
+        """Send monthly availability check emails (27th of month) to all active players"""
+        supabase = get_supabase_client()
+        if not supabase:
+            return {'sent': 0, 'error': 'Database not configured'}
+
+        # Get all active players (both player and social_butterfly tiers)
+        players = supabase.table('players')\
+            .select('id, name, email')\
+            .eq('is_active', True)\
+            .execute()
+
+        sent_count = 0
+        errors = []
+
+        html = get_monthly_availability_email_html()
+
+        for player in players.data:
+            result = send_email(
+                player['email'],
+                'Quick check: are you playing next month?',
+                html
+            )
+            if result.get('success'):
+                sent_count += 1
+            elif result.get('error'):
+                errors.append(f"{player['email']}: {result['error']}")
+
+        return {
+            'sent': sent_count,
+            'total_players': len(players.data),
+            'errors': errors if errors else None
+        }
+
+    def _send_final_availability_emails(self):
+        """Send final availability reminder (last day of month) to all active players"""
+        supabase = get_supabase_client()
+        if not supabase:
+            return {'sent': 0, 'error': 'Database not configured'}
+
+        # Get all active players
+        players = supabase.table('players')\
+            .select('id, name, email')\
+            .eq('is_active', True)\
+            .execute()
+
+        sent_count = 0
+        errors = []
+
+        html = get_final_availability_email_html()
+
+        for player in players.data:
+            result = send_email(
+                player['email'],
+                'Last call: update your playing status',
+                html
+            )
+            if result.get('success'):
+                sent_count += 1
+            elif result.get('error'):
+                errors.append(f"{player['email']}: {result['error']}")
+
+        return {
+            'sent': sent_count,
+            'total_players': len(players.data),
+            'errors': errors if errors else None
+        }
+
+    def _send_mid_month_reminder_emails(self, period_label=None):
+        """Send mid-month match reminder to all players with pending matches"""
+        if not period_label:
+            period_label = datetime.now().strftime('%B %Y')
+
+        supabase = get_supabase_client()
+        if not supabase:
+            return {'sent': 0, 'error': 'Database not configured'}
+
+        # Get pending assignments for this period
+        assignments = supabase.table('match_assignments')\
+            .select('*, player1:players!player1_id(id, name, email), player2:players!player2_id(id, name, email)')\
+            .eq('period_label', period_label)\
+            .in_('status', ['pending', 'accepted'])\
+            .execute()
+
+        sent_count = 0
+        errors = []
+
+        for assignment in assignments.data:
+            p1 = assignment['player1']
+            p2 = assignment['player2']
+
+            # Send to player 1
+            html1 = get_mid_month_reminder_email_html(p1['name'], p2['name'], period_label)
+            result1 = send_email(
+                p1['email'],
+                f'Friendly reminder to play your {period_label} match',
+                html1
+            )
+            if result1.get('success'):
+                sent_count += 1
+            elif result1.get('error'):
+                errors.append(f"{p1['email']}: {result1['error']}")
+
+            # Send to player 2
+            html2 = get_mid_month_reminder_email_html(p2['name'], p1['name'], period_label)
+            result2 = send_email(
+                p2['email'],
+                f'Friendly reminder to play your {period_label} match',
+                html2
+            )
+            if result2.get('success'):
+                sent_count += 1
+            elif result2.get('error'):
+                errors.append(f"{p2['email']}: {result2['error']}")
 
         return {
             'sent': sent_count,

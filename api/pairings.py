@@ -228,20 +228,39 @@ def generate_pairings(players, blocked_pairs, recent_matches, all_matches):
         key = tuple(sorted([m['player1_id'], m['player2_id']]))
         recent_matchups.add(key)
 
-    # Handle odd number of players - remove admin flex
+    # Handle odd number of players - remove admin flex with alternating rotation
+    # Ashley sits out on odd months (Jan, Mar, May, Jul, Sep, Nov)
+    # Natalie sits out on even months (Feb, Apr, Jun, Aug, Oct, Dec)
     if len(available_players) % 2 == 1:
-        # Find admin flex players (Natalie first, then Ashley)
+        # Find admin flex players
         natalie = next((p for p in available_players if p.get('email', '').lower() == 'nmcoffen@gmail.com'), None)
         ashley = next((p for p in available_players if p.get('email', '').lower() == 'ashleybrooke.kaufman@gmail.com'), None)
 
+        # Determine whose turn it is to sit out based on the month
+        current_month = datetime.now().month
+        is_odd_month = current_month % 2 == 1  # Jan=1, Mar=3, etc.
+
         removed_player = None
-        if natalie:
-            available_players.remove(natalie)
-            removed_player = natalie
-        elif ashley:
-            available_players.remove(ashley)
-            removed_player = ashley
+        if is_odd_month:
+            # Ashley sits out first (odd months)
+            if ashley:
+                available_players.remove(ashley)
+                removed_player = ashley
+            elif natalie:
+                # Fallback to Natalie if Ashley not available
+                available_players.remove(natalie)
+                removed_player = natalie
         else:
+            # Natalie sits out (even months)
+            if natalie:
+                available_players.remove(natalie)
+                removed_player = natalie
+            elif ashley:
+                # Fallback to Ashley if Natalie not available
+                available_players.remove(ashley)
+                removed_player = ashley
+
+        if not removed_player:
             # No admin flex available, remove lowest ranked player
             available_players.sort(key=lambda p: (p.get('rank', 999), p.get('band_order', 0)))
             removed_player = available_players.pop()
