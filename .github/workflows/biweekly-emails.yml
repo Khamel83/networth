@@ -1,109 +1,174 @@
-# Bi-Weekly Email Cadence
-# ======================
-# Replaces: monthly-pairings.yml, mid-month-reminder.yml, end-month-reminder.yml
-#
+# Tennis League Email Automation
+# ================================
 # Schedule:
-# - 1st of month: Generate pairings + send new match emails + remind about past month
-# - 15th of month: Mid-month check-in + remind about past month outstanding matches
+# - 27th of month at 9am PT: Monthly availability reminder
+# - Last day of month at 9am PT: Final availability reminder
+# - 1st of month at 9am PT: Generate pairings + send match assignment emails
+# - 15th of month at 9am PT: Mid-month match reminder
 #
-# This simplified cadence:
-# - Every ~2 weeks there's an email
-# - Beginning of month: "New matches + did you finish last month?"
-# - Mid-month: "Check-in on this month + any outstanding from before?"
+# Note: For initial launch on January 9, 2026, manually trigger the workflow
+# with action='generate_pairings' to create first pairings.
 
-name: Bi-Weekly Tennis Emails
+name: Tennis League Emails
 
 on:
   schedule:
-    # 1st of month at 9am PT (5pm UTC) - New pairings
+    # 27th of month at 9am PT (5pm UTC) - Monthly availability reminder
+    - cron: '0 17 27 * *'
+    # 28-31 of month at 9am PT (5pm UTC) - Final availability reminder (last day check)
+    - cron: '0 17 28-31 * *'
+    # 1st of month at 9am PT (5pm UTC) - Generate pairings + send emails
     - cron: '0 17 1 * *'
-    # 15th of month at 9am PT (5pm UTC) - Mid-month check-in
+    # 15th of month at 9am PT (5pm UTC) - Mid-month match reminder
     - cron: '0 17 15 * *'
   workflow_dispatch:
     inputs:
       action:
         description: 'Which email action to run'
         required: true
-        default: 'first_of_month'
+        default: 'generate_pairings'
         type: choice
         options:
-          - first_of_month
-          - mid_month
+          - generate_pairings
+          - monthly_availability
+          - final_availability
+          - mid_month_reminder
 
 jobs:
   determine-action:
     runs-on: ubuntu-latest
     outputs:
       action: ${{ steps.set-action.outputs.action }}
+      is_last_day: ${{ steps.set-action.outputs.is_last_day }}
     steps:
       - name: Determine which action to run
         id: set-action
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "action=${{ github.event.inputs.action }}" >> $GITHUB_OUTPUT
+            echo "is_last_day=false" >> $GITHUB_OUTPUT
           else
-            # Determine from date
             DAY=$(date +%d)
-            if [ "$DAY" -le "7" ]; then
-              echo "action=first_of_month" >> $GITHUB_OUTPUT
+            MONTH=$(date +%m)
+            YEAR=$(date +%Y)
+
+            # Check if today is last day of month
+            LAST_DAY=$(date -d "$YEAR-$MONTH-01 +1 month -1 day" +%d)
+
+            if [ "$DAY" = "27" ]; then
+              echo "action=monthly_availability" >> $GITHUB_OUTPUT
+              echo "is_last_day=false" >> $GITHUB_OUTPUT
+            elif [ "$DAY" = "$LAST_DAY" ]; then
+              echo "action=final_availability" >> $GITHUB_OUTPUT
+              echo "is_last_day=true" >> $GITHUB_OUTPUT
+            elif [ "$DAY" = "1" ]; then
+              echo "action=generate_pairings" >> $GITHUB_OUTPUT
+              echo "is_last_day=false" >> $GITHUB_OUTPUT
+            elif [ "$DAY" = "15" ]; then
+              echo "action=mid_month_reminder" >> $GITHUB_OUTPUT
+              echo "is_last_day=false" >> $GITHUB_OUTPUT
             else
-              echo "action=mid_month" >> $GITHUB_OUTPUT
+              # For days 28-30 that aren't the last day, skip
+              echo "action=skip" >> $GITHUB_OUTPUT
+              echo "is_last_day=false" >> $GITHUB_OUTPUT
             fi
           fi
 
-  first-of-month:
+  monthly-availability:
     needs: determine-action
-    if: needs.determine-action.outputs.action == 'first_of_month'
+    if: needs.determine-action.outputs.action == 'monthly_availability'
     runs-on: ubuntu-latest
     steps:
       - name: Log action
         run: |
-          echo "Running: FIRST OF MONTH emails"
+          echo "Running: MONTHLY AVAILABILITY REMINDER (27th)"
+          echo "Sending reminder to all players to update their availability for next month"
+
+      - name: Send monthly availability emails
+        run: |
+          curl -X POST "${{ secrets.SITE_URL }}/api/email" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            -d '{"action": "send_monthly_availability"}'
+
+      - name: Log completion
+        run: echo "Monthly availability emails completed"
+
+  final-availability:
+    needs: determine-action
+    if: needs.determine-action.outputs.action == 'final_availability'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Log action
+        run: |
+          echo "Running: FINAL AVAILABILITY REMINDER (Last day of month)"
+          echo "Sending final reminder to update playing status before pairings are created"
+
+      - name: Send final availability emails
+        run: |
+          curl -X POST "${{ secrets.SITE_URL }}/api/email" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            -d '{"action": "send_final_availability"}'
+
+      - name: Log completion
+        run: echo "Final availability emails completed"
+
+  generate-pairings:
+    needs: determine-action
+    if: needs.determine-action.outputs.action == 'generate_pairings'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Log action
+        run: |
+          echo "Running: GENERATE PAIRINGS + SEND ASSIGNMENT EMAILS"
           echo "This will:"
           echo "  1. Generate new pairings for this month"
-          echo "  2. Send pairing emails with availability info"
-          echo "  3. Send reminder about any outstanding matches from last month"
+          echo "  2. Send match assignment emails to all paired players"
           echo ""
           echo "EMAIL_ENABLED must be 'true' in Vercel env vars for emails to actually send"
 
-      - name: Generate pairings and send notifications
+      - name: Generate pairings
         run: |
-          # Generate new pairings for current month
           curl -X POST "${{ secrets.SITE_URL }}/api/cron/monthly" \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             -H "Content-Type: application/json"
 
-      - name: Send outstanding match reminders
+      - name: Send match assignment emails
         run: |
-          # Remind about any incomplete matches from previous months
+          curl -X POST "${{ secrets.SITE_URL }}/api/email" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json" \
+            -d '{"action": "send_pairings"}'
+
+      - name: Send outstanding match reminders (from previous months)
+        run: |
           curl -X POST "${{ secrets.SITE_URL }}/api/email" \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             -H "Content-Type: application/json" \
             -d '{"action": "send_outstanding_reminders"}'
 
       - name: Log completion
-        run: echo "First of month emails completed"
+        run: echo "Pairings generated and emails sent"
 
-  mid-month:
+  mid-month-reminder:
     needs: determine-action
-    if: needs.determine-action.outputs.action == 'mid_month'
+    if: needs.determine-action.outputs.action == 'mid_month_reminder'
     runs-on: ubuntu-latest
     steps:
       - name: Log action
         run: |
-          echo "Running: MID-MONTH emails"
-          echo "This will:"
-          echo "  1. Send check-in reminder for this month's match"
-          echo "  2. Send reminder about any outstanding matches from previous months"
+          echo "Running: MID-MONTH MATCH REMINDER (15th)"
+          echo "Sending friendly reminder to players who haven't played their match yet"
 
-      - name: Send mid-month reminders
+      - name: Send mid-month reminder emails
         run: |
           curl -X POST "${{ secrets.SITE_URL }}/api/email" \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             -H "Content-Type: application/json" \
-            -d '{"action": "send_reminders"}'
+            -d '{"action": "send_mid_month_reminder"}'
 
-      - name: Send outstanding match reminders
+      - name: Send outstanding match reminders (from previous months)
         run: |
           curl -X POST "${{ secrets.SITE_URL }}/api/email" \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
@@ -111,4 +176,4 @@ jobs:
             -d '{"action": "send_outstanding_reminders"}'
 
       - name: Log completion
-        run: echo "Mid-month emails completed"
+        run: echo "Mid-month reminder emails completed"

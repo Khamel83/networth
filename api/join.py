@@ -21,7 +21,7 @@ def get_supabase_client():
     return None
 
 
-def send_admin_notification(name, email, skill_level):
+def send_admin_notification(name, email, phone, skill_level):
     """Send email to admin about new join request"""
     try:
         import requests
@@ -35,6 +35,17 @@ def send_admin_notification(name, email, skill_level):
         email_enabled = os.environ.get('EMAIL_ENABLED', 'false').lower() == 'true'
         if not email_enabled:
             return {'success': True, 'blocked': True, 'message': 'Email disabled'}
+
+        # Build optional fields HTML
+        phone_html = f"""
+                    <div class="label">Phone</div>
+                    <div class="value">{phone}</div>
+        """ if phone else ""
+
+        skill_html = f"""
+                    <div class="label">Skill Level</div>
+                    <div class="value">{skill_level}</div>
+        """ if skill_level else ""
 
         html = f"""
         <!DOCTYPE html>
@@ -59,10 +70,8 @@ def send_admin_notification(name, email, skill_level):
 
                     <div class="label">Email</div>
                     <div class="value">{email}</div>
-
-                    <div class="label">Skill Level</div>
-                    <div class="value">{skill_level}</div>
-
+                    {phone_html}
+                    {skill_html}
                     <div class="note">
                         Add them to the players table in Supabase to approve.
                     </div>
@@ -111,11 +120,12 @@ class handler(BaseHTTPRequestHandler):
 
             name = data.get('name', '').strip()
             email = data.get('email', '').strip().lower()
-            skill_level = data.get('skill_level', '').strip()
+            phone = data.get('phone', '').strip()
+            skill_level = data.get('skill_level', '').strip()  # Optional field
 
-            # Validate
-            if not name or not email or not skill_level:
-                self._send_error(400, "Name, email, and skill level are required")
+            # Validate - only name and email are required
+            if not name or not email:
+                self._send_error(400, "Name and email are required")
                 return
 
             if '@' not in email:
@@ -137,7 +147,7 @@ class handler(BaseHTTPRequestHandler):
             # For now, just email the admin
 
             # Send notification to admin
-            result = send_admin_notification(name, email, skill_level)
+            result = send_admin_notification(name, email, phone, skill_level)
 
             if result.get('success'):
                 self._send_success({
