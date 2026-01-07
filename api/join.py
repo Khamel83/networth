@@ -21,8 +21,8 @@ def get_supabase_client():
     return None
 
 
-def send_admin_notification(name, email, phone, skill_level):
-    """Send email to admin about new join request"""
+def send_admin_notification(name, email, phone, membership_tier):
+    """Send email to admin about new player joining"""
     try:
         import requests
         api_key = os.environ.get('RESEND_API_KEY')
@@ -36,16 +36,13 @@ def send_admin_notification(name, email, phone, skill_level):
         if not email_enabled:
             return {'success': True, 'blocked': True, 'message': 'Email disabled'}
 
-        # Build optional fields HTML
+        # Build phone HTML if provided
         phone_html = f"""
                     <div class="label">Phone</div>
                     <div class="value">{phone}</div>
         """ if phone else ""
 
-        skill_html = f"""
-                    <div class="label">Skill Level</div>
-                    <div class="value">{skill_level}</div>
-        """ if skill_level else ""
+        tier_display = 'Player ($35)' if membership_tier == 'player' else 'Social Butterfly ($45)'
 
         html = f"""
         <!DOCTYPE html>
@@ -63,7 +60,7 @@ def send_admin_notification(name, email, phone, skill_level):
         </head>
         <body>
             <div class="container">
-                <div class="header">New Player Request</div>
+                <div class="header">New Player Joined!</div>
                 <div class="card">
                     <div class="label">Name</div>
                     <div class="value">{name}</div>
@@ -71,9 +68,12 @@ def send_admin_notification(name, email, phone, skill_level):
                     <div class="label">Email</div>
                     <div class="value">{email}</div>
                     {phone_html}
-                    {skill_html}
+                    <div class="label">Membership</div>
+                    <div class="value">{tier_display}</div>
+
                     <div class="note">
-                        Add them to the players table in Supabase to approve.
+                        They've been automatically added to the players table.
+                        Verify their Venmo payment before the next match assignment.
                     </div>
                 </div>
             </div>
@@ -121,7 +121,16 @@ class handler(BaseHTTPRequestHandler):
             name = data.get('name', '').strip()
             email = data.get('email', '').strip().lower()
             phone = data.get('phone', '').strip()
-            skill_level = data.get('skill_level', '').strip()  # Optional field
+            membership_tier = data.get('membership_tier', 'player').strip()
+            favorite_players = data.get('favorite_players', '').strip()
+
+            # Availability fields
+            avail_weekday_early = data.get('avail_weekday_early', False)
+            avail_weekday_day = data.get('avail_weekday_day', False)
+            avail_weekday_late = data.get('avail_weekday_late', False)
+            avail_weekend_early = data.get('avail_weekend_early', False)
+            avail_weekend_day = data.get('avail_weekend_day', False)
+            avail_weekend_late = data.get('avail_weekend_late', False)
 
             # Validate - only name and email are required
             if not name or not email:
@@ -143,20 +152,61 @@ class handler(BaseHTTPRequestHandler):
                 except Exception:
                     pass  # Continue anyway
 
-            # Store the request (optional - could add a join_requests table)
-            # For now, just email the admin
+            # Insert the new player into Supabase
+            player_inserted = False
+            if supabase:
+                try:
+                    import uuid
+                    player_data = {
+                        'id': str(uuid.uuid4()),
+                        'name': name,
+                        'email': email,
+                        'phone': phone if phone else None,
+                        'membership_tier': membership_tier,
+                        'favorite_players': favorite_players if favorite_players else None,
+                        'avail_weekday_early': avail_weekday_early,
+                        'avail_weekday_day': avail_weekday_day,
+                        'avail_weekday_late': avail_weekday_late,
+                        'avail_weekend_early': avail_weekend_early,
+                        'avail_weekend_day': avail_weekend_day,
+                        'avail_weekend_late': avail_weekend_late,
+                        'is_active': True,
+                        'total_games': 0,
+                        'matches_played': 0,
+                        'rank': None,
+                        'rating': 1500  # Default ELO rating
+                    }
+                    supabase.table('players').insert(player_data).execute()
+                    player_inserted = True
+                except Exception as e:
+                    print(f"Failed to insert player: {e}")
 
             # Send notification to admin
-            result = send_admin_notification(name, email, phone, skill_level)
+            result = send_admin_notification(name, email, phone, membership_tier)
 
-            if result.get('success'):
+            # Send welcome email to new player
+            welcome_sent = False
+            if player_inserted:
+                try:
+                    from api.email import get_welcome_email_html, send_email as send_email_fn
+                    welcome_html = get_welcome_email_html(name, membership_tier)
+                    welcome_result = send_email_fn(email, 'Welcome to Net Worth Tennis!', welcome_html)
+                    welcome_sent = welcome_result.get('success', False)
+                except Exception as e:
+                    print(f"Failed to send welcome email: {e}")
+
+            if player_inserted:
+                self._send_success({
+                    "message": "Welcome to Net Worth! Check your email for next steps.",
+                    "player_created": True,
+                    "welcome_email_sent": welcome_sent
+                })
+            elif result.get('success'):
                 self._send_success({
                     "message": "Join request sent! We'll be in touch soon.",
                     "email_sent": not result.get('blocked', False)
                 })
             else:
-                # Still show success to user even if email fails
-                # (they don't need to know about our email issues)
                 self._send_success({
                     "message": "Join request received! We'll be in touch soon.",
                     "email_sent": False
