@@ -72,8 +72,10 @@ def send_admin_notification(name, email, phone, membership_tier):
                     <div class="value">{tier_display}</div>
 
                     <div class="note">
-                        They've been automatically added to the players table.
-                        Verify their Venmo payment before the next match assignment.
+                        <strong style="color: #CCFF00;">ACTION REQUIRED:</strong><br>
+                        1. Check Venmo for their payment<br>
+                        2. Go to <a href="https://networthtennis.com/admin" style="color: #D4AF37;">the admin dashboard</a><br>
+                        3. Click "Approve" to activate their account
                     </div>
                 </div>
             </div>
@@ -170,7 +172,7 @@ class handler(BaseHTTPRequestHandler):
                         'avail_weekend_early': avail_weekend_early,
                         'avail_weekend_day': avail_weekend_day,
                         'avail_weekend_late': avail_weekend_late,
-                        'is_active': True,
+                        'is_active': False,  # Requires admin approval after Venmo verification
                         'total_games': 0,
                         'matches_played': 0,
                         'rank': None,
@@ -197,8 +199,9 @@ class handler(BaseHTTPRequestHandler):
 
             if player_inserted:
                 self._send_success({
-                    "message": "Welcome to Net Worth! Check your email for next steps.",
+                    "message": "Welcome to Net Worth! Your account will be activated once we verify your Venmo payment. Check your email for next steps.",
                     "player_created": True,
+                    "pending_approval": True,
                     "welcome_email_sent": welcome_sent
                 })
             elif result.get('success'):

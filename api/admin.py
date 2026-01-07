@@ -117,9 +117,16 @@ class handler(BaseHTTPRequestHandler):
                         'is_admin': p.get('is_admin', False),
                         'is_paused': is_paused,
                         'unavailable_until': str(unavailable_until) if unavailable_until else None,
+                        'membership_tier': p.get('membership_tier', 'player'),
                         'available_morning': p.get('available_morning', True),
                         'available_afternoon': p.get('available_afternoon', True),
                         'available_evening': p.get('available_evening', True),
+                        'avail_weekday_early': p.get('avail_weekday_early', False),
+                        'avail_weekday_day': p.get('avail_weekday_day', False),
+                        'avail_weekday_late': p.get('avail_weekday_late', False),
+                        'avail_weekend_early': p.get('avail_weekend_early', False),
+                        'avail_weekend_day': p.get('avail_weekend_day', False),
+                        'avail_weekend_late': p.get('avail_weekend_late', False),
                     })
 
                 self._send_success({'players': players})
@@ -196,12 +203,21 @@ class handler(BaseHTTPRequestHandler):
 
             if action == 'update':
                 # Update player fields
-                allowed_fields = ['name', 'email', 'phone', 'skill_level', 'is_active']
+                allowed_fields = ['name', 'email', 'phone', 'skill_level', 'is_active', 'membership_tier']
                 for field in allowed_fields:
                     if field in data:
                         updates[field] = data[field]
 
-                # Handle availability
+                # Handle availability (new format)
+                avail_fields = [
+                    'avail_weekday_early', 'avail_weekday_day', 'avail_weekday_late',
+                    'avail_weekend_early', 'avail_weekend_day', 'avail_weekend_late'
+                ]
+                for field in avail_fields:
+                    if field in data:
+                        updates[field] = bool(data[field])
+
+                # Handle legacy availability format
                 if 'availability' in data:
                     avail = data['availability']
                     if 'morning' in avail:
@@ -219,13 +235,22 @@ class handler(BaseHTTPRequestHandler):
                 # Remove pause
                 updates['unavailable_until'] = None
 
-            elif action == 'activate':
-                # Activate player
+            elif action == 'activate' or action == 'approve':
+                # Approve/activate player (after Venmo verification)
                 updates['is_active'] = True
 
             elif action == 'deactivate':
                 # Deactivate player (soft delete)
                 updates['is_active'] = False
+
+            elif action == 'reject':
+                # Reject player signup - delete from database
+                supabase.table('players').delete().eq('id', player_id).execute()
+                self._send_success({
+                    'message': f"Player {player.data.get('name')} rejected and removed",
+                    'deleted': True
+                })
+                return
 
             else:
                 self._send_error(400, f"Unknown action: {action}")
