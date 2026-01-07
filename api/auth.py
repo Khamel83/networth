@@ -108,6 +108,27 @@ class handler(BaseHTTPRequestHandler):
                 self._send_error(401, "Invalid or expired session")
                 return
 
+            elif action == 'refresh':
+                # Refresh access token using refresh token
+                refresh_token = data.get('refresh_token')
+                if supabase and refresh_token:
+                    try:
+                        # Use refresh token to get new access token
+                        response = supabase.auth.refresh_session(refresh_token)
+                        if response and response.session:
+                            self._send_success({
+                                "access_token": response.session.access_token,
+                                "refresh_token": response.session.refresh_token,
+                                "expires_in": response.session.expires_in
+                            })
+                            return
+                    except Exception as e:
+                        print(f"Token refresh failed: {e}")
+                        pass
+
+                self._send_error(401, "Token refresh failed")
+                return
+
             elif action == 'logout':
                 if supabase:
                     try:
