@@ -1282,6 +1282,7 @@
             if (hash && hash.includes('access_token=')) {
                 const params = new URLSearchParams(hash.substring(1));
                 const accessToken = params.get('access_token');
+                const refreshToken = params.get('refresh_token');
 
                 if (accessToken) {
                     try {
@@ -1295,6 +1296,7 @@
 
                         if (data.success && data.player) {
                             localStorage.setItem('networth_token', accessToken);
+                            localStorage.setItem('networth_refresh_token', refreshToken || '');
                             localStorage.setItem('networth_player', JSON.stringify(data.player));
                             window.location.href = '/dashboard';
                             return true;
@@ -1305,6 +1307,65 @@
                 }
             }
             return false;
+        }
+
+        // Auto-refresh expired tokens
+        async function refreshAuthToken() {
+            const refreshToken = localStorage.getItem('networth_refresh_token');
+            if (!refreshToken) {
+                console.log('No refresh token available, redirecting to login');
+                localStorage.removeItem('networth_token');
+                localStorage.removeItem('networth_player');
+                window.location.href = '/login';
+                return null;
+            }
+
+            try {
+                const response = await fetch('/api/auth', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'refresh', refresh_token: refreshToken })
+                });
+
+                const data = await response.json();
+                if (data.success && data.access_token) {
+                    localStorage.setItem('networth_token', data.access_token);
+                    if (data.refresh_token) {
+                        localStorage.setItem('networth_refresh_token', data.refresh_token);
+                    }
+                    token = data.access_token;
+                    return data.access_token;
+                }
+            } catch (err) {
+                console.error('Token refresh failed:', err);
+            }
+
+            // Refresh failed, redirect to login
+            localStorage.removeItem('networth_token');
+            localStorage.removeItem('networth_refresh_token');
+            localStorage.removeItem('networth_player');
+            window.location.href = '/login';
+            return null;
+        }
+
+        // Wrapper for API calls with auto-retry on 401
+        async function fetchWithAuth(url, options = {}) {
+            options.headers = options.headers || {};
+            options.headers['Authorization'] = `Bearer ${token}`;
+
+            let response = await fetch(url, options);
+
+            // If 401, try to refresh token and retry once
+            if (response.status === 401) {
+                console.log('Token expired, attempting refresh...');
+                const newToken = await refreshAuthToken();
+                if (newToken) {
+                    options.headers['Authorization'] = `Bearer ${newToken}`;
+                    response = await fetch(url, options);
+                }
+            }
+
+            return response;
         }
 
         // Check for magic link callback first
@@ -1473,12 +1534,9 @@
                     };
                 }
 
-                const response = await fetch('/api/profile', {
+                const response = await fetchWithAuth('/api/profile', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(requestData)
                 });
                 const data = await response.json();
@@ -1510,9 +1568,7 @@
             }
 
             try {
-                const response = await fetch('/api/profile', {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
+                const response = await fetchWithAuth('/api/profile', {});
                 const data = await response.json();
                 if (data.success && data.profile) {
                     player = { ...player, ...data.profile };
@@ -1730,12 +1786,9 @@
                 }
 
                 // Save profile data (include player_id for email sync scenarios)
-                const response = await fetch('/api/profile', {
+                const response = await fetchWithAuth('/api/profile', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         action: 'update',
                         player_id: player.id,
@@ -1790,12 +1843,9 @@
             btn.textContent = 'Updating...';
 
             try {
-                const response = await fetch('/api/profile', {
+                const response = await fetchWithAuth('/api/profile', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ action: 'pause' })
                 });
                 const data = await response.json();
@@ -1826,12 +1876,9 @@
             btn.textContent = 'Updating...';
 
             try {
-                const response = await fetch('/api/profile', {
+                const response = await fetchWithAuth('/api/profile', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ action: 'unpause' })
                 });
                 const data = await response.json();
@@ -1859,12 +1906,9 @@
             }
 
             try {
-                const response = await fetch('/api/profile', {
+                const response = await fetchWithAuth('/api/profile', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ action: 'upgrade_tier' })
                 });
                 const data = await response.json();
