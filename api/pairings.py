@@ -508,13 +508,45 @@ class handler(BaseHTTPRequestHandler):
             if assignments:
                 supabase.table('match_assignments').insert(assignments).execute()
 
-            # 7. Update RMS scores for all players
+            # 7. Send match assignment emails
+            emails_sent = 0
+            email_errors = []
+            try:
+                from api.email import send_email, get_match_assignment_email_html
+                for p in pairings:
+                    p1 = p['player1']
+                    p2 = p['player2']
+                    html = get_match_assignment_email_html(
+                        p1['name'],
+                        p2['name'],
+                        period_label,
+                        p['player1_availability'],
+                        p['player2_availability'],
+                        p1.get('phone', ''),
+                        p2.get('phone', '')
+                    )
+                    subject = f"{p1['name']}, meet {p2['name']} - You're matched for {period_label}!"
+                    result = send_email(
+                        [p1['email'], p2['email']],
+                        subject,
+                        html
+                    )
+                    if result.get('success'):
+                        emails_sent += 1
+                    else:
+                        email_errors.append(f"{p1['name']} & {p2['name']}: {result.get('error')}")
+            except Exception as e:
+                email_errors.append(f"Email system error: {str(e)}")
+
+            # 8. Update RMS scores for all players
             for player in players:
                 update_player_rms(supabase, player['id'], all_matches)
 
             self._send_success({
                 'period': period_label,
                 'pairings_created': len(assignments),
+                'emails_sent': emails_sent,
+                'email_errors': email_errors if email_errors else None,
                 'players_available': len([p for p in players if is_player_available(p)]),
                 'players_unavailable': len([p for p in players if not is_player_available(p)]),
                 'players_skipped': [{'name': s['name'], 'reason': 'admin_flex' if is_admin_flex(s) else 'odd_count'} for s in skipped],

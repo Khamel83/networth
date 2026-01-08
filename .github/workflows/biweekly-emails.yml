@@ -3,11 +3,11 @@
 # Schedule:
 # - 27th of month at 9am PT: Monthly availability reminder
 # - Last day of month at 9am PT: Final availability reminder
-# - 1st of month at 9am PT: Generate pairings + send match assignment emails
+# - 1st of month at 9am PT: Generate pairings (emails sent automatically)
 # - 15th of month at 9am PT: Mid-month match reminder
 #
-# Note: For initial launch on January 9, 2026, manually trigger the workflow
-# with action='generate_pairings' to create first pairings.
+# Note: Emails are sent via Gmail SMTP (ashleybrooke.kaufman@gmail.com)
+# Requires SMTP_PASSWORD env var in Vercel
 
 name: Tennis League Emails
 
@@ -17,7 +17,7 @@ on:
     - cron: '0 17 27 * *'
     # 28-31 of month at 9am PT (5pm UTC) - Final availability reminder (last day check)
     - cron: '0 17 28-31 * *'
-    # 1st of month at 9am PT (5pm UTC) - Generate pairings + send emails
+    # 1st of month at 9am PT (5pm UTC) - Generate pairings
     - cron: '0 17 1 * *'
     # 15th of month at 9am PT (5pm UTC) - Mid-month match reminder
     - cron: '0 17 15 * *'
@@ -87,9 +87,8 @@ jobs:
       - name: Send monthly availability emails
         run: |
           curl -X POST "${{ secrets.SITE_URL }}/api/email" \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             -H "Content-Type: application/json" \
-            -d '{"action": "send_monthly_availability"}'
+            -d '{"action": "send_availability_check"}'
 
       - name: Log completion
         run: echo "Monthly availability emails completed"
@@ -107,9 +106,8 @@ jobs:
       - name: Send final availability emails
         run: |
           curl -X POST "${{ secrets.SITE_URL }}/api/email" \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             -H "Content-Type: application/json" \
-            -d '{"action": "send_final_availability"}'
+            -d '{"action": "send_final_reminder"}'
 
       - name: Log completion
         run: echo "Final availability emails completed"
@@ -121,32 +119,16 @@ jobs:
     steps:
       - name: Log action
         run: |
-          echo "Running: GENERATE PAIRINGS + SEND ASSIGNMENT EMAILS"
+          echo "Running: GENERATE PAIRINGS"
           echo "This will:"
           echo "  1. Generate new pairings for this month"
-          echo "  2. Send match assignment emails to all paired players"
-          echo ""
-          echo "EMAIL_ENABLED must be 'true' in Vercel env vars for emails to actually send"
+          echo "  2. Send match assignment emails to all paired players (automatic)"
 
-      - name: Generate pairings
+      - name: Generate pairings and send emails
         run: |
-          curl -X POST "${{ secrets.SITE_URL }}/api/cron/monthly" \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            -H "Content-Type: application/json"
-
-      - name: Send match assignment emails
-        run: |
-          curl -X POST "${{ secrets.SITE_URL }}/api/email" \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+          curl -X POST "${{ secrets.SITE_URL }}/api/pairings" \
             -H "Content-Type: application/json" \
-            -d '{"action": "send_pairings"}'
-
-      - name: Send outstanding match reminders (from previous months)
-        run: |
-          curl -X POST "${{ secrets.SITE_URL }}/api/email" \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            -H "Content-Type: application/json" \
-            -d '{"action": "send_outstanding_reminders"}'
+            -d '{}'
 
       - name: Log completion
         run: echo "Pairings generated and emails sent"
@@ -164,16 +146,8 @@ jobs:
       - name: Send mid-month reminder emails
         run: |
           curl -X POST "${{ secrets.SITE_URL }}/api/email" \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             -H "Content-Type: application/json" \
-            -d '{"action": "send_mid_month_reminder"}'
-
-      - name: Send outstanding match reminders (from previous months)
-        run: |
-          curl -X POST "${{ secrets.SITE_URL }}/api/email" \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            -H "Content-Type: application/json" \
-            -d '{"action": "send_outstanding_reminders"}'
+            -d '{"action": "send_midmonth_reminders"}'
 
       - name: Log completion
         run: echo "Mid-month reminder emails completed"
