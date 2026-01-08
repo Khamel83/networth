@@ -244,11 +244,11 @@ class handler(BaseHTTPRequestHandler):
                 updates['is_active'] = False
 
             elif action == 'reject':
-                # Reject player signup - delete from database
-                supabase.table('players').delete().eq('id', player_id).execute()
+                # Reject player signup - deactivate (RLS blocks deletes)
+                supabase.table('players').update({'is_active': False}).eq('id', player_id).execute()
                 self._send_success({
-                    'message': f"Player {player.data.get('name')} rejected and removed",
-                    'deleted': True
+                    'message': f"Player {player.data.get('name')} rejected",
+                    'rejected': True
                 })
                 return
 

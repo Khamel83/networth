@@ -64,42 +64,43 @@ class handler(BaseHTTPRequestHandler):
                 self._send_error(503, "Database not available")
                 return
 
-            # Check if already exists
+            # Prepare player data
+            player_data = {
+                'name': name,
+                'email': email,
+                'phone': phone if phone else None,
+                'membership_tier': membership_tier,
+                'favorite_players': favorite_players if favorite_players else None,
+                'avail_weekday_early': avail_weekday_early,
+                'avail_weekday_day': avail_weekday_day,
+                'avail_weekday_late': avail_weekday_late,
+                'avail_weekend_early': avail_weekend_early,
+                'avail_weekend_day': avail_weekend_day,
+                'avail_weekend_late': avail_weekend_late,
+                'is_active': False,  # Requires admin approval after Venmo verification
+                'total_games': 0,
+                'matches_played': 0,
+                'rank': None
+            }
+
+            # Check if email already exists
             try:
                 existing = supabase.table('players').select('id, is_active').eq('email', email).execute()
+
                 if existing.data:
-                    active_account = next((p for p in existing.data if p.get('is_active')), None)
-                    if active_account:
+                    existing_player = existing.data[0]
+
+                    if existing_player.get('is_active'):
+                        # Active account exists - tell them to log in
                         self._send_error(400, "This email is already registered. Try logging in instead!")
                         return
-                    # Delete ALL existing records with this email (inactive accounts)
-                    supabase.table('players').delete().eq('email', email).execute()
-            except Exception as e:
-                # If we can't check/delete, try to proceed anyway
-                print(f"Error checking existing player: {e}")
 
-            # Insert or update the player in Supabase
-            try:
-                import uuid
-                player_data = {
-                    'name': name,
-                    'email': email,
-                    'phone': phone if phone else None,
-                    'membership_tier': membership_tier,
-                    'favorite_players': favorite_players if favorite_players else None,
-                    'avail_weekday_early': avail_weekday_early,
-                    'avail_weekday_day': avail_weekday_day,
-                    'avail_weekday_late': avail_weekday_late,
-                    'avail_weekend_early': avail_weekend_early,
-                    'avail_weekend_day': avail_weekend_day,
-                    'avail_weekend_late': avail_weekend_late,
-                    'is_active': False,  # Requires admin approval after Venmo verification
-                    'total_games': 0,
-                    'matches_played': 0,
-                    'rank': None
-                }
-                # Use upsert - if email exists, update; if not, insert
-                result = supabase.table('players').upsert(player_data, on_conflict='email').execute()
+                    # Inactive account exists - UPDATE it with new registration data
+                    # This handles re-registration after rejection or abandoned signup
+                    result = supabase.table('players').update(player_data).eq('id', existing_player['id']).execute()
+                else:
+                    # No existing account - INSERT new one
+                    result = supabase.table('players').insert(player_data).execute()
 
                 if result.data:
                     # Send welcome email
