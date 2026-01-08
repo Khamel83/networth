@@ -23,8 +23,7 @@ Set `EMAIL_ENABLED=false` in Vercel env vars - emails get logged but not sent
 - `api/pairings.py` - Matching algorithm (skill-based)
 - `api/email.py` - All email templates
 - `lib/config.py` - Centralized config (in lib/ to avoid Vercel limit)
-- `api/schema.py` - Check DB schema state
-- `api/migrate.py` - Run migrations (admin only)
+- `api/migrate.py` - Admin tools (migrations)
 - `.github/workflows/biweekly-emails.yml` - Scheduled emails
 
 ## Architecture
@@ -107,10 +106,12 @@ If Supabase/Vercel are down, `public/fallback.html` is a pure static page with:
 
 Current count: 12 (at limit!)
 ```
-api/admin.py, api/auth.py, api/email.py, api/health.py,
-api/join.py, api/matches.py, api/migrate.py, api/pairings.py,
-api/players.py, api/profile.py, api/schema.py, api/upload.py
+api/admin.py      api/auth.py       api/email.py      api/health.py
+api/join.py       api/matches.py    api/migrate.py    api/pairings.py
+api/players.py    api/profile.py    api/upload.py     api/cron/monthly.py
 ```
+
+**INCLUDES api/cron/ subfolder - Vercel counts ALL .py files under api/**
 
 **DO NOT add new .py files to api/ folder without removing one first.**
 
