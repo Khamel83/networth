@@ -2335,14 +2335,17 @@
             const select = document.getElementById('admin-player-select');
             select.innerHTML = '<option value="">Select a player to manage...</option>';
 
-            const sorted = [...players].sort((a, b) => {
+            // Filter out inactive accounts (deactivated users) - only show active players and admins
+            const activePlayers = players.filter(p => p.is_active || p.is_admin);
+
+            const sorted = [...activePlayers].sort((a, b) => {
                 if (a.is_admin && !b.is_admin) return 1;
                 if (!a.is_admin && b.is_admin) return -1;
                 return a.name.localeCompare(b.name);
             });
 
             sorted.forEach(p => {
-                const status = p.is_admin ? ' [Admin]' : (!p.is_active ? ' [Inactive]' : (p.is_paused ? ' [Paused]' : ''));
+                const status = p.is_admin ? ' [Admin]' : (p.is_paused ? ' [Paused]' : '');
                 const tier = p.membership_tier === 'social_butterfly' ? ' (Social)' : '';
                 const opt = document.createElement('option');
                 opt.value = p.id;

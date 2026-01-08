@@ -156,7 +156,7 @@ class handler(BaseHTTPRequestHandler):
             action = data.get('action', 'update')
 
             # Get current player - try by auth email first
-            player = supabase.table('players').select('*').eq('email', user.email).maybeSingle().execute()
+            player = supabase.table('players').select('*').eq('email', user.email).maybe_single().execute()
 
             # If not found by email, try by player_id from request (for email change scenarios)
             if not player.data:
