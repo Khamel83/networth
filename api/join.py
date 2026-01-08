@@ -145,6 +145,8 @@ class handler(BaseHTTPRequestHandler):
 
             # Check if already exists (only block if ACTIVE account exists)
             supabase = get_supabase_client()
+            db_error = None
+
             if supabase:
                 try:
                     # Check for active accounts with this email
@@ -157,11 +159,14 @@ class handler(BaseHTTPRequestHandler):
                         # If only inactive accounts exist, delete them to allow re-registration
                         for inactive in existing.data:
                             supabase.table('players').delete().eq('id', inactive['id']).execute()
-                except Exception:
-                    pass  # Continue anyway
+                except Exception as e:
+                    db_error = f"Database check failed: {str(e)}"
+                    print(db_error)
 
             # Insert the new player into Supabase
             player_inserted = False
+            insert_error = None
+
             if supabase:
                 try:
                     import uuid
@@ -183,10 +188,16 @@ class handler(BaseHTTPRequestHandler):
                         'matches_played': 0,
                         'rank': None
                     }
-                    supabase.table('players').insert(player_data).execute()
-                    player_inserted = True
+                    result = supabase.table('players').insert(player_data).execute()
+                    if result.data:
+                        player_inserted = True
+                    else:
+                        insert_error = "Database insert returned no data"
                 except Exception as e:
-                    print(f"Failed to insert player: {e}")
+                    insert_error = f"Database insert failed: {str(e)}"
+                    print(insert_error)
+            else:
+                insert_error = "Database not available"
 
             # Send notification to admin
             result = send_admin_notification(name, email, phone, membership_tier)
@@ -207,18 +218,23 @@ class handler(BaseHTTPRequestHandler):
                     "message": "Welcome to Net Worth! Your account will be activated once we verify your Venmo payment. Check your email for next steps.",
                     "player_created": True,
                     "pending_approval": True,
-                    "welcome_email_sent": welcome_sent
+                    "welcome_email_sent": welcome_sent,
+                    "admin_notified": result.get('success', False)
                 })
+            elif insert_error:
+                # Database insert failed - this is an error, not a success
+                self._send_error(500, f"Unable to create account. Please try again or contact support. ({insert_error})")
             elif result.get('success'):
+                # No database but email sent - legacy fallback
                 self._send_success({
                     "message": "Join request sent! We'll be in touch soon.",
-                    "email_sent": not result.get('blocked', False)
+                    "email_sent": not result.get('blocked', False),
+                    "player_created": False,
+                    "note": "Account creation pending - admin will set up manually"
                 })
             else:
-                self._send_success({
-                    "message": "Join request received! We'll be in touch soon.",
-                    "email_sent": False
-                })
+                # Nothing worked
+                self._send_error(500, "Unable to process request. Please contact support directly.")
 
         except Exception as e:
             self._send_error(500, str(e))
