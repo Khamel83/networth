@@ -64,7 +64,7 @@ class handler(BaseHTTPRequestHandler):
                 self._send_error(503, "Database not available")
                 return
 
-            # Check if already exists (only block if ACTIVE account exists)
+            # Check if already exists
             try:
                 existing = supabase.table('players').select('id, is_active').eq('email', email).execute()
                 if existing.data:
@@ -72,18 +72,16 @@ class handler(BaseHTTPRequestHandler):
                     if active_account:
                         self._send_error(400, "This email is already registered. Try logging in instead!")
                         return
-                    # If only inactive accounts exist, delete them to allow re-registration
-                    for inactive in existing.data:
-                        supabase.table('players').delete().eq('id', inactive['id']).execute()
+                    # Delete ALL existing records with this email (inactive accounts)
+                    supabase.table('players').delete().eq('email', email).execute()
             except Exception as e:
-                # Log but continue
+                # If we can't check/delete, try to proceed anyway
                 print(f"Error checking existing player: {e}")
 
-            # Insert the new player into Supabase
+            # Insert or update the player in Supabase
             try:
                 import uuid
                 player_data = {
-                    'id': str(uuid.uuid4()),
                     'name': name,
                     'email': email,
                     'phone': phone if phone else None,
@@ -100,7 +98,8 @@ class handler(BaseHTTPRequestHandler):
                     'matches_played': 0,
                     'rank': None
                 }
-                result = supabase.table('players').insert(player_data).execute()
+                # Use upsert - if email exists, update; if not, insert
+                result = supabase.table('players').upsert(player_data, on_conflict='email').execute()
 
                 if result.data:
                     # Send welcome email
