@@ -10,7 +10,7 @@ Women's tennis ladder for East Side LA. Monthly pairings, games-won ranking syst
 ## Quick Reference
 
 ### To change colors/copy/branding:
-- Email content: `api/config.py`
+- Email content: `lib/config.py`
 - Website CSS: Variables at top of each `public/*.html` file
 
 ### To add a player:
@@ -22,7 +22,9 @@ Set `EMAIL_ENABLED=false` in Vercel env vars - emails get logged but not sent
 ### Key files:
 - `api/pairings.py` - Matching algorithm (skill-based)
 - `api/email.py` - All email templates
-- `api/config.py` - Centralized config
+- `lib/config.py` - Centralized config (in lib/ to avoid Vercel limit)
+- `api/schema.py` - Check DB schema state
+- `api/migrate.py` - Run migrations (admin only)
 - `.github/workflows/biweekly-emails.yml` - Scheduled emails
 
 ## Architecture
@@ -99,8 +101,24 @@ If Supabase/Vercel are down, `public/fallback.html` is a pure static page with:
 - mailto: links for score reporting
 - No JS dependencies
 
+## Vercel Limits (CRITICAL)
+
+**Hobby plan limit: 12 serverless functions max**
+
+Current count: 12 (at limit!)
+```
+api/admin.py, api/auth.py, api/email.py, api/health.py,
+api/join.py, api/matches.py, api/migrate.py, api/pairings.py,
+api/players.py, api/profile.py, api/schema.py, api/upload.py
+```
+
+**DO NOT add new .py files to api/ folder without removing one first.**
+
+Config is in `lib/config.py` (not api/) specifically to avoid this limit.
+
 ## Do Not
 
 - Store passwords (we use magic links)
 - Add complex features without asking (keep it simple for the players)
 - Change the ranking formula (games won, period)
+- Add new API endpoints without checking count first (12 max)
