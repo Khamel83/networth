@@ -1,7 +1,7 @@
 """
 Vercel Serverless Function: Join Request API
 Handles new player requests to join the ladder.
-Sends notification email to league administrators.
+Creates player in database, admin approves via dashboard.
 """
 from http.server import BaseHTTPRequestHandler
 import json
@@ -19,91 +19,6 @@ def get_supabase_client():
     except Exception:
         pass
     return None
-
-
-def send_admin_notification(name, email, phone, membership_tier):
-    """Send email to admin about new player joining"""
-    try:
-        import requests
-        api_key = os.environ.get('RESEND_API_KEY')
-        admin_email = os.environ.get('ADMIN_EMAIL', 'support@networthtennis.com')
-
-        if not api_key:
-            return {'success': False, 'error': 'RESEND_API_KEY not configured'}
-
-        # Check kill switch
-        email_enabled = os.environ.get('EMAIL_ENABLED', 'false').lower() == 'true'
-        if not email_enabled:
-            return {'success': True, 'blocked': True, 'message': 'Email disabled'}
-
-        # Build phone HTML if provided
-        phone_html = f"""
-                    <div class="label">Phone</div>
-                    <div class="value">{phone}</div>
-        """ if phone else ""
-
-        tier_display = 'Player ($35)' if membership_tier == 'player' else 'Social Butterfly ($45)'
-
-        html = f"""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <style>
-                body {{ font-family: 'Courier New', monospace; background: #0a0a0a; color: #e8e8e8; padding: 40px; }}
-                .container {{ max-width: 500px; margin: 0 auto; }}
-                .header {{ color: #D4AF37; font-size: 24px; font-weight: bold; margin-bottom: 20px; }}
-                .card {{ background: #121212; border: 1px solid #D4AF37; padding: 25px; }}
-                .label {{ color: #888; font-size: 12px; text-transform: uppercase; margin-bottom: 5px; }}
-                .value {{ color: #CCFF00; font-size: 18px; margin-bottom: 20px; }}
-                .note {{ color: #888; font-size: 13px; margin-top: 20px; }}
-            </style>
-        </head>
-        <body>
-            <div class="container">
-                <div class="header">New Player Joined!</div>
-                <div class="card">
-                    <div class="label">Name</div>
-                    <div class="value">{name}</div>
-
-                    <div class="label">Email</div>
-                    <div class="value">{email}</div>
-                    {phone_html}
-                    <div class="label">Membership</div>
-                    <div class="value">{tier_display}</div>
-
-                    <div class="note">
-                        <strong style="color: #CCFF00;">ACTION REQUIRED:</strong><br>
-                        1. Check Venmo for their payment<br>
-                        2. Go to <a href="https://networthtennis.com/admin" style="color: #D4AF37;">the admin dashboard</a><br>
-                        3. Click "Approve" to activate their account
-                    </div>
-                </div>
-            </div>
-        </body>
-        </html>
-        """
-
-        response = requests.post(
-            'https://api.resend.com/emails',
-            headers={
-                'Authorization': f'Bearer {api_key}',
-                'Content-Type': 'application/json'
-            },
-            json={
-                'from': os.environ.get('EMAIL_FROM', 'NET WORTH Tennis <noreply@networthtennis.com>'),
-                'to': [admin_email],
-                'subject': f'New Player Request: {name}',
-                'html': html
-            }
-        )
-
-        if response.status_code == 200:
-            return {'success': True}
-        else:
-            return {'success': False, 'error': response.text}
-
-    except Exception as e:
-        return {'success': False, 'error': str(e)}
 
 
 class handler(BaseHTTPRequestHandler):
@@ -143,99 +58,61 @@ class handler(BaseHTTPRequestHandler):
                 self._send_error(400, "Please enter a valid email address")
                 return
 
-            # Check if already exists (only block if ACTIVE account exists)
+            # Get Supabase client
             supabase = get_supabase_client()
-            db_error = None
+            if not supabase:
+                self._send_error(503, "Database not available")
+                return
 
-            if supabase:
-                try:
-                    # Check for active accounts with this email
-                    existing = supabase.table('players').select('id, is_active').eq('email', email).execute()
-                    if existing.data:
-                        active_account = next((p for p in existing.data if p.get('is_active')), None)
-                        if active_account:
-                            self._send_error(400, "This email is already registered. Try logging in instead!")
-                            return
-                        # If only inactive accounts exist, delete them to allow re-registration
-                        for inactive in existing.data:
-                            supabase.table('players').delete().eq('id', inactive['id']).execute()
-                except Exception as e:
-                    db_error = f"Database check failed: {str(e)}"
-                    print(db_error)
+            # Check if already exists (only block if ACTIVE account exists)
+            try:
+                existing = supabase.table('players').select('id, is_active').eq('email', email).execute()
+                if existing.data:
+                    active_account = next((p for p in existing.data if p.get('is_active')), None)
+                    if active_account:
+                        self._send_error(400, "This email is already registered. Try logging in instead!")
+                        return
+                    # If only inactive accounts exist, delete them to allow re-registration
+                    for inactive in existing.data:
+                        supabase.table('players').delete().eq('id', inactive['id']).execute()
+            except Exception as e:
+                # Log but continue
+                print(f"Error checking existing player: {e}")
 
             # Insert the new player into Supabase
-            player_inserted = False
-            insert_error = None
+            try:
+                import uuid
+                player_data = {
+                    'id': str(uuid.uuid4()),
+                    'name': name,
+                    'email': email,
+                    'phone': phone if phone else None,
+                    'membership_tier': membership_tier,
+                    'favorite_players': favorite_players if favorite_players else None,
+                    'avail_weekday_early': avail_weekday_early,
+                    'avail_weekday_day': avail_weekday_day,
+                    'avail_weekday_late': avail_weekday_late,
+                    'avail_weekend_early': avail_weekend_early,
+                    'avail_weekend_day': avail_weekend_day,
+                    'avail_weekend_late': avail_weekend_late,
+                    'is_active': False,  # Requires admin approval after Venmo verification
+                    'total_games': 0,
+                    'matches_played': 0,
+                    'rank': None
+                }
+                result = supabase.table('players').insert(player_data).execute()
 
-            if supabase:
-                try:
-                    import uuid
-                    player_data = {
-                        'id': str(uuid.uuid4()),
-                        'name': name,
-                        'email': email,
-                        'phone': phone if phone else None,
-                        'membership_tier': membership_tier,
-                        'favorite_players': favorite_players if favorite_players else None,
-                        'avail_weekday_early': avail_weekday_early,
-                        'avail_weekday_day': avail_weekday_day,
-                        'avail_weekday_late': avail_weekday_late,
-                        'avail_weekend_early': avail_weekend_early,
-                        'avail_weekend_day': avail_weekend_day,
-                        'avail_weekend_late': avail_weekend_late,
-                        'is_active': False,  # Requires admin approval after Venmo verification
-                        'total_games': 0,
-                        'matches_played': 0,
-                        'rank': None
-                    }
-                    result = supabase.table('players').insert(player_data).execute()
-                    if result.data:
-                        player_inserted = True
-                    else:
-                        insert_error = "Database insert returned no data"
-                except Exception as e:
-                    insert_error = f"Database insert failed: {str(e)}"
-                    print(insert_error)
-            else:
-                insert_error = "Database not available"
+                if result.data:
+                    self._send_success({
+                        "message": "Welcome to Net Worth! Your request has been received. Once we verify your Venmo payment, you'll receive an email to set up your login.",
+                        "player_created": True,
+                        "pending_approval": True
+                    })
+                else:
+                    self._send_error(500, "Failed to create account. Please try again.")
 
-            # Send notification to admin
-            result = send_admin_notification(name, email, phone, membership_tier)
-
-            # Send welcome email to new player
-            welcome_sent = False
-            if player_inserted:
-                try:
-                    from api.email import get_welcome_email_html, send_email as send_email_fn
-                    welcome_html = get_welcome_email_html(name, membership_tier)
-                    welcome_result = send_email_fn(email, 'Welcome to Net Worth Tennis!', welcome_html)
-                    welcome_sent = welcome_result.get('success', False)
-                except Exception as e:
-                    print(f"Failed to send welcome email: {e}")
-
-            if player_inserted:
-                self._send_success({
-                    "message": "Welcome to Net Worth! Your account will be activated once we verify your Venmo payment. Check your email for next steps.",
-                    "player_created": True,
-                    "pending_approval": True,
-                    "welcome_email_sent": welcome_sent,
-                    "admin_notified": result.get('success', False),
-                    "email_debug": result.get('error') if not result.get('success') else None
-                })
-            elif insert_error:
-                # Database insert failed - this is an error, not a success
-                self._send_error(500, f"Unable to create account. Please try again or contact support. ({insert_error})")
-            elif result.get('success'):
-                # No database but email sent - legacy fallback
-                self._send_success({
-                    "message": "Join request sent! We'll be in touch soon.",
-                    "email_sent": not result.get('blocked', False),
-                    "player_created": False,
-                    "note": "Account creation pending - admin will set up manually"
-                })
-            else:
-                # Nothing worked
-                self._send_error(500, "Unable to process request. Please contact support directly.")
+            except Exception as e:
+                self._send_error(500, f"Unable to create account: {str(e)}")
 
         except Exception as e:
             self._send_error(500, str(e))

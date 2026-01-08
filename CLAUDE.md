@@ -5,26 +5,22 @@
 Women's tennis ladder for East Side LA. Monthly pairings, games-won ranking system.
 
 **Live**: networthtennis.com
-**Stack**: Vercel (static + Python functions) + Supabase + Resend
+**Stack**: Vercel (static + Python functions) + Supabase
 
 ## Quick Reference
 
 ### To change colors/copy/branding:
-- Email content: `lib/config.py`
 - Website CSS: Variables at top of each `public/*.html` file
+- Email templates: Configured in Supabase Auth dashboard
 
 ### To add a player:
 Add row to `players` table in Supabase
 
-### To test emails locally:
-Set `EMAIL_ENABLED=false` in Vercel env vars - emails get logged but not sent
-
 ### Key files:
 - `api/pairings.py` - Matching algorithm (skill-based)
-- `api/email.py` - All email templates
+- `api/profile.py` - Player profile management
 - `lib/config.py` - Centralized config (in lib/ to avoid Vercel limit)
 - `api/migrate.py` - Admin tools (migrations)
-- `.github/workflows/biweekly-emails.yml` - Scheduled emails
 
 ## Architecture
 
@@ -33,11 +29,11 @@ User visits site
     → Vercel serves static HTML from /public
     → JS fetches from /api/* endpoints
     → API reads/writes to Supabase
-    → Resend sends emails
+    → Supabase Auth handles magic link emails
 
 GitHub Actions (1st + 15th of month)
     → Calls /api/cron/monthly to generate pairings
-    → Calls /api/email to send notifications
+    → Admin dashboard shows pending notifications
 ```
 
 ## Database Schema
@@ -83,11 +79,8 @@ SELECT recalculate_rankings();
 
 Set in Vercel dashboard:
 - `SUPABASE_URL`, `SUPABASE_ANON_KEY`
-- `RESEND_API_KEY`
 - `SITE_URL` = https://networthtennis.com
-- `EMAIL_FROM` = NET WORTH Tennis <noreply@networthtennis.com>
 - `ADMIN_EMAIL` = where join requests go
-- `EMAIL_ENABLED` = true/false kill switch
 - `CRON_SECRET` = for GitHub Actions auth
 
 Set in GitHub repo secrets:

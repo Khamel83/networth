@@ -18,8 +18,7 @@ East Side LA Women's Tennis - Monthly pairings, games-won ranking.
 - **Frontend**: Static HTML/CSS/JS on Vercel
 - **Backend**: Vercel Python serverless functions
 - **Database**: Supabase (PostgreSQL)
-- **Email**: Resend API
-- **Auth**: Magic links (no passwords)
+- **Auth**: Supabase Auth with magic links (no passwords)
 
 ## Project Structure
 
@@ -33,32 +32,32 @@ networth/
 │   ├── rules.html         # How it works
 │   ├── support.html       # FAQs
 │   └── privacy.html       # Privacy policy
-├── api/                    # Serverless functions
+├── api/                    # Serverless functions (12 max on Vercel Hobby)
 │   ├── auth.py            # Magic link auth
 │   ├── players.py         # Player list
 │   ├── matches.py         # Match reporting
-│   ├── email.py           # Email sending
 │   ├── pairings.py        # Monthly matching algorithm
 │   ├── profile.py         # Player self-service
 │   ├── join.py            # Join requests
+│   ├── migrate.py         # Admin migrations
+│   └── cron/monthly.py    # Scheduled tasks
+├── lib/                    # Shared code (not serverless)
 │   └── config.py          # Centralized config (colors, copy, courts)
-├── .github/workflows/
-│   └── biweekly-emails.yml # 1st + 15th of month emails
 └── vercel.json            # Routing config
 ```
 
 ## Configuration
 
-All user-facing content is centralized:
-
-**`api/config.py`** - Email subjects, body copy, colors, courts list, skill levels
+**`lib/config.py`** - Centralized config (colors, courts list, skill levels)
 
 **CSS Variables** (in each HTML file):
 ```css
---gold: #D4AF37;
---tennis-ball: #CCFF00;
---terminal-black: #0a0a0a;
+--pink: #d165a4;
+--orange: #ec613e;
+--peach: #e7b4b5;
 ```
+
+**Email Templates** - Configured in Supabase Auth dashboard (magic links)
 
 ## Environment Variables (Vercel)
 
@@ -66,11 +65,8 @@ All user-facing content is centralized:
 |----------|-------------|
 | `SUPABASE_URL` | Supabase project URL |
 | `SUPABASE_ANON_KEY` | Supabase anon key |
-| `RESEND_API_KEY` | Resend email API key |
 | `SITE_URL` | `https://networthtennis.com` |
-| `EMAIL_FROM` | `NET WORTH Tennis <noreply@networthtennis.com>` |
 | `ADMIN_EMAIL` | Admin email for join requests |
-| `EMAIL_ENABLED` | `true` to send emails, `false` to block |
 | `CRON_SECRET` | Secret for GitHub Actions cron jobs |
 
 ## Database (Supabase)
@@ -90,9 +86,9 @@ Run `supabase-final-setup.sql` for fresh setup.
 
 ## GitHub Actions
 
-**biweekly-emails.yml** runs on 1st and 15th of each month:
-- 1st: Generate new pairings + remind about last month
-- 15th: Mid-month check-in + outstanding match reminders
+**biweekly-emails.yml** runs on 1st of each month:
+- Generates new pairings for the month
+- Updates admin dashboard with pending notifications
 
 Requires `SITE_URL` and `CRON_SECRET` in GitHub secrets.
 

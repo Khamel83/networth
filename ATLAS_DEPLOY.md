@@ -2,13 +2,12 @@
 
 **One config, managed auth, free tier friendly.**
 
-Deploy a complete web app with authentication, admin panel, and email - either self-hosted on your own accounts or Atlas Hosted on shared infrastructure.
+Deploy a complete web app with authentication and admin panel - either self-hosted on your own accounts or Atlas Hosted on shared infrastructure.
 
 ## What You Get
 
-- **Magic link auth** (no passwords)
+- **Magic link auth** (Supabase Auth - no passwords)
 - **Admin "backstage" panel** (benevolent dictator model)
-- **Email notifications** (via Resend)
 - **Database** (Supabase Postgres)
 - **Auto-deploy** (Vercel + GitHub)
 - **Keep-alive cron** (prevents Supabase free tier pause)
@@ -18,8 +17,7 @@ Deploy a complete web app with authentication, admin panel, and email - either s
 ### Self-Hosted (Free)
 You create your own accounts, you own everything:
 - Your GitHub repo
-- Your Supabase project
-- Your Resend account
+- Your Supabase project (includes Auth for magic links)
 - Your Vercel deployment
 - Your custom domain (optional)
 
@@ -28,7 +26,6 @@ You create your own accounts, you own everything:
 ### Atlas Hosted (Managed)
 I manage the infrastructure, you just configure:
 - Shared Supabase org (isolated projects)
-- Shared Resend account
 - Vercel team deployment
 - API keys managed via SOPS/secrets-vault
 - Custom domain included
@@ -51,13 +48,7 @@ I manage the infrastructure, you just configure:
 3. Save your:
    - Project URL: `https://xxxxx.supabase.co`
    - Anon Key: `eyJhbG...` (in Settings → API)
-
-#### Resend (Email)
-1. Go to [resend.com](https://resend.com)
-2. Create account → Get API key
-3. (Optional) Verify your domain for custom "from" address
-4. Save your:
-   - API Key: `re_xxxxx`
+4. Configure Auth email templates in Authentication → Email Templates
 
 #### Vercel (Hosting)
 1. Go to [vercel.com](https://vercel.com)
@@ -87,11 +78,8 @@ In Vercel Dashboard → Your Project → Settings → Environment Variables:
 |----------|-------|---------|
 | `SUPABASE_URL` | Your Supabase URL | `https://abc123.supabase.co` |
 | `SUPABASE_ANON_KEY` | Your Supabase anon key | `eyJhbG...` |
-| `RESEND_API_KEY` | Your Resend API key | `re_xxxxx` |
 | `SITE_URL` | Your deployed URL | `https://myapp.vercel.app` |
-| `EMAIL_FROM` | Sender address | `My App <noreply@myapp.com>` |
 | `ADMIN_EMAIL` | Admin notifications | `admin@myapp.com` |
-| `EMAIL_ENABLED` | Kill switch | `false` (set `true` when ready) |
 
 ### Step 5: Set GitHub Secrets
 
@@ -127,7 +115,6 @@ Contact admin with:
 
 Admin provisions:
 - Supabase project (isolated in Atlas org)
-- Resend subdomain
 - Vercel deployment
 - All env vars pre-configured
 
@@ -201,8 +188,7 @@ export default {
 | Service | Limit | Typical Usage |
 |---------|-------|---------------|
 | **Supabase** | 500MB DB, 50k auth | ~10,000 members easily |
-| **Resend** | 3,000 emails/mo | ~100 active members |
-| **Vercel** | 100GB bandwidth | ~50,000 page views |
+| **Vercel** | 100GB bandwidth, 12 functions | ~50,000 page views |
 | **GitHub** | Unlimited | No limit |
 
 **Keep-alive cron** runs every 5 days to prevent Supabase pause (7 day inactivity limit on free tier).
@@ -213,7 +199,6 @@ export default {
 
 ```
 User → Vercel (static + API) → Supabase (auth + data)
-                            → Resend (email)
 
 GitHub Actions:
   - Auto-deploy on push
@@ -245,7 +230,6 @@ GitHub Actions:
 secrets-vault/
 ├── atlas/
 │   ├── supabase-org-key.age
-│   ├── resend-api-key.age
 │   └── vercel-team-token.age
 ```
 
