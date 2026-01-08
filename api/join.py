@@ -103,10 +103,21 @@ class handler(BaseHTTPRequestHandler):
                 result = supabase.table('players').insert(player_data).execute()
 
                 if result.data:
+                    # Send welcome email
+                    email_sent = False
+                    try:
+                        from api.email import send_email, get_welcome_email_html
+                        welcome_html = get_welcome_email_html(name)
+                        email_result = send_email(email, "Welcome to Net Worth Tennis!", welcome_html)
+                        email_sent = email_result.get('success', False)
+                    except Exception as e:
+                        print(f"Failed to send welcome email: {e}")
+
                     self._send_success({
                         "message": "Welcome to Net Worth! Your request has been received. Once we verify your Venmo payment, you'll receive an email to set up your login.",
                         "player_created": True,
-                        "pending_approval": True
+                        "pending_approval": True,
+                        "welcome_email_sent": email_sent
                     })
                 else:
                     self._send_error(500, "Failed to create account. Please try again.")

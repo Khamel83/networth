@@ -1,12 +1,22 @@
 """
 Vercel Serverless Function: Email Notifications
-Email sending is currently DISABLED.
-All notification features rely on the admin dashboard instead.
+Sends emails via Gmail SMTP using Ashley's account.
 """
 from http.server import BaseHTTPRequestHandler
 import json
 import os
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from datetime import datetime
+
+
+# Gmail SMTP Configuration
+SMTP_SERVER = 'smtp.gmail.com'
+SMTP_PORT = 587
+SMTP_USER = 'ashleybrooke.kaufman@gmail.com'
+SENDER_NAME = 'Net Worth Tennis'
+SENDER_EMAIL = f'{SENDER_NAME} <{SMTP_USER}>'
 
 
 def get_supabase_client():
@@ -24,34 +34,386 @@ def get_supabase_client():
 
 def send_email(to_email, subject, html_content, reply_to=None):
     """
-    Email sending is disabled.
-    Returns success but does not actually send.
-    Admins check the dashboard for notifications.
+    Send email via Gmail SMTP
+
+    Args:
+        to_email: Recipient email (string or list)
+        subject: Email subject
+        html_content: HTML email body
+        reply_to: Optional reply-to address
+
+    Returns:
+        dict with success status
     """
-    return {
-        'success': True,
-        'blocked': True,
-        'message': 'Email notifications disabled - check admin dashboard'
-    }
+    smtp_password = os.environ.get('SMTP_PASSWORD')
+
+    if not smtp_password:
+        return {
+            'success': False,
+            'error': 'SMTP_PASSWORD not configured in environment variables'
+        }
+
+    try:
+        # Create message
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = subject
+        msg['From'] = SENDER_EMAIL
+
+        # Handle single email or list
+        if isinstance(to_email, list):
+            msg['To'] = ', '.join(to_email)
+            recipients = to_email
+        else:
+            msg['To'] = to_email
+            recipients = [to_email]
+
+        if reply_to:
+            msg['Reply-To'] = reply_to
+
+        # Attach HTML content
+        html_part = MIMEText(html_content, 'html')
+        msg.attach(html_part)
+
+        # Send via Gmail SMTP
+        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+            server.starttls()
+            server.login(SMTP_USER, smtp_password)
+            server.sendmail(SMTP_USER, recipients, msg.as_string())
+
+        return {'success': True, 'sent_to': recipients}
+
+    except smtplib.SMTPAuthenticationError:
+        return {'success': False, 'error': 'Gmail authentication failed - check app password'}
+    except Exception as e:
+        return {'success': False, 'error': str(e)}
 
 
-# Stub functions for email templates (kept for future use)
-def get_pairing_email_html(player1_name, player2_name, opponent_email, period_label,
-                           player_availability="", opponent_availability=""):
-    return "<p>Pairing notification</p>"
+# =============================================================================
+# EMAIL TEMPLATES
+# =============================================================================
+
+def get_email_styles():
+    """Common CSS styles for all emails"""
+    return """
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { text-align: center; margin-bottom: 30px; }
+        .header h1 { color: #d165a4; margin: 0; }
+        .content { background: #f9f9f9; border-radius: 10px; padding: 30px; margin-bottom: 20px; }
+        .button { display: inline-block; background: linear-gradient(135deg, #d165a4, #ec613e); color: white; padding: 14px 28px; text-decoration: none; border-radius: 50px; font-weight: 600; }
+        .footer { text-align: center; color: #999; font-size: 12px; margin-top: 30px; }
+        .signature { color: #d165a4; font-weight: 600; }
+        ul { padding-left: 20px; }
+        li { margin-bottom: 8px; }
+    </style>
+    """
 
 
-def get_welcome_email_html(player_name, membership_tier):
-    return "<p>Welcome to Net Worth Tennis!</p>"
+def get_welcome_email_html(player_name):
+    """
+    Welcome email sent to new signups
+    """
+    return f"""
+    <!DOCTYPE html>
+    <html>
+    <head>{get_email_styles()}</head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>Welcome to Net Worth Tennis!</h1>
+            </div>
+            <div class="content">
+                <p>Hi {player_name or 'there'},</p>
+
+                <p>Thanks for signing up for the Net Worth Tennis League! We're so excited to have you.</p>
+
+                <p>If you haven't sent your membership fee yet, please send <strong>$35</strong> via Venmo to <strong>@NCOFFEN</strong> (Natalie) to complete your registration.</p>
+
+                <p>You'll receive emails from us about match assignments, events, and league updates soon. Feel free to sign in to your player dashboard.</p>
+
+                <p style="text-align: center; margin: 30px 0;">
+                    <a href="https://networthtennis.com/login" class="button">Sign In to Your Dashboard</a>
+                </p>
+
+                <p>See you on the court!</p>
+
+                <p class="signature">xoxo,<br>Net Worth Girlies</p>
+            </div>
+            <div class="footer">
+                <p>Net Worth Tennis - East Side LA Women's Tennis League</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+
+
+def get_match_assignment_email_html(player1_name, player2_name, month,
+                                     avail1="", avail2="", phone1="", phone2=""):
+    """
+    Match assignment email sent to both players when paired
+    """
+    return f"""
+    <!DOCTYPE html>
+    <html>
+    <head>{get_email_styles()}</head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>You're Matched!</h1>
+            </div>
+            <div class="content">
+                <p>Hi {player1_name} and {player2_name},</p>
+
+                <p>You're matched for a Net Worth game in <strong>{month}</strong>!</p>
+
+                <p>Go ahead... make the first move ;)</p>
+
+                <p>Please <strong>reply all</strong> to this email to start coordinating a time to play.</p>
+
+                <p>Here's some info to help get things started:</p>
+
+                <ul>
+                    <li><strong>{player1_name}'s availability:</strong> {avail1 or 'Check their profile'}</li>
+                    <li><strong>{player2_name}'s availability:</strong> {avail2 or 'Check their profile'}</li>
+                </ul>
+
+                <p>You're always free to coordinate directly, and texting works too:</p>
+
+                <ul>
+                    <li><strong>{player1_name}:</strong> {phone1 or 'See profile'}</li>
+                    <li><strong>{player2_name}:</strong> {phone2 or 'See profile'}</li>
+                </ul>
+
+                <p>You can also view your current match and match history in your player profile.</p>
+
+                <p style="text-align: center; margin: 30px 0;">
+                    <a href="https://networthtennis.com/dashboard" class="button">Visit Your Dashboard</a>
+                </p>
+
+                <p>Have fun and happy hitting!</p>
+
+                <p class="signature">Net Worth Girlies</p>
+            </div>
+            <div class="footer">
+                <p>Net Worth Tennis - East Side LA Women's Tennis League</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+
+
+def get_availability_check_email_html():
+    """
+    Monthly availability check sent on the 27th
+    """
+    return f"""
+    <!DOCTYPE html>
+    <html>
+    <head>{get_email_styles()}</head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>Quick Check</h1>
+            </div>
+            <div class="content">
+                <p>Hi there,</p>
+
+                <p>Quick housekeeping note as we head into next month.</p>
+
+                <p>If you'd like to play next month, please make sure you're marked as <strong>active</strong> in your player profile.</p>
+
+                <p>If you need to sit next month out, head to your profile and mark yourself as <strong>unavailable</strong>.</p>
+
+                <p>A few things to keep in mind:</p>
+
+                <ul>
+                    <li>Availability is player-controlled and does not reset automatically</li>
+                    <li>If you pause, you'll stay paused until you turn playing back on</li>
+                    <li>Pausing ensures you won't be assigned a match while you're away</li>
+                </ul>
+
+                <p>We ask everyone to be thoughtful about updating their status so match assignments stay smooth for the whole league.</p>
+
+                <p style="text-align: center; margin: 30px 0;">
+                    <a href="https://networthtennis.com/dashboard" class="button">Update Your Status</a>
+                </p>
+
+                <p>Thanks!</p>
+
+                <p class="signature">Net Worth Girlies</p>
+            </div>
+            <div class="footer">
+                <p>Net Worth Tennis - East Side LA Women's Tennis League</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+
+
+def get_final_reminder_email_html():
+    """
+    Final availability reminder sent on the last day of the month
+    """
+    return f"""
+    <!DOCTYPE html>
+    <html>
+    <head>{get_email_styles()}</head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>Last Call!</h1>
+            </div>
+            <div class="content">
+                <p>Hi there,</p>
+
+                <p>This is your <strong>final reminder</strong> to check your playing status for next month.</p>
+
+                <p>Match assignments will be created <strong>tomorrow</strong>, so please visit your player profile today to confirm:</p>
+
+                <ul>
+                    <li>You're marked <strong>active</strong> if you want to play, or</li>
+                    <li>You're marked <strong>unavailable</strong> if you need to sit next month out</li>
+                </ul>
+
+                <p>If no changes are made, your current status will carry over.</p>
+
+                <p style="text-align: center; margin: 30px 0;">
+                    <a href="https://networthtennis.com/dashboard" class="button">Update Your Status</a>
+                </p>
+
+                <p>Thanks for helping keep things running smoothly!</p>
+
+                <p class="signature">Net Worth Girlies</p>
+            </div>
+            <div class="footer">
+                <p>Net Worth Tennis - East Side LA Women's Tennis League</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+
+
+def get_midmonth_reminder_email_html(player1_name, player2_name, month):
+    """
+    Mid-month reminder to play your match
+    """
+    return f"""
+    <!DOCTYPE html>
+    <html>
+    <head>{get_email_styles()}</head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>Friendly Reminder</h1>
+            </div>
+            <div class="content">
+                <p>Hi {player1_name} and {player2_name},</p>
+
+                <p>Just a friendly reminder to get your <strong>{month}</strong> match on the calendar.</p>
+
+                <p>If you've already played, feel free to ignore this note (and nice work!).</p>
+
+                <p>If not, there's still plenty of time to coordinate and get out on the court.</p>
+
+                <p>You can always find match details in your player profile.</p>
+
+                <p style="text-align: center; margin: 30px 0;">
+                    <a href="https://networthtennis.com/dashboard" class="button">Visit Your Dashboard</a>
+                </p>
+
+                <p>See you out there!</p>
+
+                <p class="signature">Net Worth Girlies</p>
+            </div>
+            <div class="footer">
+                <p>Net Worth Tennis - East Side LA Women's Tennis League</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
 
 
 def get_sitout_confirmation_email_html(player_name, period_label):
-    return "<p>You are sitting out this month.</p>"
+    """Confirmation when player marks themselves as sitting out"""
+    return f"""
+    <!DOCTYPE html>
+    <html>
+    <head>{get_email_styles()}</head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>You're Sitting Out</h1>
+            </div>
+            <div class="content">
+                <p>Hi {player_name},</p>
+
+                <p>This confirms that you're sitting out starting <strong>{period_label}</strong>.</p>
+
+                <p>You won't be assigned any matches until you mark yourself as active again.</p>
+
+                <p>When you're ready to play, just visit your dashboard and click "I'm Back!"</p>
+
+                <p style="text-align: center; margin: 30px 0;">
+                    <a href="https://networthtennis.com/dashboard" class="button">Visit Your Dashboard</a>
+                </p>
+
+                <p>See you when you're back!</p>
+
+                <p class="signature">Net Worth Girlies</p>
+            </div>
+            <div class="footer">
+                <p>Net Worth Tennis - East Side LA Women's Tennis League</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
 
 
 def get_rejoin_confirmation_email_html(player_name, eligible_month):
-    return "<p>Welcome back!</p>"
+    """Confirmation when player marks themselves as active again"""
+    return f"""
+    <!DOCTYPE html>
+    <html>
+    <head>{get_email_styles()}</head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>Welcome Back!</h1>
+            </div>
+            <div class="content">
+                <p>Hi {player_name},</p>
 
+                <p>Great news! You're back in the game.</p>
+
+                <p>You'll be eligible for matches starting <strong>{eligible_month}</strong>.</p>
+
+                <p style="text-align: center; margin: 30px 0;">
+                    <a href="https://networthtennis.com/dashboard" class="button">Visit Your Dashboard</a>
+                </p>
+
+                <p>See you on the court!</p>
+
+                <p class="signature">Net Worth Girlies</p>
+            </div>
+            <div class="footer">
+                <p>Net Worth Tennis - East Side LA Women's Tennis League</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+
+
+# =============================================================================
+# API HANDLER
+# =============================================================================
 
 class handler(BaseHTTPRequestHandler):
     def do_OPTIONS(self):
@@ -63,18 +425,168 @@ class handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         """Return email system status"""
+        smtp_configured = bool(os.environ.get('SMTP_PASSWORD'))
         self._send_success({
-            "status": "disabled",
-            "message": "Email notifications are disabled. Admins check dashboard for pending actions."
+            "status": "ready" if smtp_configured else "not_configured",
+            "smtp_user": SMTP_USER,
+            "message": "Email system ready" if smtp_configured else "SMTP_PASSWORD not set in environment"
         })
 
     def do_POST(self):
-        """Handle email requests (all disabled)"""
-        self._send_success({
-            "status": "disabled",
-            "message": "Email notifications are disabled. Check admin dashboard instead.",
-            "emails_sent": 0
-        })
+        """Handle email sending requests"""
+        try:
+            content_length = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(content_length).decode('utf-8')
+            data = json.loads(body) if body else {}
+
+            action = data.get('action', 'send')
+
+            if action == 'send':
+                # Direct email send
+                to_email = data.get('to')
+                subject = data.get('subject')
+                html = data.get('html')
+                reply_to = data.get('reply_to')
+
+                if not all([to_email, subject, html]):
+                    self._send_error(400, "Missing required fields: to, subject, html")
+                    return
+
+                result = send_email(to_email, subject, html, reply_to)
+                if result['success']:
+                    self._send_success(result)
+                else:
+                    self._send_error(500, result.get('error', 'Failed to send email'))
+
+            elif action == 'send_welcome':
+                # Send welcome email to new signup
+                to_email = data.get('to')
+                player_name = data.get('player_name', '')
+
+                if not to_email:
+                    self._send_error(400, "Missing 'to' email address")
+                    return
+
+                html = get_welcome_email_html(player_name)
+                result = send_email(to_email, "Welcome to Net Worth Tennis!", html)
+
+                if result['success']:
+                    self._send_success({"message": "Welcome email sent", **result})
+                else:
+                    self._send_error(500, result.get('error'))
+
+            elif action == 'send_availability_check':
+                # Send availability check to all active players
+                supabase = get_supabase_client()
+                if not supabase:
+                    self._send_error(503, "Database not available")
+                    return
+
+                # Get all active players
+                players = supabase.table('players').select('email, name').eq('is_active', True).execute()
+
+                if not players.data:
+                    self._send_success({"message": "No active players to email", "sent": 0})
+                    return
+
+                html = get_availability_check_email_html()
+                sent = 0
+                errors = []
+
+                for player in players.data:
+                    result = send_email(player['email'], "Quick check: are you playing next month?", html)
+                    if result['success']:
+                        sent += 1
+                    else:
+                        errors.append(f"{player['email']}: {result.get('error')}")
+
+                self._send_success({
+                    "message": f"Sent availability check to {sent} players",
+                    "sent": sent,
+                    "errors": errors if errors else None
+                })
+
+            elif action == 'send_final_reminder':
+                # Send final reminder to all active players
+                supabase = get_supabase_client()
+                if not supabase:
+                    self._send_error(503, "Database not available")
+                    return
+
+                players = supabase.table('players').select('email, name').eq('is_active', True).execute()
+
+                if not players.data:
+                    self._send_success({"message": "No active players to email", "sent": 0})
+                    return
+
+                html = get_final_reminder_email_html()
+                sent = 0
+                errors = []
+
+                for player in players.data:
+                    result = send_email(player['email'], "Last call: update your playing status", html)
+                    if result['success']:
+                        sent += 1
+                    else:
+                        errors.append(f"{player['email']}: {result.get('error')}")
+
+                self._send_success({
+                    "message": f"Sent final reminder to {sent} players",
+                    "sent": sent,
+                    "errors": errors if errors else None
+                })
+
+            elif action == 'send_midmonth_reminders':
+                # Send mid-month reminders to pending matches
+                supabase = get_supabase_client()
+                if not supabase:
+                    self._send_error(503, "Database not available")
+                    return
+
+                # Get current month's pending matches
+                month = datetime.now().strftime('%B %Y')
+                matches = supabase.table('match_assignments').select(
+                    '*, player1:player1_id(email, name), player2:player2_id(email, name)'
+                ).eq('period_label', month).eq('status', 'pending').execute()
+
+                if not matches.data:
+                    self._send_success({"message": "No pending matches to remind", "sent": 0})
+                    return
+
+                sent = 0
+                errors = []
+
+                for match in matches.data:
+                    p1 = match.get('player1', {})
+                    p2 = match.get('player2', {})
+
+                    if p1 and p2:
+                        html = get_midmonth_reminder_email_html(
+                            p1.get('name', 'Player'),
+                            p2.get('name', 'Player'),
+                            month
+                        )
+                        result = send_email(
+                            [p1['email'], p2['email']],
+                            f"Friendly reminder to play your {month} match",
+                            html
+                        )
+                        if result['success']:
+                            sent += 1
+                        else:
+                            errors.append(f"Match {match.get('id')}: {result.get('error')}")
+
+                self._send_success({
+                    "message": f"Sent mid-month reminders to {sent} match pairs",
+                    "sent": sent,
+                    "errors": errors if errors else None
+                })
+
+            else:
+                self._send_error(400, f"Unknown action: {action}")
+
+        except Exception as e:
+            self._send_error(500, str(e))
 
     def _send_success(self, data):
         self.send_response(200)
