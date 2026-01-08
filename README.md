@@ -16,9 +16,10 @@ East Side LA Women's Tennis - Monthly pairings, games-won ranking.
 ## Tech Stack
 
 - **Frontend**: Static HTML/CSS/JS on Vercel
-- **Backend**: Vercel Python serverless functions
+- **Backend**: Vercel Python serverless functions (12 max on Hobby plan)
 - **Database**: Supabase (PostgreSQL)
 - **Auth**: Supabase Auth with magic links (no passwords)
+- **Email**: Gmail SMTP via Ashley's account
 
 ## Project Structure
 
@@ -29,35 +30,48 @@ networth/
 │   ├── login.html         # Magic link login
 │   ├── join.html          # Request to join
 │   ├── dashboard.html     # Player dashboard
+│   ├── admin.html         # Admin dashboard
 │   ├── rules.html         # How it works
 │   ├── support.html       # FAQs
 │   └── privacy.html       # Privacy policy
 ├── api/                    # Serverless functions (12 max on Vercel Hobby)
+│   ├── admin.py           # Admin operations (approve/reject/pause)
 │   ├── auth.py            # Magic link auth
-│   ├── players.py         # Player list
+│   ├── email.py           # Gmail SMTP + 5 email templates
+│   ├── join.py            # Player registration
 │   ├── matches.py         # Match reporting
 │   ├── pairings.py        # Monthly matching algorithm
+│   ├── players.py         # Player list
 │   ├── profile.py         # Player self-service
-│   ├── join.py            # Join requests
+│   ├── health.py          # Health check
 │   ├── migrate.py         # Admin migrations
+│   ├── upload.py          # Image uploads
 │   └── cron/monthly.py    # Scheduled tasks
-├── lib/                    # Shared code (not serverless)
-│   └── config.py          # Centralized config (colors, copy, courts)
+├── .github/workflows/
+│   └── biweekly-emails.yml # Automated email schedule
 └── vercel.json            # Routing config
 ```
 
-## Configuration
+## Email System
 
-**`lib/config.py`** - Centralized config (colors, courts list, skill levels)
+Emails are sent via Gmail SMTP using Ashley's account (`ashleybrooke.kaufman@gmail.com`).
 
-**CSS Variables** (in each HTML file):
-```css
---pink: #d165a4;
---orange: #ec613e;
---peach: #e7b4b5;
-```
+### 5 Automated Emails
 
-**Email Templates** - Configured in Supabase Auth dashboard (magic links)
+| Email | When | Description |
+|-------|------|-------------|
+| Welcome | On signup | Thanks for joining, pay via Venmo |
+| Match Assignment | 1st of month | You're paired with {player} |
+| Availability Check | 27th of month | Update your status for next month |
+| Final Reminder | Last day of month | Last call before pairings |
+| Mid-Month Reminder | 15th of month | Don't forget to play your match |
+
+### Email Schedule (GitHub Actions)
+
+- **27th**: Availability check to all active players
+- **Last day**: Final availability reminder
+- **1st**: Generate pairings + send match emails
+- **15th**: Mid-month reminder for pending matches
 
 ## Environment Variables (Vercel)
 
@@ -65,30 +79,28 @@ networth/
 |----------|-------------|
 | `SUPABASE_URL` | Supabase project URL |
 | `SUPABASE_ANON_KEY` | Supabase anon key |
+| `SMTP_PASSWORD` | Gmail app password (16 chars) |
 | `SITE_URL` | `https://networthtennis.com` |
-| `ADMIN_EMAIL` | Admin email for join requests |
-| `CRON_SECRET` | Secret for GitHub Actions cron jobs |
+| `ADMIN_EMAIL` | Admin email for notifications |
+| `CRON_SECRET` | Secret for GitHub Actions auth |
 
 ## Database (Supabase)
 
 Key tables:
-- `players` - Name, email, skill, total_games, rank, availability
+- `players` - Name, email, skill, total_games, rank, availability, is_active
 - `matches` - Scores, who played, when
 - `match_assignments` - Monthly pairings
 - `match_feedback` - "Would play again" for silent blocking
 
 Run `supabase-final-setup.sql` for fresh setup.
 
-## Backup & Fallback
-
-- **Database**: Supabase has point-in-time recovery
-- **Static Fallback**: `public/fallback.html` - works with just mailto links if everything else fails
+**Important:** The players table has no DELETE RLS policy. Use UPDATE/deactivate instead of delete.
 
 ## GitHub Actions
 
-**biweekly-emails.yml** runs on 1st of each month:
-- Generates new pairings for the month
-- Updates admin dashboard with pending notifications
+**biweekly-emails.yml** runs on schedule:
+- Generates new pairings on the 1st
+- Sends reminder emails on 15th, 27th, last day
 
 Requires `SITE_URL` and `CRON_SECRET` in GitHub secrets.
 

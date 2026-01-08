@@ -5,22 +5,27 @@
 Women's tennis ladder for East Side LA. Monthly pairings, games-won ranking system.
 
 **Live**: networthtennis.com
-**Stack**: Vercel (static + Python functions) + Supabase
+**Stack**: Vercel (static + Python functions) + Supabase + Gmail SMTP
 
 ## Quick Reference
 
 ### To change colors/copy/branding:
 - Website CSS: Variables at top of each `public/*.html` file
-- Email templates: Configured in Supabase Auth dashboard
+- Email templates: `api/email.py` (all 5 templates with inline styles)
 
 ### To add a player:
-Add row to `players` table in Supabase
+Players self-register via join page → admin approves via dashboard → player is active
+
+### To test emails:
+- Emails only send if `SMTP_PASSWORD` is set in Vercel
+- Check status: `GET /api/email` returns "ready" or "not_configured"
 
 ### Key files:
-- `api/pairings.py` - Matching algorithm (skill-based)
-- `api/profile.py` - Player profile management
-- `lib/config.py` - Centralized config (in lib/ to avoid Vercel limit)
-- `api/migrate.py` - Admin tools (migrations)
+- `api/pairings.py` - Matching algorithm (skill-based), sends match emails
+- `api/email.py` - Gmail SMTP sender + 5 email templates
+- `api/join.py` - Player registration (handles re-registration of inactive accounts)
+- `api/admin.py` - Admin dashboard API (approve/reject/pause players)
+- `.github/workflows/biweekly-emails.yml` - Scheduled email automation
 
 ## Architecture
 
@@ -29,12 +34,30 @@ User visits site
     → Vercel serves static HTML from /public
     → JS fetches from /api/* endpoints
     → API reads/writes to Supabase
-    → Supabase Auth handles magic link emails
+    → Gmail SMTP sends emails (via api/email.py)
 
-GitHub Actions (1st + 15th of month)
-    → Calls /api/cron/monthly to generate pairings
-    → Admin dashboard shows pending notifications
+Automated Emails (GitHub Actions)
+    → 27th of month: Availability check to all active players
+    → Last day of month: Final availability reminder
+    → 1st of month: Generate pairings + send match emails
+    → 15th of month: Mid-month reminder for pending matches
 ```
+
+## Email System
+
+**Sender:** Ashley's Gmail (`ashleybrooke.kaufman@gmail.com`)
+**Method:** Gmail SMTP with app password
+**Env var:** `SMTP_PASSWORD` (Gmail app password, 16 chars)
+
+### 5 Email Templates (in api/email.py)
+
+| Email | Trigger | Subject |
+|-------|---------|---------|
+| Welcome | Signup via `/join` | Welcome to Net Worth Tennis! |
+| Match Assignment | Pairing generation | {Player1}, meet {Player2} - You're matched for {Month}! |
+| Availability Check | Cron (27th) | Quick check: are you playing next month? |
+| Final Reminder | Cron (last day) | Last call: update your playing status |
+| Mid-Month Reminder | Cron (15th) | Friendly reminder to play your {Month} match |
 
 ## Database Schema
 
@@ -42,13 +65,14 @@ GitHub Actions (1st + 15th of month)
 players
   - id, email, name, skill_level
   - rank, total_games, matches_played
-  - available_morning/afternoon/evening (for scheduling)
+  - is_active (false until admin approves)
   - unavailable_until (pause feature)
+  - avail_weekday_early/day/late, avail_weekend_early/day/late
 
 matches
   - player1_id, player2_id
   - player1_games, player2_games (set scores)
-  - period_label ("December 2024")
+  - period_label ("January 2025")
 
 match_assignments
   - player1_id, player2_id, period_label
@@ -58,40 +82,34 @@ match_feedback
   - would_play_again (for silent blocking)
 ```
 
-## Common Tasks
+## RLS Policies (IMPORTANT)
 
-### Change a player's availability
-```sql
-UPDATE players SET unavailable_until = '2025-02-01' WHERE email = 'player@email.com';
-```
+The `players` table has NO DELETE policy. Delete operations fail silently.
 
-### See who hasn't played their match
-```sql
-SELECT * FROM match_assignments WHERE status = 'pending' AND period_label = 'December 2024';
-```
+**Allowed operations:**
+- SELECT (all)
+- UPDATE (all)
+- INSERT (all)
 
-### Manually recalculate rankings
-```sql
-SELECT recalculate_rankings();
-```
+**NOT allowed:**
+- DELETE (no policy exists)
+
+This is why `api/join.py` uses UPDATE for re-registrations instead of delete+insert.
 
 ## Environment Variables
 
-Set in Vercel dashboard:
-- `SUPABASE_URL`, `SUPABASE_ANON_KEY`
-- `SITE_URL` = https://networthtennis.com
-- `ADMIN_EMAIL` = where join requests go
-- `CRON_SECRET` = for GitHub Actions auth
+### Vercel Dashboard:
+| Variable | Description |
+|----------|-------------|
+| `SUPABASE_URL` | Supabase project URL |
+| `SUPABASE_ANON_KEY` | Supabase anon key |
+| `SMTP_PASSWORD` | Gmail app password (16 chars, from Ashley's account) |
+| `SITE_URL` | `https://networthtennis.com` |
+| `ADMIN_EMAIL` | Admin notification email |
+| `CRON_SECRET` | Secret for GitHub Actions auth |
 
-Set in GitHub repo secrets:
+### GitHub Repo Secrets:
 - `SITE_URL`, `CRON_SECRET`
-
-## Fallback Mode
-
-If Supabase/Vercel are down, `public/fallback.html` is a pure static page with:
-- Current ladder (manually updated)
-- mailto: links for score reporting
-- No JS dependencies
 
 ## Vercel Limits (CRITICAL)
 
@@ -108,7 +126,21 @@ api/players.py    api/profile.py    api/upload.py     api/cron/monthly.py
 
 **DO NOT add new .py files to api/ folder without removing one first.**
 
-Config is in `lib/config.py` (not api/) specifically to avoid this limit.
+## Common Operations
+
+### Via Admin Dashboard (frontend):
+- Approve new players
+- Pause/unpause players
+- View all players and their status
+
+### Via Supabase (rare, admin only):
+```sql
+-- Manually recalculate rankings
+SELECT recalculate_rankings();
+
+-- See pending matches
+SELECT * FROM match_assignments WHERE status = 'pending' AND period_label = 'January 2025';
+```
 
 ## Do Not
 
@@ -116,3 +148,4 @@ Config is in `lib/config.py` (not api/) specifically to avoid this limit.
 - Add complex features without asking (keep it simple for the players)
 - Change the ranking formula (games won, period)
 - Add new API endpoints without checking count first (12 max)
+- Use DELETE operations on players table (RLS blocks them)
