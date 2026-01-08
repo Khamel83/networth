@@ -215,20 +215,17 @@ export default {
 │  └── Serves static + API functions                  │
 │                                                      │
 │  Supabase (provisioned automatically)               │
-│  ├── Auth (magic links)                             │
+│  ├── Auth (magic links + email templates)           │
 │  ├── Database (entities, actions, admins)           │
 │  └── Storage (if needed for images)                 │
-│                                                      │
-│  Resend (optional, for custom domain email)         │
 └─────────────────────────────────────────────────────┘
 ```
 
 ## What's Shared vs Custom
 
 ### Shared (never changes)
-- Auth system (magic links)
+- Auth system (magic links via Supabase)
 - Admin backstage pattern
-- Email sending infrastructure
 - Deployment pipeline
 - Base CSS/design system
 
@@ -236,7 +233,6 @@ export default {
 - Database schema
 - HTML pages (fields, labels, options)
 - API validation
-- Email templates
 - Ranking calculations
 
 ### User Customizes
