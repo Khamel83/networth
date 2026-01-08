@@ -181,8 +181,7 @@ class handler(BaseHTTPRequestHandler):
                         'is_active': False,  # Requires admin approval after Venmo verification
                         'total_games': 0,
                         'matches_played': 0,
-                        'rank': None,
-                        'rating': 1500  # Default ELO rating
+                        'rank': None
                     }
                     supabase.table('players').insert(player_data).execute()
                     player_inserted = True
