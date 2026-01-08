@@ -143,14 +143,20 @@ class handler(BaseHTTPRequestHandler):
                 self._send_error(400, "Please enter a valid email address")
                 return
 
-            # Check if already exists
+            # Check if already exists (only block if ACTIVE account exists)
             supabase = get_supabase_client()
             if supabase:
                 try:
-                    existing = supabase.table('players').select('id').eq('email', email).execute()
+                    # Check for active accounts with this email
+                    existing = supabase.table('players').select('id, is_active').eq('email', email).execute()
                     if existing.data:
-                        self._send_error(400, "This email is already registered. Try logging in instead!")
-                        return
+                        active_account = next((p for p in existing.data if p.get('is_active')), None)
+                        if active_account:
+                            self._send_error(400, "This email is already registered. Try logging in instead!")
+                            return
+                        # If only inactive accounts exist, delete them to allow re-registration
+                        for inactive in existing.data:
+                            supabase.table('players').delete().eq('id', inactive['id']).execute()
                 except Exception:
                     pass  # Continue anyway
 
