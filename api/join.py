@@ -219,7 +219,8 @@ class handler(BaseHTTPRequestHandler):
                     "player_created": True,
                     "pending_approval": True,
                     "welcome_email_sent": welcome_sent,
-                    "admin_notified": result.get('success', False)
+                    "admin_notified": result.get('success', False),
+                    "email_debug": result.get('error') if not result.get('success') else None
                 })
             elif insert_error:
                 # Database insert failed - this is an error, not a success
