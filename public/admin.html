@@ -864,9 +864,12 @@
                     throw new Error(data.error);
                 }
 
+                // Robust check: treats true/false whether boolean or string
+                const toBool = v => v === true || v === 'true' || v === 'TRUE' || v === 1;
+
                 // Separate pending (inactive, non-admin) from approved players
-                pendingPlayers = data.players.filter(p => !p.is_active && !p.is_admin);
-                allPlayers = data.players.filter(p => p.is_active || p.is_admin);
+                pendingPlayers = data.players.filter(p => !toBool(p.is_active) && !toBool(p.is_admin));
+                allPlayers = data.players.filter(p => toBool(p.is_active) || toBool(p.is_admin));
 
                 renderPendingPlayers(pendingPlayers);
                 renderPlayers(allPlayers);
