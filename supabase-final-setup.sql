@@ -1,7 +1,8 @@
 -- =============================================================
--- NET WORTH TENNIS LADDER - COMPLETE DATABASE SETUP
+-- TENNIS LEAGUE LADDER - COMPLETE DATABASE SETUP
 -- Run this ONCE in Supabase SQL Editor
--- Includes: Players, Matches, Preferences, Match Feedback
+--
+-- CUSTOMIZE: Search for "CHANGEME" to find values you need to update
 -- =============================================================
 
 -- Step 1: Clean slate
@@ -17,7 +18,7 @@ DROP TABLE IF EXISTS players CASCADE;
 -- =============================================================
 CREATE TABLE league_settings (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    league_name VARCHAR(255) NOT NULL DEFAULT 'NET WORTH East Side LA',
+    league_name VARCHAR(255) NOT NULL DEFAULT 'Your Tennis League',  -- CHANGEME
     -- Match frequency: weekly, biweekly, monthly, quarterly
     match_frequency VARCHAR(20) NOT NULL DEFAULT 'monthly',
     -- Number of sets per match (1, 2, or 3)
@@ -29,9 +30,9 @@ CREATE TABLE league_settings (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Insert default league settings
+-- Insert default league settings (CHANGEME: Update league name)
 INSERT INTO league_settings (league_name, match_frequency, sets_per_match, games_per_set, tiebreak_enabled)
-VALUES ('NET WORTH East Side LA', 'monthly', 2, 6, true);
+VALUES ('Your Tennis League', 'monthly', 2, 6, true);  -- CHANGEME: league name
 
 -- =============================================================
 -- PLAYERS TABLE
@@ -197,56 +198,19 @@ CREATE POLICY "Assignments manageable" ON match_assignments FOR ALL USING (true)
 CREATE POLICY "League settings viewable" ON league_settings FOR SELECT USING (true);
 
 -- =============================================================
--- INSERT ALL 42 PLAYERS WITH REAL DATA
--- Games won accumulated from March-November 2024
+-- SAMPLE DATA (Optional - remove or customize for your league)
+-- Real players will register via the join page
 -- =============================================================
-INSERT INTO players (email, name, phone, skill_level, rank, total_games, matches_played, is_active) VALUES
-('kimberly@ndombe.com', 'Kim Ndombe', '603-264-2486', '4.5 Advanced+', 1, 51, 5, true),
-('nmcoffen@gmail.com', 'Natalie Coffen', '310-849-6750', '4.5 Advanced+', 2, 50, 6, true),
-('sara.chrisman@gmail.com', 'Sara Chrisman', '541-398-2012', '4.5 Advanced+', 3, 49, 5, true),
-('ariannahairston@gmail.com', 'Arianna Hairston', '484-832-9906', '4.5 Advanced+', 4, 48, 4, true),
-('aapelian@gmail.com', 'Alik Apelian', '978-397-1645', '4.5 Advanced+', 5, 45, 5, true),
-('hannah.shin4@gmail.com', 'Hannah Shin', '949-861-1329', '4.5 Advanced+', 6, 45, 4, true),
-('sayhellotohanna@gmail.com', 'Hanna Pavlova', '347-549-6748', '4.0 Advanced', 7, 41, 6, true),
-('madeline.whitby@gmail.com', 'Maddy Whitby', '818-859-0282', '4.0 Advanced', 8, 38, 5, true),
-('allison.n.dunne@gmail.com', 'Allison Dunne', '414-698-6455', '4.0 Advanced', 9, 37, 4, true),
-('ashleybrooke.kaufman@gmail.com', 'Ashley Brooke Kaufman', '630-453-3430', '3.5+ Intermediate', 10, 33, 7, true),
-('kaitlinmariekelly@gmail.com', 'Kaitlin Kelly', '213-308-7605', '3.5+ Intermediate', 11, 32, 4, true),
-('pagek.eaton@gmail.com', 'Page Eaton', '206-228-5082', '3.5+ Intermediate', 12, 30, 4, true),
-('bysarahyun@gmail.com', 'Sarah Yun', '213-249-3893', '3.5+ Intermediate', 13, 29, 3, true),
-('camille.tsalik@gmail.com', 'Camille Tsalik', '310-993-2670', '3.5+ Intermediate', 14, 29, 3, true),
-('laurenjaneberger@gmail.com', 'Laurie Berger', '510-333-4308', '3.5+ Intermediate', 15, 26, 3, true),
-('katelinmorey@gmail.com', 'Katie Morey', '620-513-6067', '3.5 Intermediate', 16, 24, 2, true),
-('hudson.carlyn@gmail.com', 'Carlyn Hudson', '830-305-1378', '3.5 Intermediate', 17, 22, 2, true),
-('skchokshi@gmail.com', 'Seena Chokshi', '909-996-7643', '3.5 Intermediate', 18, 21, 3, true),
-('carolciappa@gmail.com', 'Carolina Ciappa', '415-531-6798', '3.5 Intermediate', 19, 20, 2, true),
-('ichheisselola@yahoo.com', 'Lola Miranda', '714-234-0006', '3.5 Intermediate', 20, 19, 2, true),
-('hannah.crichton@gmail.com', 'Hannah Crichton', '206-229-0294', '3.5 Intermediate', 21, 15, 2, true),
-('ngmalick@gmail.com', 'Nicole Malick', '', '3.0 Beginner+', 22, 12, 2, true),
-('sandyarango@gmail.com', 'Sandy Arango', '415-225-3331', '3.0 Beginner+', 23, 12, 1, true),
-('shandellove@yahoo.com', 'Shandel Love', '213-842-3345', '3.0 Beginner+', 24, 12, 1, true),
-('erica.e.gleason@gmail.com', 'Erica Gleason', '562-485-8277', '3.0 Beginner+', 25, 11, 1, true),
-('nikkibohnett@gmail.com', 'Nikki Bohnett', '562-277-3976', '3.0 Beginner+', 26, 8, 4, true),
-('katiehathaway18@gmail.com', 'Katie Hathaway', '310-795-9990', '3.0 Beginner+', 27, 5, 1, true),
-('marzaram@gmail.com', 'Maryam Marzara', '949-413-4831', '3.0 Beginner+', 28, 4, 1, true),
-('alyssa.j.perry@gmail.com', 'Alyssa Jeong Perry', '415-937-3825', '3.0 Beginner+', 29, 4, 4, true),
-('carmela.garcialammers@gmail.com', 'Carmela Garcia Lammers', '605-690-9500', '3.0 Beginner+', 30, 3, 1, true),
-('isabella.quiros@gmail.com', 'Isa Quiros', '954-805-7657', '3.0 Beginner+', 31, 2, 2, true),
-('carolynhedge@gmail.com', 'Carolyn Hedge', '818-486-3691', '3.0 Beginner+', 32, 0, 0, true),
-('hannahrnasseri@gmail.com', 'Hannah Fard', '310-729-1553', '3.0 Beginner+', 33, 0, 0, true),
-('anishavasandani@gmail.com', 'Anisha Vasandani', '626-802-0840', '3.0 Beginner+', 34, 0, 0, true),
-('jardineh@gmail.com', 'Jardine Hammond', '760-576-9645', '3.0 Beginner+', 35, 0, 0, true),
-('asmorenohere@icloud.com', 'Alex Moreno', '203-505-8904', '3.0 Beginner+', 36, 0, 0, true),
-('ellenfehr@gmail.com', 'Ellen Fehr', '323-327-8133', '3.0 Beginner+', 37, 0, 0, true),
-('aliciaharris4@gmail.com', 'Alicia Harris', '310-913-5858', '3.0 Beginner+', 38, 0, 0, true),
-('stacyk321@outlook.com', 'Stacy Kim', '213-327-6093', '3.0 Beginner+', 39, 0, 0, true),
-('dunkelbee@gmail.com', 'Maddie Dunkelberg', '541-647-0688', '3.0 Beginner+', 40, 0, 0, true),
-('christinacatherine@gmail.com', 'Christina Catherine Martinez', '562-972-5848', '3.0 Beginner+', 41, 0, 0, true),
-('cmtapling@gmail.com', 'Catherine Tapling', '847-224-0621', '3.0 Beginner+', 42, 0, 0, true);
 
--- Admin user
+-- Sample admin user (CHANGEME: use your admin email)
 INSERT INTO players (email, name, skill_level, rank, total_games, is_active, is_admin)
-VALUES ('admin@networthtennis.com', 'Admin', 'Admin', 99, 0, true, true);
+VALUES ('admin@yourleague.com', 'Admin', 'Admin', 99, 0, true, true);  -- CHANGEME
+
+-- Optional: Sample players for testing (remove in production)
+-- INSERT INTO players (email, name, phone, skill_level, rank, total_games, matches_played, is_active) VALUES
+-- ('player1@example.com', 'Sample Player 1', '555-0001', '4.0 Advanced', 1, 20, 2, true),
+-- ('player2@example.com', 'Sample Player 2', '555-0002', '3.5 Intermediate', 2, 15, 2, true),
+-- ('player3@example.com', 'Sample Player 3', '555-0003', '3.5 Intermediate', 3, 10, 1, true);
 
 -- =============================================================
 -- FUNCTIONS FOR RANKING & MATCHING

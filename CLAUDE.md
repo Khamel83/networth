@@ -11,7 +11,7 @@ Women's tennis ladder for East Side LA. Monthly pairings, games-won ranking syst
 
 ### To change colors/copy/branding:
 - Website CSS: Variables at top of each `public/*.html` file
-- Email templates: `api/email.py` (all 5 templates with inline styles)
+- Email templates: `api/email.py` (all 7 templates with inline styles)
 
 ### To add a player:
 Players self-register via join page → admin approves via dashboard → player is active
@@ -22,7 +22,7 @@ Players self-register via join page → admin approves via dashboard → player 
 
 ### Key files:
 - `api/pairings.py` - Matching algorithm (skill-based), sends match emails
-- `api/email.py` - Gmail SMTP sender + 5 email templates
+- `api/email.py` - Gmail SMTP sender + 7 email templates
 - `api/join.py` - Player registration (handles re-registration of inactive accounts)
 - `api/admin.py` - Admin dashboard API (approve/reject/pause players)
 - `.github/workflows/biweekly-emails.yml` - Scheduled email automation
@@ -49,7 +49,7 @@ Automated Emails (GitHub Actions)
 **Method:** Gmail SMTP with app password
 **Env var:** `SMTP_PASSWORD` (Gmail app password, 16 chars)
 
-### 5 Email Templates (in api/email.py)
+### 7 Email Templates (in api/email.py)
 
 | Email | Trigger | Subject |
 |-------|---------|---------|
@@ -58,6 +58,8 @@ Automated Emails (GitHub Actions)
 | Availability Check | Cron (27th) | Quick check: are you playing next month? |
 | Final Reminder | Cron (last day) | Last call: update your playing status |
 | Mid-Month Reminder | Cron (15th) | Friendly reminder to play your {Month} match |
+| Sit-Out Confirmation | Player pauses | You're sitting out {Month} |
+| Rejoin Confirmation | Player rejoins | Welcome back! You're in for {Month} |
 
 ## Database Schema
 
@@ -115,16 +117,14 @@ This is why `api/join.py` uses UPDATE for re-registrations instead of delete+ins
 
 **Hobby plan limit: 12 serverless functions max**
 
-Current count: 12 (at limit!)
+Current count: 11 (1 slot available)
 ```
 api/admin.py      api/auth.py       api/email.py      api/health.py
 api/join.py       api/matches.py    api/migrate.py    api/pairings.py
-api/players.py    api/profile.py    api/upload.py     api/cron/monthly.py
+api/players.py    api/profile.py    api/upload.py
 ```
 
-**INCLUDES api/cron/ subfolder - Vercel counts ALL .py files under api/**
-
-**DO NOT add new .py files to api/ folder without removing one first.**
+**DO NOT add new .py files to api/ folder without checking count first.**
 
 ## Common Operations
 

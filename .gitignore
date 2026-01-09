@@ -3,6 +3,17 @@
 *.sqlite
 *.sqlite3
 
+# Player data files (contain personal info - never commit)
+*.csv
+public/ladder.json
+public/players.json
+public/pairings.json
+
+# WIP and personal notes
+*-migration*.sql
+*_feedback.md
+*_notes.md
+
 # Python cache
 __pycache__/
 *.py[cod]
