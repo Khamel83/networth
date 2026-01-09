@@ -1,6 +1,6 @@
 """
 Vercel Serverless Function: Email Notifications
-Sends emails via Gmail SMTP using Ashley's account.
+Sends emails via Gmail SMTP.
 """
 from http.server import BaseHTTPRequestHandler
 import json
@@ -11,11 +11,11 @@ from email.mime.multipart import MIMEMultipart
 from datetime import datetime
 
 
-# Gmail SMTP Configuration
+# Gmail SMTP Configuration (set via environment variables)
 SMTP_SERVER = 'smtp.gmail.com'
 SMTP_PORT = 587
-SMTP_USER = 'ashleybrooke.kaufman@gmail.com'
-SENDER_NAME = 'Net Worth Tennis'
+SMTP_USER = os.environ.get('SMTP_USER', 'admin@yourleague.com')  # Set in Vercel
+SENDER_NAME = os.environ.get('SENDER_NAME', 'Tennis League')  # Set in Vercel
 SENDER_EMAIL = f'{SENDER_NAME} <{SMTP_USER}>'
 
 

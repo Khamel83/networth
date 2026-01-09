@@ -6,7 +6,7 @@
   },
   "membership": {
     "intro": "Join the league!",
-    "description": "Create your player profile and send your membership fee via Venmo @NCOFFEN (Natalie). If you join after the month has started, you'll be matched in the next month.",
+    "description": "Create your player profile and send your membership fee via Venmo @YourHandle. If you join after the month has started, you'll be matched in the next month.",
     "heading": "Membership Options",
     "tier1": {
       "name": "THE PLAYERS",
@@ -62,7 +62,7 @@
       "rules": "Game Play & Scoring",
       "contact": "Contact Us"
     },
-    "contactEmail": "ashleybrooke.kaufman@gmail.com,nmcoffen@gmail.com",
+    "contactEmail": "contact@yourleague.com",
     "copyright": "Net Worth Tennis"
   }
 }

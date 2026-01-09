@@ -6,10 +6,8 @@ Generates monthly match pairings based on:
 2. Performance bands: developing (≤6), competitive (6.1-9), strong (9.1-12), dominant (>12)
 3. New players paired together when possible
 4. Anti-staleness: avoid same matchup within 3 months
-5. Admin flex: remove Ashley/Natalie if odd count
+5. Admin flex: remove admin if odd count (set ADMIN_FLEX_EMAILS env var)
 6. Only matches Players (not Social Butterflies)
-
-Updated for Ashley's Christmas 2025 feedback.
 """
 from http.server import BaseHTTPRequestHandler
 import json
@@ -178,7 +176,10 @@ def is_player_available(player):
 def is_admin_flex(player):
     """Check if player is an admin flex (can be removed if odd count)"""
     email = player.get('email', '').lower()
-    return email in ['nmcoffen@gmail.com', 'ashleybrooke.kaufman@gmail.com']
+    # Admin flex emails - set via ADMIN_FLEX_EMAILS env var (comma-separated)
+    admin_flex = os.environ.get('ADMIN_FLEX_EMAILS', 'admin@yourleague.com').lower()
+    admin_emails = [e.strip() for e in admin_flex.split(',')]
+    return email in admin_emails
 
 
 def generate_pairings(players, blocked_pairs, recent_matches, all_matches):
@@ -229,12 +230,16 @@ def generate_pairings(players, blocked_pairs, recent_matches, all_matches):
         recent_matchups.add(key)
 
     # Handle odd number of players - remove admin flex with alternating rotation
-    # Ashley sits out on odd months (Jan, Mar, May, Jul, Sep, Nov)
-    # Natalie sits out on even months (Feb, Apr, Jun, Aug, Oct, Dec)
+    # Primary admin sits out on odd months (Jan, Mar, May, Jul, Sep, Nov)
+    # Secondary admin sits out on even months (Feb, Apr, Jun, Aug, Oct, Dec)
+    # Set ADMIN_FLEX_PRIMARY and ADMIN_FLEX_SECONDARY env vars (email addresses)
     if len(available_players) % 2 == 1:
-        # Find admin flex players
-        natalie = next((p for p in available_players if p.get('email', '').lower() == 'nmcoffen@gmail.com'), None)
-        ashley = next((p for p in available_players if p.get('email', '').lower() == 'ashleybrooke.kaufman@gmail.com'), None)
+        # Find admin flex players from env vars
+        primary_email = os.environ.get('ADMIN_FLEX_PRIMARY', '').lower().strip()
+        secondary_email = os.environ.get('ADMIN_FLEX_SECONDARY', '').lower().strip()
+
+        primary = next((p for p in available_players if p.get('email', '').lower() == primary_email), None) if primary_email else None
+        secondary = next((p for p in available_players if p.get('email', '').lower() == secondary_email), None) if secondary_email else None
 
         # Determine whose turn it is to sit out based on the month
         current_month = datetime.now().month
@@ -242,23 +247,23 @@ def generate_pairings(players, blocked_pairs, recent_matches, all_matches):
 
         removed_player = None
         if is_odd_month:
-            # Ashley sits out first (odd months)
-            if ashley:
-                available_players.remove(ashley)
-                removed_player = ashley
-            elif natalie:
-                # Fallback to Natalie if Ashley not available
-                available_players.remove(natalie)
-                removed_player = natalie
+            # Primary sits out (odd months)
+            if primary:
+                available_players.remove(primary)
+                removed_player = primary
+            elif secondary:
+                # Fallback to secondary if primary not available
+                available_players.remove(secondary)
+                removed_player = secondary
         else:
-            # Natalie sits out (even months)
-            if natalie:
-                available_players.remove(natalie)
-                removed_player = natalie
-            elif ashley:
-                # Fallback to Ashley if Natalie not available
-                available_players.remove(ashley)
-                removed_player = ashley
+            # Secondary sits out (even months)
+            if secondary:
+                available_players.remove(secondary)
+                removed_player = secondary
+            elif primary:
+                # Fallback to primary if secondary not available
+                available_players.remove(primary)
+                removed_player = primary
 
         if not removed_player:
             # No admin flex available, remove lowest ranked player
