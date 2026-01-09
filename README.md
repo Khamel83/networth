@@ -16,7 +16,7 @@ East Side LA Women's Tennis - Monthly pairings, games-won ranking.
 ## Tech Stack
 
 - **Frontend**: Static HTML/CSS/JS on Vercel
-- **Backend**: Vercel Python serverless functions (12 max on Hobby plan)
+- **Backend**: Vercel Python serverless functions (11/12 used on Hobby plan)
 - **Database**: Supabase (PostgreSQL)
 - **Auth**: Supabase Auth with magic links (no passwords)
 - **Email**: Gmail SMTP via Ashley's account
@@ -34,10 +34,10 @@ networth/
 │   ├── rules.html         # How it works
 │   ├── support.html       # FAQs
 │   └── privacy.html       # Privacy policy
-├── api/                    # Serverless functions (12 max on Vercel Hobby)
+├── api/                    # Serverless functions (11/12 on Vercel Hobby)
 │   ├── admin.py           # Admin operations (approve/reject/pause)
 │   ├── auth.py            # Magic link auth
-│   ├── email.py           # Gmail SMTP + 5 email templates
+│   ├── email.py           # Gmail SMTP + 6 email templates
 │   ├── join.py            # Player registration
 │   ├── matches.py         # Match reporting
 │   ├── pairings.py        # Monthly matching algorithm
@@ -45,8 +45,7 @@ networth/
 │   ├── profile.py         # Player self-service
 │   ├── health.py          # Health check
 │   ├── migrate.py         # Admin migrations
-│   ├── upload.py          # Image uploads
-│   └── cron/monthly.py    # Scheduled tasks
+│   └── upload.py          # Image uploads
 ├── .github/workflows/
 │   └── biweekly-emails.yml # Automated email schedule
 └── vercel.json            # Routing config
@@ -110,6 +109,13 @@ Requires `SITE_URL` and `CRON_SECRET` in GitHub secrets.
 python serve.py
 # Open http://localhost:3000
 ```
+
+## Documentation
+
+- [CLONE_AND_CUSTOMIZE.md](./CLONE_AND_CUSTOMIZE.md) - Create your own tennis league
+- [GMAIL_SETUP.md](./GMAIL_SETUP.md) - Set up Gmail SMTP
+- [RUNBOOK.md](./RUNBOOK.md) - Operations manual
+- [CONTENT_LOCATIONS.md](./CONTENT_LOCATIONS.md) - Where all editable content lives
 
 ## License
 

@@ -1,7 +1,8 @@
 -- =============================================================
--- NET WORTH TENNIS LADDER - COMPLETE DATABASE SETUP
+-- TENNIS LEAGUE LADDER - COMPLETE DATABASE SETUP
 -- Run this ONCE in Supabase SQL Editor
--- Includes: Players, Matches, Preferences, Match Feedback
+--
+-- CUSTOMIZE: Search for "CHANGEME" to find values you need to update
 -- =============================================================
 
 -- Step 1: Clean slate
@@ -17,7 +18,7 @@ DROP TABLE IF EXISTS players CASCADE;
 -- =============================================================
 CREATE TABLE league_settings (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    league_name VARCHAR(255) NOT NULL DEFAULT 'NET WORTH East Side LA',
+    league_name VARCHAR(255) NOT NULL DEFAULT 'Your Tennis League',  -- CHANGEME
     -- Match frequency: weekly, biweekly, monthly, quarterly
     match_frequency VARCHAR(20) NOT NULL DEFAULT 'monthly',
     -- Number of sets per match (1, 2, or 3)
@@ -29,9 +30,9 @@ CREATE TABLE league_settings (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Insert default league settings
+-- Insert default league settings (CHANGEME: Update league name)
 INSERT INTO league_settings (league_name, match_frequency, sets_per_match, games_per_set, tiebreak_enabled)
-VALUES ('NET WORTH East Side LA', 'monthly', 2, 6, true);
+VALUES ('Your Tennis League', 'monthly', 2, 6, true);  -- CHANGEME: league name
 
 -- =============================================================
 -- PLAYERS TABLE
@@ -197,56 +198,19 @@ CREATE POLICY "Assignments manageable" ON match_assignments FOR ALL USING (true)
 CREATE POLICY "League settings viewable" ON league_settings FOR SELECT USING (true);
 
 -- =============================================================
--- INSERT ALL 42 PLAYERS WITH REAL DATA
--- Games won accumulated from March-November 2024
+-- SAMPLE DATA (Optional - remove or customize for your league)
+-- Real players will register via the join page
 -- =============================================================
-INSERT INTO players (email, name, phone, skill_level, rank, total_games, matches_played, is_active) VALUES
-('[redacted-email]', 'Kim Ndombe', '[redacted-phone]', '4.5 Advanced+', 1, 51, 5, true),
-('nmcoffen@gmail.com', 'Natalie Coffen', '[redacted-phone]', '4.5 Advanced+', 2, 50, 6, true),
-('[redacted-email]', 'Sara Chrisman', '[redacted-phone]', '4.5 Advanced+', 3, 49, 5, true),
-('[redacted-email]', 'Arianna Hairston', '[redacted-phone]', '4.5 Advanced+', 4, 48, 4, true),
-('[redacted-email]', 'Alik Apelian', '[redacted-phone]', '4.5 Advanced+', 5, 45, 5, true),
-('[redacted-email]', 'Hannah Shin', '[redacted-phone]', '4.5 Advanced+', 6, 45, 4, true),
-('[redacted-email]', 'Hanna Pavlova', '[redacted-phone]', '4.0 Advanced', 7, 41, 6, true),
-('[redacted-email]', 'Maddy Whitby', '[redacted-phone]', '4.0 Advanced', 8, 38, 5, true),
-('[redacted-email]', 'Allison Dunne', '[redacted-phone]', '4.0 Advanced', 9, 37, 4, true),
-('ashleybrooke.kaufman@gmail.com', 'Ashley Brooke Kaufman', '[redacted-phone]', '3.5+ Intermediate', 10, 33, 7, true),
-('[redacted-email]', 'Kaitlin Kelly', '[redacted-phone]', '3.5+ Intermediate', 11, 32, 4, true),
-('[redacted-email]', 'Page Eaton', '[redacted-phone]', '3.5+ Intermediate', 12, 30, 4, true),
-('[redacted-email]', 'Sarah Yun', '[redacted-phone]', '3.5+ Intermediate', 13, 29, 3, true),
-('[redacted-email]', 'Camille Tsalik', '[redacted-phone]', '3.5+ Intermediate', 14, 29, 3, true),
-('[redacted-email]', 'Laurie Berger', '[redacted-phone]', '3.5+ Intermediate', 15, 26, 3, true),
-('[redacted-email]', 'Katie Morey', '[redacted-phone]', '3.5 Intermediate', 16, 24, 2, true),
-('[redacted-email]', 'Carlyn Hudson', '[redacted-phone]', '3.5 Intermediate', 17, 22, 2, true),
-('[redacted-email]', 'Seena Chokshi', '[redacted-phone]', '3.5 Intermediate', 18, 21, 3, true),
-('[redacted-email]', 'Carolina Ciappa', '[redacted-phone]', '3.5 Intermediate', 19, 20, 2, true),
-('[redacted-email]', 'Lola Miranda', '[redacted-phone]', '3.5 Intermediate', 20, 19, 2, true),
-('[redacted-email]', '[redacted-name]', '[redacted-phone]', '3.5 Intermediate', 21, 15, 2, true),
-('[redacted-email]', '[redacted-name]', '', '3.0 Beginner+', 22, 12, 2, true),
-('[redacted-email]', '[redacted-name]', '[redacted-phone]', '3.0 Beginner+', 23, 12, 1, true),
-('[redacted-email]', '[redacted-name]', '[redacted-phone]', '3.0 Beginner+', 24, 12, 1, true),
-('[redacted-email]', '[redacted-name]', '[redacted-phone]', '3.0 Beginner+', 25, 11, 1, true),
-('[redacted-email]', '[redacted-name]', '[redacted-phone]', '3.0 Beginner+', 26, 8, 4, true),
-('[redacted-email]', '[redacted-name]', '[redacted-phone]', '3.0 Beginner+', 27, 5, 1, true),
-('[redacted-email]', '[redacted-name]', '[redacted-phone]', '3.0 Beginner+', 28, 4, 1, true),
-('[redacted-email]', '[redacted-name]', '[redacted-phone]', '3.0 Beginner+', 29, 4, 4, true),
-('[redacted-email]', '[redacted-name]', '[redacted-phone]', '3.0 Beginner+', 30, 3, 1, true),
-('[redacted-email]', '[redacted-name]', '[redacted-phone]', '3.0 Beginner+', 31, 2, 2, true),
-('[redacted-email]', '[redacted-name]', '[redacted-phone]', '3.0 Beginner+', 32, 0, 0, true),
-('[redacted-email]', '[redacted-name]', '[redacted-phone]', '3.0 Beginner+', 33, 0, 0, true),
-('[redacted-email]', '[redacted-name]', '[redacted-phone]', '3.0 Beginner+', 34, 0, 0, true),
-('[redacted-email]', '[redacted-name]', '[redacted-phone]', '3.0 Beginner+', 35, 0, 0, true),
-('[redacted-email]', '[redacted-name]', '[redacted-phone]', '3.0 Beginner+', 36, 0, 0, true),
-('[redacted-email]', '[redacted-name]', '[redacted-phone]', '3.0 Beginner+', 37, 0, 0, true),
-('[redacted-email]', '[redacted-name]', '[redacted-phone]', '3.0 Beginner+', 38, 0, 0, true),
-('[redacted-email]', '[redacted-name]', '[redacted-phone]', '3.0 Beginner+', 39, 0, 0, true),
-('[redacted-email]', '[redacted-name]', '[redacted-phone]', '3.0 Beginner+', 40, 0, 0, true),
-('[redacted-email]', '[redacted-name]', '[redacted-phone]', '3.0 Beginner+', 41, 0, 0, true),
-('[redacted-email]', '[redacted-name]', '[redacted-phone]', '3.0 Beginner+', 42, 0, 0, true);
 
--- Admin user
+-- Sample admin user (CHANGEME: use your admin email)
 INSERT INTO players (email, name, skill_level, rank, total_games, is_active, is_admin)
-VALUES ('admin@networthtennis.com', 'Admin', 'Admin', 99, 0, true, true);
+VALUES ('admin@yourleague.com', 'Admin', 'Admin', 99, 0, true, true);  -- CHANGEME
+
+-- Optional: Sample players for testing (remove in production)
+-- INSERT INTO players (email, name, phone, skill_level, rank, total_games, matches_played, is_active) VALUES
+-- ('player1@example.com', 'Sample Player 1', '555-0001', '4.0 Advanced', 1, 20, 2, true),
+-- ('player2@example.com', 'Sample Player 2', '555-0002', '3.5 Intermediate', 2, 15, 2, true),
+-- ('player3@example.com', 'Sample Player 3', '555-0003', '3.5 Intermediate', 3, 10, 1, true);
 
 -- =============================================================
 -- FUNCTIONS FOR RANKING & MATCHING
