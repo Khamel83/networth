@@ -699,16 +699,6 @@
             transform: scale(1.1);
         }
 
-        /* Mobile Navigation */
-        .mobile-menu-btn {
-            display: none;
-            background: none;
-            border: 1px solid var(--text-white);
-            padding: var(--space-sm);
-            color: var(--text-white);
-            border-radius: 4px;
-            cursor: pointer;
-        }
 
         /* Responsive */
         @media (max-width: 1200px) {
@@ -741,10 +731,6 @@
         @media (max-width: 900px) {
             .nav-center {
                 display: none;
-            }
-
-            .mobile-menu-btn {
-                display: block;
             }
 
             .rankings-header,
@@ -914,14 +900,6 @@
                 <a href="/login" class="btn">Sign In</a>
                 <a href="/join" class="btn btn-primary">Join Now</a>
             </div>
-
-            <button class="mobile-menu-btn" aria-label="Menu">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="3" y1="6" x2="21" y2="6"></line>
-                    <line x1="3" y1="12" x2="21" y2="12"></line>
-                    <line x1="3" y1="18" x2="21" y2="18"></line>
-                </svg>
-            </button>
         </div>
     </header>
 
