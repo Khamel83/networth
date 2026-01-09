@@ -526,10 +526,13 @@ class handler(BaseHTTPRequestHandler):
                         p2.get('phone', '')
                     )
                     subject = f"{p1['name']}, meet {p2['name']} - You're matched for {period_label}!"
+                    # Set reply-to to both players so Ashley isn't included in replies
+                    reply_to = f"{p1['email']}, {p2['email']}"
                     result = send_email(
                         [p1['email'], p2['email']],
                         subject,
-                        html
+                        html,
+                        reply_to=reply_to
                     )
                     if result.get('success'):
                         emails_sent += 1

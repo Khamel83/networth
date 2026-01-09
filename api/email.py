@@ -566,10 +566,13 @@ class handler(BaseHTTPRequestHandler):
                             p2.get('name', 'Player'),
                             month
                         )
+                        # Set reply-to to both players so Ashley isn't included in replies
+                        reply_to = f"{p1['email']}, {p2['email']}"
                         result = send_email(
                             [p1['email'], p2['email']],
                             f"Friendly reminder to play your {month} match",
-                            html
+                            html,
+                            reply_to=reply_to
                         )
                         if result['success']:
                             sent += 1
