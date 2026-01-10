@@ -343,10 +343,12 @@ class handler(BaseHTTPRequestHandler):
         }
 
     def _format_public_profile(self, p):
-        """Format player data for public profile view (limited info)"""
+        """Format player data for public profile view (members can see contact info)"""
         return {
             "id": p.get('id'),
             "name": p.get('name'),
+            "email": p.get('email'),
+            "phone": p.get('phone'),
             "membership_tier": p.get('membership_tier', 'player'),
             "total_games": p.get('total_games', 0),
             "matches_played": p.get('matches_played', 0),
