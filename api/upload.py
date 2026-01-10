@@ -216,7 +216,7 @@ class handler(BaseHTTPRequestHandler):
                 return
 
             # Get player record
-            player = supabase.table('players').select('*').eq('email', user.email).single().execute()
+            player = supabase.table('players').select('*').eq('email', user.email.lower()).single().execute()
             if not player.data:
                 self._send_error(404, "Player profile not found")
                 return
@@ -318,7 +318,7 @@ class handler(BaseHTTPRequestHandler):
                 return
 
             # Get player record
-            player = supabase.table('players').select('*').eq('email', user.email).single().execute()
+            player = supabase.table('players').select('*').eq('email', user.email.lower()).single().execute()
             if not player.data:
                 self._send_error(404, "Player profile not found")
                 return
