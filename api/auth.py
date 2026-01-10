@@ -94,15 +94,24 @@ class handler(BaseHTTPRequestHandler):
                         # Get user from session
                         user = supabase.auth.get_user(token)
                         if user and user.user:
-                            email = user.user.email
+                            # Lowercase email to match how join.py stores it
+                            email = user.user.email.lower()
                             # Get player data
                             player = supabase.table('players').select('*').eq('email', email).single().execute()
-                            self._send_success({
-                                "authenticated": True,
-                                "player": player.data if player.data else None
-                            })
-                            return
-                    except Exception:
+
+                            if player.data:
+                                self._send_success({
+                                    "authenticated": True,
+                                    "player": player.data
+                                })
+                                return
+                            else:
+                                # Supabase Auth succeeded but no player record exists
+                                # This means they authenticated but haven't registered via /join
+                                self._send_error(404, "No account found. Please register first at /join")
+                                return
+                    except Exception as e:
+                        print(f"Verify error: {e}")
                         pass
 
                 self._send_error(401, "Invalid or expired session")

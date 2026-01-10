@@ -1286,6 +1286,7 @@
 
                 if (accessToken) {
                     try {
+                        console.log('Verifying magic link token...');
                         const response = await fetch('/api/auth', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
@@ -1293,16 +1294,23 @@
                         });
 
                         const data = await response.json();
+                        console.log('Auth response:', data);
 
                         if (data.success && data.player) {
                             localStorage.setItem('networth_token', accessToken);
                             localStorage.setItem('networth_refresh_token', refreshToken || '');
                             localStorage.setItem('networth_player', JSON.stringify(data.player));
-                            window.location.href = '/dashboard';
+                            // Clear hash and reload cleanly
+                            window.history.replaceState(null, '', '/dashboard');
+                            window.location.reload();
                             return true;
+                        } else {
+                            console.error('Auth failed:', data.error || 'No player data returned');
+                            return false;
                         }
                     } catch (err) {
                         console.error('Token verification failed:', err);
+                        return false;
                     }
                 }
             }
@@ -1370,7 +1378,16 @@
 
         // Check for magic link callback first
         if (window.location.hash.includes('access_token=')) {
-            handleMagicLinkCallback();
+            handleMagicLinkCallback().then(success => {
+                if (!success) {
+                    // Token verification failed - clear hash and redirect to login with error
+                    console.error('Magic link verification failed');
+                    window.location.href = '/login?error=auth_failed';
+                }
+            }).catch(err => {
+                console.error('Magic link error:', err);
+                window.location.href = '/login?error=auth_failed';
+            });
         }
 
         if (isTestMode) {
