@@ -1587,7 +1587,32 @@
             try {
                 const response = await fetchWithAuth('/api/profile', {});
                 const data = await response.json();
-                if (data.success && data.profile) {
+
+                if (!data.success) {
+                    // Handle specific error cases
+                    if (response.status === 404) {
+                        // Player record not found - redirect to signup
+                        alert('Your account was not found. Please sign up to join the league.');
+                        localStorage.removeItem('networth_token');
+                        localStorage.removeItem('networth_refresh_token');
+                        localStorage.removeItem('networth_player');
+                        window.location.href = '/join';
+                        return;
+                    } else if (response.status === 401) {
+                        // Auth failed - redirect to login
+                        localStorage.removeItem('networth_token');
+                        localStorage.removeItem('networth_refresh_token');
+                        localStorage.removeItem('networth_player');
+                        window.location.href = '/login';
+                        return;
+                    } else {
+                        // Other error - show message
+                        showMessage(data.error || 'Failed to load profile. Please refresh.', 'error');
+                        return;
+                    }
+                }
+
+                if (data.profile) {
                     player = { ...player, ...data.profile };
                     updatePreferencesUI(data.profile);
                     updateSocialButterflyUI(data.profile);
@@ -1600,6 +1625,7 @@
                 }
             } catch (err) {
                 console.error('Failed to load profile:', err);
+                showMessage('Failed to load profile. Please refresh the page.', 'error');
             }
         }
 

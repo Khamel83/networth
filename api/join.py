@@ -100,7 +100,15 @@ class handler(BaseHTTPRequestHandler):
                     result = supabase.table('players').update(player_data).eq('id', existing_player['id']).execute()
                 else:
                     # No existing account - INSERT new one
-                    result = supabase.table('players').insert(player_data).execute()
+                    try:
+                        result = supabase.table('players').insert(player_data).execute()
+                    except Exception as insert_error:
+                        error_msg = str(insert_error).lower()
+                        # Handle race condition: another request may have inserted same email
+                        if 'duplicate' in error_msg or 'unique' in error_msg or 'already exists' in error_msg:
+                            self._send_error(400, "This email is already registered. Try logging in instead!")
+                            return
+                        raise  # Re-raise if it's a different error
 
                 if result.data:
                     # Send welcome email
