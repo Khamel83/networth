@@ -1136,8 +1136,8 @@
 
                     <!-- Availability -->
                     <div class="availability-section">
-                        <h4>My Availability</h4>
-                        <p class="availability-help">Select all times you're typically available for matches</p>
+                        <h4>My Availability <span id="avail-saved" style="font-size: 0.75rem; color: #22c55e; opacity: 0; transition: opacity 0.3s;">Saved!</span></h4>
+                        <p class="availability-help">Select all times you're typically available for matches (auto-saves)</p>
                         <div class="availability-grid">
                             <div class="availability-column">
                                 <h5>Weekdays</h5>
@@ -2630,12 +2630,56 @@
             }
         }
 
+        // Auto-save availability when checkboxes change
+        async function autoSaveAvailability() {
+            if (isTestMode) return;
+
+            const availability = {
+                weekday_early: document.getElementById('avail-weekday-early').checked,
+                weekday_day: document.getElementById('avail-weekday-day').checked,
+                weekday_late: document.getElementById('avail-weekday-late').checked,
+                weekend_early: document.getElementById('avail-weekend-early').checked,
+                weekend_day: document.getElementById('avail-weekend-day').checked,
+                weekend_late: document.getElementById('avail-weekend-late').checked
+            };
+
+            try {
+                const response = await fetchWithAuth('/api/profile', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'update', availability })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    // Show "Saved!" indicator
+                    const savedEl = document.getElementById('avail-saved');
+                    savedEl.style.opacity = '1';
+                    setTimeout(() => savedEl.style.opacity = '0', 2000);
+                }
+            } catch (err) {
+                console.error('Auto-save failed:', err);
+            }
+        }
+
+        // Attach auto-save to all availability checkboxes
+        function setupAvailabilityAutoSave() {
+            const checkboxIds = [
+                'avail-weekday-early', 'avail-weekday-day', 'avail-weekday-late',
+                'avail-weekend-early', 'avail-weekend-day', 'avail-weekend-late'
+            ];
+            checkboxIds.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.addEventListener('change', autoSaveAvailability);
+            });
+        }
+
         // Initialize
         loadProfile();
         loadScoreGrid();
         loadOutstandingMatches();
         loadMatchHistory();
         checkAdminAndLoad();
+        setupAvailabilityAutoSave();
     </script>
 </body>
 </html>
