@@ -686,6 +686,14 @@
                     }
                 });
 
+                // Handle auth errors
+                if (response.status === 401) {
+                    localStorage.removeItem('networth_token');
+                    localStorage.removeItem('networth_player');
+                    window.location.href = '/login?error=session_expired';
+                    return;
+                }
+
                 const data = await response.json();
 
                 if (data.success && data.player) {

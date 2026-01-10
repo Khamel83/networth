@@ -72,18 +72,13 @@ class handler(BaseHTTPRequestHandler):
                         return
 
                     except Exception as e:
-                        # If Supabase auth fails, fall back to demo mode
-                        self._send_success({
-                            "message": f"Demo mode: Magic link would be sent to {email}",
-                            "demo": True
-                        })
+                        # Return real error instead of silent demo mode
+                        print(f"Magic link error: {e}")
+                        self._send_error(500, f"Failed to send login email. Please try again.")
                         return
                 else:
-                    # Demo mode - no Supabase
-                    self._send_success({
-                        "message": f"Demo mode: Magic link would be sent to {email}",
-                        "demo": True
-                    })
+                    # No Supabase connection - return error
+                    self._send_error(503, "Email service unavailable. Please try again later.")
                     return
 
             elif action == 'verify':
