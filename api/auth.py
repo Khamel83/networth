@@ -72,9 +72,9 @@ class handler(BaseHTTPRequestHandler):
                         return
 
                     except Exception as e:
-                        # Return real error instead of silent demo mode
+                        # Return real error for debugging
                         print(f"Magic link error: {e}")
-                        self._send_error(500, f"Failed to send login email. Please try again.")
+                        self._send_error(500, f"Failed to send login email: {str(e)}")
                         return
                 else:
                     # No Supabase connection - return error
