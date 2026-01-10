@@ -1,22 +1,18 @@
 """
 Vercel Serverless Function: Email Notifications
-Sends emails via Gmail SMTP using Ashley's account.
+Sends emails via Resend API for better deliverability.
 """
 from http.server import BaseHTTPRequestHandler
 import json
 import os
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
 from datetime import datetime
 
-
-# Gmail SMTP Configuration
-SMTP_SERVER = 'smtp.gmail.com'
-SMTP_PORT = 587
-SMTP_USER = 'ashleybrooke.kaufman@gmail.com'
+# Email Configuration
 SENDER_NAME = 'Net Worth Tennis'
-SENDER_EMAIL = f'{SENDER_NAME} <{SMTP_USER}>'
+# Using Resend's test domain until custom domain is verified
+# Change to 'noreply@networthtennis.com' after DNS setup
+SENDER_EMAIL = f'{SENDER_NAME} <onboarding@resend.dev>'
+REPLY_TO_EMAIL = 'ashleybrooke.kaufman@gmail.com'
 
 
 def get_supabase_client():
@@ -34,56 +30,50 @@ def get_supabase_client():
 
 def send_email(to_email, subject, html_content, reply_to=None):
     """
-    Send email via Gmail SMTP
+    Send email via Resend API
 
     Args:
         to_email: Recipient email (string or list)
         subject: Email subject
         html_content: HTML email body
-        reply_to: Optional reply-to address
+        reply_to: Optional reply-to address (defaults to Ashley's email)
 
     Returns:
         dict with success status
     """
-    smtp_password = os.environ.get('SMTP_PASSWORD')
+    import resend
 
-    if not smtp_password:
+    api_key = os.environ.get('RESEND_API_KEY')
+
+    if not api_key:
         return {
             'success': False,
-            'error': 'SMTP_PASSWORD not configured in environment variables'
+            'error': 'RESEND_API_KEY not configured in environment variables'
         }
 
-    try:
-        # Create message
-        msg = MIMEMultipart('alternative')
-        msg['Subject'] = subject
-        msg['From'] = SENDER_EMAIL
+    resend.api_key = api_key
 
+    try:
         # Handle single email or list
         if isinstance(to_email, list):
-            msg['To'] = ', '.join(to_email)
             recipients = to_email
         else:
-            msg['To'] = to_email
             recipients = [to_email]
 
-        if reply_to:
-            msg['Reply-To'] = reply_to
+        # Build email params
+        params = {
+            "from": SENDER_EMAIL,
+            "to": recipients,
+            "subject": subject,
+            "html": html_content,
+            "reply_to": reply_to if reply_to else REPLY_TO_EMAIL
+        }
 
-        # Attach HTML content
-        html_part = MIMEText(html_content, 'html')
-        msg.attach(html_part)
+        # Send via Resend
+        response = resend.Emails.send(params)
 
-        # Send via Gmail SMTP
-        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
-            server.starttls()
-            server.login(SMTP_USER, smtp_password)
-            server.sendmail(SMTP_USER, recipients, msg.as_string())
+        return {'success': True, 'sent_to': recipients, 'id': response.get('id')}
 
-        return {'success': True, 'sent_to': recipients}
-
-    except smtplib.SMTPAuthenticationError:
-        return {'success': False, 'error': 'Gmail authentication failed - check app password'}
     except Exception as e:
         return {'success': False, 'error': str(e)}
 
@@ -425,11 +415,12 @@ class handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         """Return email system status"""
-        smtp_configured = bool(os.environ.get('SMTP_PASSWORD'))
+        resend_configured = bool(os.environ.get('RESEND_API_KEY'))
         self._send_success({
-            "status": "ready" if smtp_configured else "not_configured",
-            "smtp_user": SMTP_USER,
-            "message": "Email system ready" if smtp_configured else "SMTP_PASSWORD not set in environment"
+            "status": "ready" if resend_configured else "not_configured",
+            "sender": SENDER_EMAIL,
+            "reply_to": REPLY_TO_EMAIL,
+            "message": "Email system ready (Resend)" if resend_configured else "RESEND_API_KEY not set in environment"
         })
 
     def do_POST(self):
