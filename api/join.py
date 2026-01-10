@@ -77,7 +77,7 @@ class handler(BaseHTTPRequestHandler):
                 'avail_weekend_early': avail_weekend_early,
                 'avail_weekend_day': avail_weekend_day,
                 'avail_weekend_late': avail_weekend_late,
-                'is_active': False,  # Requires admin approval after Venmo verification
+                'is_active': True,  # Active immediately - no approval needed
                 'total_games': 0,
                 'matches_played': 0,
                 'rank': None
@@ -105,19 +105,24 @@ class handler(BaseHTTPRequestHandler):
                 if result.data:
                     # Send welcome email
                     email_sent = False
+                    email_error = None
                     try:
                         from api.email import send_email, get_welcome_email_html
                         welcome_html = get_welcome_email_html(name)
                         email_result = send_email(email, "Welcome to Net Worth Tennis!", welcome_html)
                         email_sent = email_result.get('success', False)
+                        if not email_sent:
+                            email_error = email_result.get('error', 'Unknown email error')
                     except Exception as e:
+                        email_error = str(e)
                         print(f"Failed to send welcome email: {e}")
 
                     self._send_success({
-                        "message": "Welcome to Net Worth! Your request has been received. Once we verify your Venmo payment, you'll receive an email to set up your login.",
+                        "message": "You're in! You can now sign in to access your dashboard.",
                         "player_created": True,
-                        "pending_approval": True,
-                        "welcome_email_sent": email_sent
+                        "is_active": True,
+                        "welcome_email_sent": email_sent,
+                        "email_error": email_error
                     })
                 else:
                     self._send_error(500, "Failed to create account. Please try again.")
