@@ -358,13 +358,20 @@ class handler(BaseHTTPRequestHandler):
             "favorite_players": p.get('favorite_players'),
             "availability": {
                 # 6-slot system (public can see when to coordinate)
-                "avail_weekday_early": p.get('avail_weekday_early', False),
-                "avail_weekday_day": p.get('avail_weekday_day', False),
-                "avail_weekday_late": p.get('avail_weekday_late', False),
-                "avail_weekend_early": p.get('avail_weekend_early', False),
-                "avail_weekend_day": p.get('avail_weekend_day', False),
-                "avail_weekend_late": p.get('avail_weekend_late', False),
+                "weekday_early": p.get('avail_weekday_early', False),
+                "weekday_day": p.get('avail_weekday_day', False),
+                "weekday_late": p.get('avail_weekday_late', False),
+                "weekend_early": p.get('avail_weekend_early', False),
+                "weekend_day": p.get('avail_weekend_day', False),
+                "weekend_late": p.get('avail_weekend_late', False),
             },
+            # Also include flat fields for JS compatibility
+            "avail_weekday_early": p.get('avail_weekday_early', False),
+            "avail_weekday_day": p.get('avail_weekday_day', False),
+            "avail_weekday_late": p.get('avail_weekday_late', False),
+            "avail_weekend_early": p.get('avail_weekend_early', False),
+            "avail_weekend_day": p.get('avail_weekend_day', False),
+            "avail_weekend_late": p.get('avail_weekend_late', False),
         }
 
     def _send_success(self, data):
