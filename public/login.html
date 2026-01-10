@@ -368,12 +368,18 @@
             const email = document.getElementById('email').value.trim().toLowerCase();
 
             try {
+                // Use AbortController for timeout (30 seconds for cold starts)
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 30000);
+
                 const response = await fetch('/api/auth', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'magic_link', email })
+                    body: JSON.stringify({ action: 'magic_link', email }),
+                    signal: controller.signal
                 });
 
+                clearTimeout(timeoutId);
                 const data = await response.json();
 
                 if (data.success) {
@@ -381,10 +387,21 @@
                     formSection.style.display = 'none';
                     successSection.style.display = 'block';
                 } else {
+                    // Check for rate limit error
+                    if (data.error && data.error.includes('security purposes')) {
+                        throw new Error('Please wait 30 seconds before requesting another link.');
+                    }
                     throw new Error(data.error || 'Something went wrong');
                 }
             } catch (err) {
-                messageEl.textContent = err.message;
+                // Handle timeout/network errors
+                if (err.name === 'AbortError') {
+                    messageEl.textContent = 'Request timed out. Please try again.';
+                } else if (err.message === 'Failed to fetch') {
+                    messageEl.textContent = 'Network error. Please check your connection and try again.';
+                } else {
+                    messageEl.textContent = err.message;
+                }
                 messageEl.className = 'message error show';
                 submitBtn.disabled = false;
                 submitBtn.textContent = 'Send Sign-In Link';
