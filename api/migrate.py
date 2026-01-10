@@ -60,7 +60,9 @@ def get_user_from_token(supabase, auth_header):
 def is_admin(supabase, user_email):
     """Check if user is an admin"""
     try:
-        result = supabase.table('players').select('is_admin').eq('email', user_email).single().execute()
+        # Lowercase email to match how join.py stores it
+        email = user_email.lower() if user_email else ''
+        result = supabase.table('players').select('is_admin').eq('email', email).single().execute()
         return result.data and result.data.get('is_admin', False)
     except Exception:
         return False

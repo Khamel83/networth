@@ -48,7 +48,9 @@ def verify_admin(supabase, user):
     if not user:
         return False
     try:
-        player = supabase.table('players').select('is_admin').eq('email', user.email).single().execute()
+        # Lowercase email to match how join.py stores it
+        email = user.email.lower() if user.email else ''
+        player = supabase.table('players').select('is_admin').eq('email', email).single().execute()
         return player.data and player.data.get('is_admin', False)
     except Exception:
         return False
