@@ -9,9 +9,7 @@ from datetime import datetime
 
 # Email Configuration
 SENDER_NAME = 'Net Worth Tennis'
-# Using Resend's test domain until custom domain is verified
-# Change to 'noreply@networthtennis.com' after DNS setup
-SENDER_EMAIL = f'{SENDER_NAME} <onboarding@resend.dev>'
+SENDER_EMAIL = f'{SENDER_NAME} <noreply@networthtennis.com>'
 REPLY_TO_EMAIL = 'ashleybrooke.kaufman@gmail.com'
 
 
