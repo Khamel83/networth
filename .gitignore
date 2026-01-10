@@ -56,3 +56,6 @@ htmlcov/
 
 # Railway
 .railway/
+.vercel
+.env*.local
+.env.vercel

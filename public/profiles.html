@@ -186,6 +186,24 @@
             margin-top: 0.5rem;
         }
 
+        .player-contact {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 0.25rem;
+            word-break: break-word;
+        }
+
+        .player-contact a {
+            color: var(--text-white);
+            text-decoration: none;
+            transition: opacity 0.2s ease;
+        }
+
+        .player-contact a:hover {
+            opacity: 0.8;
+            text-decoration: underline;
+        }
+
         /* Loading & States */
         .loading-state,
         .login-required {
@@ -424,12 +442,17 @@
                     const tierText = isSocial ? 'Social' : 'Player';
                     const rankHtml = !isSocial && player.rank ? `<p class="player-rank">#${player.rank} · ${player.total_games || 0} games</p>` : '';
 
+                    const emailHtml = player.email ? `<p class="player-contact"><a href="mailto:${player.email}" onclick="event.stopPropagation();">${player.email}</a></p>` : '';
+                    const phoneHtml = player.phone ? `<p class="player-contact"><a href="tel:${player.phone}" onclick="event.stopPropagation();">${player.phone}</a></p>` : '';
+
                     return `
                         <a href="/profile?id=${player.id}" class="player-card">
                             <div class="player-avatar">
                                 ${avatarHtml}
                             </div>
                             <h3 class="player-name">${player.name}</h3>
+                            ${emailHtml}
+                            ${phoneHtml}
                             <span class="player-tier ${tierClass}">${tierText}</span>
                             ${rankHtml}
                         </a>
