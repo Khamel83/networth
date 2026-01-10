@@ -975,10 +975,10 @@
                         </div>
                     </div>
 
-                    <!-- Favorite Players -->
+                    <!-- Favorite Pro Players -->
                     <div class="form-group" style="margin-top: 1rem;">
-                        <label for="sb-favorite-players-input">Favorite Players</label>
-                        <input type="text" id="sb-favorite-players-input" placeholder="Players you especially enjoy playing with">
+                        <label for="sb-favorite-players-input">Favorite Pro Players</label>
+                        <input type="text" id="sb-favorite-players-input" placeholder="Which pros are you following this season?">
                     </div>
 
                     <!-- Availability (greyed out until upgrade) -->
@@ -1176,10 +1176,10 @@
                         </div>
                     </div>
 
-                    <!-- Favorite Players -->
+                    <!-- Favorite Pro Players -->
                     <div class="form-group" style="margin-top: 1.5rem;">
-                        <label for="favorite-players-input">Favorite Players</label>
-                        <input type="text" id="favorite-players-input" placeholder="Players you especially enjoy playing with">
+                        <label for="favorite-players-input">Favorite Pro Players</label>
+                        <input type="text" id="favorite-players-input" placeholder="Which pros are you following this season?">
                     </div>
 
                     <button class="btn btn-secondary" onclick="savePreferences()" id="save-info-btn">
@@ -1297,12 +1297,30 @@
                         console.log('Auth response:', data);
 
                         if (data.success && data.player) {
+                            // Store tokens in localStorage
                             localStorage.setItem('networth_token', accessToken);
                             localStorage.setItem('networth_refresh_token', refreshToken || '');
                             localStorage.setItem('networth_player', JSON.stringify(data.player));
-                            // Clear hash and reload cleanly
+
+                            // Set global variables directly (no reload needed)
+                            token = accessToken;
+                            player = data.player;
+
+                            // Clear hash from URL without reload
                             window.history.replaceState(null, '', '/dashboard');
-                            window.location.reload();
+
+                            // Update UI with player data
+                            document.getElementById('player-name').textContent = player.name || 'Player';
+                            document.getElementById('stat-rank').textContent = `#${player.rank || '-'}`;
+                            document.getElementById('stat-games').textContent = player.total_games || '0';
+                            document.getElementById('stat-matches').textContent = player.matches_played || '0';
+
+                            // Load full profile and other data
+                            loadProfile();
+                            loadScoreGrid();
+                            loadOutstandingMatches();
+                            loadMatchHistory();
+
                             return true;
                         } else {
                             console.error('Auth failed:', data.error || 'No player data returned');
