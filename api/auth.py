@@ -9,7 +9,7 @@ import os
 import secrets
 import hashlib
 import base64
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 
 def hash_password(password: str) -> str:
@@ -142,7 +142,7 @@ class handler(BaseHTTPRequestHandler):
                 player = result.data[0] if isinstance(result.data, list) else result.data
 
                 reset_token = secrets.token_urlsafe(32)
-                expires = datetime.utcnow() + timedelta(hours=1)
+                expires = datetime.now(timezone.utc) + timedelta(hours=1)
 
                 table('players').update({
                     'password_reset_token': reset_token,
@@ -200,7 +200,7 @@ class handler(BaseHTTPRequestHandler):
                 expires = player.get('password_reset_expires')
                 if expires:
                     expire_time = datetime.fromisoformat(expires.replace('Z', '+00:00'))
-                    if datetime.utcnow() > expire_time:
+                    if datetime.now(timezone.utc) > expire_time:
                         self._send_error(400, "Reset link has expired")
                         return
 
