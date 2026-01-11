@@ -3,7 +3,8 @@
   "functions": {
     "api/*.py": {
       "runtime": "@vercel/python@4.3.1",
-      "maxDuration": 30
+      "maxDuration": 30,
+      "excludeFiles": "{venv,env,.venv,ENV,__pycache__,*.pyc,*.pyo,node_modules,.next,.cache,dist,build}"
     }
   },
   "routes": [
