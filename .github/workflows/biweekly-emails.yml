@@ -6,8 +6,8 @@
 # - 1st of month at 9am PT: Generate pairings (emails sent automatically)
 # - 15th of month at 9am PT: Mid-month match reminder
 #
-# Note: Emails are sent via Gmail SMTP (ashleybrooke.kaufman@gmail.com)
-# Requires SMTP_PASSWORD env var in Vercel
+# Note: Emails are sent via Resend (noreply@networthtennis.com)
+# Requires RESEND_API_KEY env var in Vercel
 
 name: Tennis League Emails
 
