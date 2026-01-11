@@ -75,7 +75,12 @@ class handler(BaseHTTPRequestHandler):
                     self._send_error(503, "Database unavailable")
                     return
 
-                player = supabase.table('players').select('*').eq('email', email).single().execute()
+                try:
+                    player = supabase.table('players').select('*').eq('email', email).single().execute()
+                except Exception:
+                    # User not found or other error
+                    self._send_error(401, "Invalid email or password")
+                    return
 
                 if not player.data:
                     self._send_error(401, "Invalid email or password")
@@ -114,7 +119,12 @@ class handler(BaseHTTPRequestHandler):
                     self._send_error(503, "Database unavailable")
                     return
 
-                player = supabase.table('players').select('*').eq('email', email).single().execute()
+                try:
+                    player = supabase.table('players').select('*').eq('email', email).single().execute()
+                except Exception:
+                    self._send_error(404, "Player not found")
+                    return
+
                 if not player.data:
                     self._send_error(404, "Player not found")
                     return
@@ -144,7 +154,12 @@ class handler(BaseHTTPRequestHandler):
                     self._send_error(503, "Database unavailable")
                     return
 
-                player = supabase.table('players').select('*').eq('email', email).single().execute()
+                try:
+                    player = supabase.table('players').select('*').eq('email', email).single().execute()
+                except Exception:
+                    # Don't reveal if email exists or not
+                    self._send_success({"message": "If an account exists, a reset link will be sent."})
+                    return
 
                 if not player.data:
                     # Don't reveal if email exists or not
@@ -204,7 +219,11 @@ class handler(BaseHTTPRequestHandler):
                     return
 
                 # Find player with valid reset token
-                player = supabase.table('players').select('*').eq('password_reset_token', reset_token).single().execute()
+                try:
+                    player = supabase.table('players').select('*').eq('password_reset_token', reset_token).single().execute()
+                except Exception:
+                    self._send_error(400, "Invalid or expired reset link")
+                    return
 
                 if not player.data:
                     self._send_error(400, "Invalid or expired reset link")
