@@ -14,6 +14,16 @@ SENDER_EMAIL = f'{SENDER_NAME} <noreply@networthtennis.com>'
 REPLY_TO_EMAIL = 'ashleybrooke.kaufman@gmail.com'
 
 
+def _normalize_reply_to(reply_to):
+    if not reply_to:
+        return None
+    if isinstance(reply_to, (list, tuple, set)):
+        cleaned = [str(item).strip() for item in reply_to if item and str(item).strip()]
+        return ", ".join(cleaned) if cleaned else None
+    value = str(reply_to).strip()
+    return value or None
+
+
 def send_email(to_email, subject, html_content, reply_to=None):
     """
     Send email via Resend API
@@ -46,13 +56,15 @@ def send_email(to_email, subject, html_content, reply_to=None):
         else:
             recipients = [to_email]
 
+        reply_to_value = _normalize_reply_to(reply_to) or REPLY_TO_EMAIL
+
         # Build email params
         params = {
             "from": SENDER_EMAIL,
             "to": recipients,
             "subject": subject,
             "html": html_content,
-            "reply_to": reply_to if reply_to else REPLY_TO_EMAIL
+            "reply_to": reply_to_value
         }
 
         # Send via Resend
@@ -541,7 +553,7 @@ class handler(BaseHTTPRequestHandler):
                             month
                         )
                         # Set reply-to to both players so Ashley isn't included in replies
-                        reply_to = f"{p1['email']}, {p2['email']}"
+                        reply_to = [p1['email'], p2['email']]
                         result = send_email(
                             [p1['email'], p2['email']],
                             f"Friendly reminder to play your {month} match",
