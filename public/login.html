@@ -159,6 +159,23 @@
             display: block;
         }
 
+        .info-notice {
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: var(--text-white);
+            padding: 1rem;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            margin-bottom: 1.5rem;
+            line-height: 1.5;
+        }
+
+        .info-notice strong {
+            display: block;
+            margin-bottom: 0.25rem;
+            font-weight: 600;
+        }
+
         .help-text {
             margin-top: 1.5rem;
             text-align: center;
@@ -210,6 +227,11 @@
             <div class="login-header">
                 <h1 class="login-logo">net worth</h1>
                 <p class="login-subtitle">Log in to your account</p>
+            </div>
+
+            <div class="info-notice">
+                <strong>New! We've switched to password login.</strong>
+                Your default password is your 10-digit phone number. Or <a href="/reset-password" style="color: #fff; text-decoration: underline;">reset your password</a> to create a new one.
             </div>
 
             <div id="error-message" class="error-message"></div>
