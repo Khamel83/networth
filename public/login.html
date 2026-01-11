@@ -288,8 +288,17 @@
                 const data = await response.json();
 
                 if (data.success) {
-                    localStorage.setItem('networth_token', data.token);
-                    localStorage.setItem('networth_player', JSON.stringify(data.player));
+                    const player = data.player || {};
+                    const authEmail = (player.email || email || '').toLowerCase();
+                    if (authEmail) {
+                        localStorage.setItem('networth_token', authEmail);
+                        if (!player.email) {
+                            player.email = authEmail;
+                        }
+                    } else {
+                        localStorage.removeItem('networth_token');
+                    }
+                    localStorage.setItem('networth_player', JSON.stringify(player));
                     window.location.href = '/dashboard';
                 } else {
                     showError(data.error || 'Login failed');
