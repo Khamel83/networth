@@ -1,6 +1,7 @@
 """
 Vercel Serverless Function: Email Notifications
 Sends emails via Resend API for better deliverability.
+Uses Supabase REST API (no Python supabase client).
 """
 from http.server import BaseHTTPRequestHandler
 import json
@@ -11,19 +12,6 @@ from datetime import datetime
 SENDER_NAME = 'Net Worth Tennis'
 SENDER_EMAIL = f'{SENDER_NAME} <noreply@networthtennis.com>'
 REPLY_TO_EMAIL = 'ashleybrooke.kaufman@gmail.com'
-
-
-def get_supabase_client():
-    """Lazy initialization of Supabase client"""
-    try:
-        from supabase import create_client
-        url = os.environ.get('SUPABASE_URL')
-        key = os.environ.get('SUPABASE_ANON_KEY')
-        if url and key:
-            return create_client(url, key)
-    except Exception:
-        pass
-    return None
 
 
 def send_email(to_email, subject, html_content, reply_to=None):
@@ -466,13 +454,10 @@ class handler(BaseHTTPRequestHandler):
 
             elif action == 'send_availability_check':
                 # Send availability check to all active players
-                supabase = get_supabase_client()
-                if not supabase:
-                    self._send_error(503, "Database not available")
-                    return
+                from api.supabase_http import table
 
                 # Get all active players
-                players = supabase.table('players').select('email, name').eq('is_active', True).execute()
+                players = table('players').select('email, name').eq('is_active', True).execute()
 
                 if not players.data:
                     self._send_success({"message": "No active players to email", "sent": 0})
@@ -496,13 +481,9 @@ class handler(BaseHTTPRequestHandler):
                 })
 
             elif action == 'send_final_reminder':
-                # Send final reminder to all active players
-                supabase = get_supabase_client()
-                if not supabase:
-                    self._send_error(503, "Database not available")
-                    return
+                from api.supabase_http import table
 
-                players = supabase.table('players').select('email, name').eq('is_active', True).execute()
+                players = table('players').select('email, name').eq('is_active', True).execute()
 
                 if not players.data:
                     self._send_success({"message": "No active players to email", "sent": 0})
@@ -526,28 +507,32 @@ class handler(BaseHTTPRequestHandler):
                 })
 
             elif action == 'send_midmonth_reminders':
-                # Send mid-month reminders to pending matches
-                supabase = get_supabase_client()
-                if not supabase:
-                    self._send_error(503, "Database not available")
-                    return
+                from api.supabase_http import table
 
                 # Get current month's pending matches
                 month = datetime.now().strftime('%B %Y')
-                matches = supabase.table('match_assignments').select(
-                    '*, player1:player1_id(email, name), player2:player2_id(email, name)'
-                ).eq('period_label', month).eq('status', 'pending').execute()
+                matches_result = table('match_assignments').select('*').eq('period_label', month).eq('status', 'pending').execute()
 
-                if not matches.data:
+                if not matches_result.data:
                     self._send_success({"message": "No pending matches to remind", "sent": 0})
                     return
+
+                # Get player IDs to look up player details
+                player_ids = set()
+                for match in matches_result.data:
+                    player_ids.add(match.get('player1_id'))
+                    player_ids.add(match.get('player2_id'))
+
+                # Get all relevant players
+                players_result = table('players').select('id, email, name').execute()
+                players_map = {pl['id']: pl for pl in players_result.data if pl['id'] in player_ids}
 
                 sent = 0
                 errors = []
 
-                for match in matches.data:
-                    p1 = match.get('player1', {})
-                    p2 = match.get('player2', {})
+                for match in matches_result.data:
+                    p1 = players_map.get(match.get('player1_id'), {})
+                    p2 = players_map.get(match.get('player2_id'), {})
 
                     if p1 and p2:
                         html = get_midmonth_reminder_email_html(
