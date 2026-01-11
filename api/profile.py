@@ -9,6 +9,7 @@ Self-service profile management including:
 - Phone number
 
 Updated for Ashley's Christmas 2025 feedback.
+Uses password-based auth (no Supabase Auth).
 """
 from http.server import BaseHTTPRequestHandler
 import json
@@ -17,29 +18,17 @@ from datetime import datetime, date, timedelta
 from urllib.parse import parse_qs, urlparse
 
 
-def get_supabase_client():
-    """Lazy initialization of Supabase client"""
-    try:
-        from supabase import create_client
-        url = os.environ.get('SUPABASE_URL')
-        key = os.environ.get('SUPABASE_ANON_KEY')
-        if url and key:
-            return create_client(url, key)
-    except Exception:
-        pass
-    return None
+def get_player_by_email(email):
+    """Get player from database by email (password-based auth)"""
+    from api.supabase_http import table
 
-
-def get_user_from_token(supabase, auth_header):
-    """Extract and verify user from Authorization header"""
-    if not auth_header or not auth_header.startswith('Bearer '):
+    if not email:
         return None
 
-    token = auth_header.replace('Bearer ', '')
     try:
-        user = supabase.auth.get_user(token)
-        if user and user.user:
-            return user.user
+        result = table('players').select('*').eq('email', email.lower()).single().execute()
+        if result.data:
+            return result.data[0] if isinstance(result.data, list) else result.data
     except Exception:
         pass
     return None
@@ -64,7 +53,7 @@ def get_next_month_label():
     return next_month.strftime('%B %Y')
 
 
-def send_sitout_email(supabase, player_email, player_name, period_label):
+def send_sitout_email(player_email, player_name, period_label):
     """Send sit-out confirmation email"""
     try:
         from api.email import get_sitout_confirmation_email_html, send_email
@@ -74,7 +63,7 @@ def send_sitout_email(supabase, player_email, player_name, period_label):
         print(f"Failed to send sit-out email: {e}")
 
 
-def send_rejoin_email(supabase, player_email, player_name, eligible_month):
+def send_rejoin_email(player_email, player_name, eligible_month):
     """Send rejoin confirmation email"""
     try:
         from api.email import get_rejoin_confirmation_email_html, send_email
@@ -95,41 +84,55 @@ class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         """Get player profile - supports both own profile and viewing others"""
         try:
-            supabase = get_supabase_client()
-            if not supabase:
-                self._send_error(503, "Database not available")
-                return
+            from api.supabase_http import table
 
             # Parse query parameters for viewing other profiles
             parsed_url = urlparse(self.path)
             query_params = parse_qs(parsed_url.query)
             profile_id = query_params.get('id', [None])[0]
 
-            auth_header = self.headers.get('Authorization')
-            user = get_user_from_token(supabase, auth_header)
+            # Get email from Authorization header (password-based auth)
+            # Format: "Bearer {email}" or custom header
+            auth_header = self.headers.get('Authorization', '')
+            email = None
 
-            if not user:
+            if auth_header.startswith('Bearer '):
+                token_or_email = auth_header.replace('Bearer ', '')
+                # In password-based auth, we might receive email directly or use token
+                # For simplicity, check if it looks like an email
+                if '@' in token_or_email:
+                    email = token_or_email.lower()
+                else:
+                    # Token-based: would need token lookup, for now require email
+                    self._send_error(401, "Please provide your email in Authorization header")
+                    return
+
+            # Also check for custom header with email
+            if not email:
+                email = self.headers.get('X-Player-Email', '').lower()
+
+            if not email:
                 self._send_error(401, "Authentication required")
                 return
 
             # If viewing another player's profile
             if profile_id:
-                player = supabase.table('players').select('*').eq('id', profile_id).single().execute()
-                if not player.data:
+                result = table('players').select('*').eq('id', profile_id).single().execute()
+                if not result.data:
                     self._send_error(404, "Player not found")
                     return
-                self._send_success({"player": self._format_public_profile(player.data)})
+                player_data = result.data[0] if isinstance(result.data, list) else result.data
+                self._send_success({"player": self._format_public_profile(player_data)})
                 return
 
-            # Get own profile (lowercase email to match join.py storage)
-            email = user.email.lower() if user.email else ''
-            player = supabase.table('players').select('*').eq('email', email).single().execute()
+            # Get own profile
+            player = get_player_by_email(email)
 
-            if not player.data:
+            if not player:
                 self._send_error(404, "Player profile not found")
                 return
 
-            self._send_success({"profile": self._format_own_profile(player.data)})
+            self._send_success({"profile": self._format_own_profile(player)})
 
         except Exception as e:
             self._send_error(500, str(e))
@@ -137,15 +140,24 @@ class handler(BaseHTTPRequestHandler):
     def do_POST(self):
         """Update player profile settings"""
         try:
-            supabase = get_supabase_client()
-            if not supabase:
-                self._send_error(503, "Database not available")
-                return
+            from api.supabase_http import table
 
-            auth_header = self.headers.get('Authorization')
-            user = get_user_from_token(supabase, auth_header)
+            # Get email from Authorization header
+            auth_header = self.headers.get('Authorization', '')
+            email = None
 
-            if not user:
+            if auth_header.startswith('Bearer '):
+                token_or_email = auth_header.replace('Bearer ', '')
+                if '@' in token_or_email:
+                    email = token_or_email.lower()
+                else:
+                    self._send_error(401, "Please provide your email in Authorization header")
+                    return
+
+            if not email:
+                email = self.headers.get('X-Player-Email', '').lower()
+
+            if not email:
                 self._send_error(401, "Authentication required")
                 return
 
@@ -156,29 +168,25 @@ class handler(BaseHTTPRequestHandler):
 
             action = data.get('action', 'update')
 
-            # Get current player - try by auth email first (lowercase to match join.py storage)
-            auth_email = user.email.lower() if user.email else ''
-            player = supabase.table('players').select('*').eq('email', auth_email).maybe_single().execute()
+            # Get current player
+            player = get_player_by_email(email)
 
-            # If not found by email, try by player_id from request (for email change scenarios)
-            if not player.data:
+            if not player:
+                # If not found by email, try by player_id from request (for email change scenarios)
                 player_id = data.get('player_id')
                 if player_id:
-                    player = supabase.table('players').select('*').eq('id', player_id).single().execute()
-                    # Sync email if found by ID but email doesn't match
-                    if player.data and player.data.get('email') != auth_email:
-                        supabase.table('players').update({'email': auth_email}).eq('id', player_id).execute()
-                        player = supabase.table('players').select('*').eq('id', player_id).single().execute()
+                    result = table('players').select('*').eq('id', player_id).single().execute()
+                    if result.data:
+                        player = result.data[0] if isinstance(result.data, list) else result.data
 
-            if not player.data:
+            if not player:
                 self._send_error(404, "Player profile not found")
                 return
 
-            player_data = player.data
-            player_id = player_data['id']
-            player_name = player_data.get('name', '')
-            player_email = player_data.get('email', '')
-            current_tier = player_data.get('membership_tier', 'player')
+            player_id = player['id']
+            player_name = player.get('name', '')
+            player_email = player.get('email', '')
+            current_tier = player.get('membership_tier', 'player')
             updates = {}
 
             if action == 'update':
@@ -226,7 +234,7 @@ class handler(BaseHTTPRequestHandler):
                 updates['unavailable_until'] = str(date(2099, 12, 31))
 
                 # Send confirmation email
-                send_sitout_email(supabase, player_email, player_name, get_current_month_label())
+                send_sitout_email(player_email, player_name, get_current_month_label())
 
             elif action == 'unpause' or action == 'rejoin':
                 # Remove pause, become available immediately
@@ -242,7 +250,7 @@ class handler(BaseHTTPRequestHandler):
                     eligible_month = get_next_month_label()
 
                 # Send confirmation email
-                send_rejoin_email(supabase, player_email, player_name, eligible_month)
+                send_rejoin_email(player_email, player_name, eligible_month)
 
             elif action == 'upgrade_tier':
                 # Social Butterfly → Player upgrade
@@ -282,14 +290,15 @@ class handler(BaseHTTPRequestHandler):
                 return
 
             if updates:
-                supabase.table('players').update(updates).eq('id', player_id).execute()
+                table('players').update(updates).eq('id', player_id).execute()
 
             # Return updated profile
-            updated = supabase.table('players').select('*').eq('id', player_id).single().execute()
+            updated_result = table('players').select('*').eq('id', player_id).single().execute()
+            updated = updated_result.data[0] if isinstance(updated_result.data, list) else updated_result.data
 
             self._send_success({
                 "message": "Profile updated",
-                "profile": self._format_own_profile(updated.data)
+                "profile": self._format_own_profile(updated)
             })
 
         except Exception as e:

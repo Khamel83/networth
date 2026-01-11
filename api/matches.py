@@ -1,6 +1,6 @@
 """
 Vercel Serverless Function: Matches API
-Handles match reporting and history with Supabase.
+Handles match reporting and history with Supabase REST API.
 
 Match reporting flow:
 1. Player enters set scores (e.g., 6-4, 3-6, 6-2)
@@ -12,19 +12,6 @@ from http.server import BaseHTTPRequestHandler
 import json
 import os
 from datetime import datetime, timezone
-
-
-def get_supabase_client():
-    """Lazy initialization of Supabase client"""
-    try:
-        from supabase import create_client
-        url = os.environ.get('SUPABASE_URL')
-        key = os.environ.get('SUPABASE_ANON_KEY')
-        if url and key:
-            return create_client(url, key)
-    except Exception:
-        pass
-    return None
 
 
 # Sample matches using new schema (set scores, games won per player)
@@ -57,14 +44,15 @@ class handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         try:
-            supabase = get_supabase_client()
-            if supabase:
-                response = supabase.table('matches').select('*, player1:players!player1_id(*), player2:players!player2_id(*)').order('created_at', desc=True).limit(20).execute()
-                matches = response.data
-                source = "supabase"
-            else:
-                matches = SAMPLE_MATCHES
-                source = "sample"
+            from api.supabase_http import table
+
+            # Get matches (without joins for simplicity - client can look up players)
+            response = table('matches').select('*').execute()
+
+            # For backward compatibility, we could enrich with player data here
+            # But for simplicity, returning matches as-is
+            matches = response.data
+            source = "supabase"
 
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
@@ -105,14 +93,11 @@ class handler(BaseHTTPRequestHandler):
         }
         """
         try:
+            from api.supabase_http import table
+
             content_length = int(self.headers.get('Content-Length', 0))
             body = self.rfile.read(content_length).decode('utf-8')
             data = json.loads(body) if body else {}
-
-            supabase = get_supabase_client()
-            if not supabase:
-                self._send_demo_response(data)
-                return
 
             # Calculate total games from set scores
             set1_p1 = int(data.get('set1_p1', 0))
@@ -144,13 +129,13 @@ class handler(BaseHTTPRequestHandler):
             }
 
             # Insert match
-            response = supabase.table('matches').insert(match_data).execute()
+            response = table('matches').insert(match_data).execute()
             match = response.data[0] if response.data else None
 
             # Update match assignment status if provided
             assignment_id = data.get('assignment_id')
             if assignment_id:
-                supabase.table('match_assignments').update({
+                table('match_assignments').update({
                     'status': 'completed',
                     'match_id': match['id'] if match else None
                 }).eq('id', assignment_id).execute()
@@ -163,23 +148,25 @@ class handler(BaseHTTPRequestHandler):
                     "match_id": match['id'],
                     "would_play_again": data['would_play_again']
                 }
-                supabase.table('match_feedback').insert(feedback_data).execute()
+                table('match_feedback').insert(feedback_data).execute()
 
             # Update player total_games
             # Get current values first
-            p1 = supabase.table('players').select('total_games, matches_played').eq('id', data['player1_id']).single().execute()
-            p2 = supabase.table('players').select('total_games, matches_played').eq('id', data['player2_id']).single().execute()
+            p1 = table('players').select('total_games, matches_played').eq('id', data['player1_id']).single().execute()
+            p2 = table('players').select('total_games, matches_played').eq('id', data['player2_id']).single().execute()
 
             if p1.data:
-                supabase.table('players').update({
-                    'total_games': (p1.data.get('total_games') or 0) + player1_games,
-                    'matches_played': (p1.data.get('matches_played') or 0) + 1
+                p1_data = p1.data[0] if isinstance(p1.data, list) else p1.data
+                table('players').update({
+                    'total_games': (p1_data.get('total_games') or 0) + player1_games,
+                    'matches_played': (p1_data.get('matches_played') or 0) + 1
                 }).eq('id', data['player1_id']).execute()
 
             if p2.data:
-                supabase.table('players').update({
-                    'total_games': (p2.data.get('total_games') or 0) + player2_games,
-                    'matches_played': (p2.data.get('matches_played') or 0) + 1
+                p2_data = p2.data[0] if isinstance(p2.data, list) else p2.data
+                table('players').update({
+                    'total_games': (p2_data.get('total_games') or 0) + player2_games,
+                    'matches_played': (p2_data.get('matches_played') or 0) + 1
                 }).eq('id', data['player2_id']).execute()
 
             self.send_response(201)
