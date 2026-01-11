@@ -1,23 +1,10 @@
 """
 Vercel Serverless Function: Players API
-Handles player listing with Supabase
+Handles player listing with Supabase REST API
 """
 from http.server import BaseHTTPRequestHandler
 import json
 import os
-
-
-def get_supabase_client():
-    """Lazy initialization of Supabase client"""
-    try:
-        from supabase import create_client
-        url = os.environ.get('SUPABASE_URL')
-        key = os.environ.get('SUPABASE_ANON_KEY')
-        if url and key:
-            return create_client(url, key)
-    except Exception:
-        pass
-    return None
 
 
 # Real player data fallback - NET WORTH Tennis East Side LA (games-won system)
@@ -51,12 +38,15 @@ class handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         try:
-            supabase = get_supabase_client()
-            if supabase:
-                # Filter out admin from player lists
-                admin_email = os.environ.get('ADMIN_EMAIL', 'khamel@khamel.com')
-                response = supabase.table('players').select('*').eq('is_active', True).neq('email', admin_email).order('rank').execute()
-                players = response.data
+            # Import HTTP helper
+            from api.supabase_http import table
+
+            # Filter out admin from player lists
+            admin_email = os.environ.get('ADMIN_EMAIL', 'khamel@khamel.com')
+            result = table('players').select('*').eq('is_active', True).neq('email', admin_email).order('rank').execute()
+
+            if result.data:
+                players = result.data
                 source = "supabase"
             else:
                 players = SAMPLE_PLAYERS

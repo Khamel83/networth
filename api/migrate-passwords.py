@@ -2,6 +2,7 @@
 One-time migration: Set initial passwords for all players
 Password = 10-digit phone number OR tennis123
 Uses hashlib for password hashing (no bcrypt dependency to keep bundle size small)
+Uses Supabase REST API (no Python supabase client).
 """
 from http.server import BaseHTTPRequestHandler
 import json
@@ -17,19 +18,6 @@ def hash_password(password: str) -> str:
     return base64.b64encode(salt + key).decode()
 
 
-def get_supabase_client():
-    """Lazy initialization of Supabase client"""
-    try:
-        from supabase import create_client
-        url = os.environ.get('SUPABASE_URL')
-        key = os.environ.get('SUPABASE_ANON_KEY')
-        if url and key:
-            return create_client(url, key)
-    except Exception:
-        pass
-    return None
-
-
 class handler(BaseHTTPRequestHandler):
     def do_OPTIONS(self):
         self.send_response(200)
@@ -39,17 +27,19 @@ class handler(BaseHTTPRequestHandler):
         self.end_headers()
 
     def do_GET(self):
-        supabase = get_supabase_client()
-        if not supabase:
-            self._send_error(500, "Supabase not available")
-            return
+        from api.supabase_http import table
 
         try:
-            players = supabase.table('players').select('id, email, phone').execute()
+            result = table('players').select('id, email, phone').execute()
 
+            if not result.data:
+                self._send_error(500, "No players found")
+                return
+
+            players = result.data
             results = {"updated": 0, "skipped": 0, "errors": []}
 
-            for player in players.data:
+            for player in players:
                 try:
                     if player.get('password_hash'):
                         results["skipped"] += 1
@@ -68,7 +58,7 @@ class handler(BaseHTTPRequestHandler):
 
                     hashed = hash_password(password)
 
-                    supabase.table('players').update({
+                    table('players').update({
                         'password_hash': hashed,
                         'password_changed': False
                     }).eq('id', player['id']).execute()

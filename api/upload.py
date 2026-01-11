@@ -5,10 +5,11 @@ Handles avatar photo uploads:
 - Accepts image files (JPEG, PNG, WebP)
 - Validates file size (max 2MB)
 - Resizes to 200x200 thumbnail
-- Uploads to Supabase Storage 'avatar' bucket
+- Uploads to Supabase Storage 'avatar' bucket via REST API
 - Updates player.avatar_url
 
 Updated for Ashley's Christmas 2025 feedback.
+Uses Supabase REST API (no Python storage client).
 """
 from http.server import BaseHTTPRequestHandler
 import json
@@ -16,55 +17,74 @@ import os
 import io
 import base64
 import uuid
+import httpx
 from datetime import datetime
 
 
-def get_supabase_client():
-    """Lazy initialization of Supabase client"""
+def get_player_by_email(email):
+    """Get player from database by email (password-based auth)"""
+    from api.supabase_http import table
+
+    if not email:
+        return None
+
     try:
-        from supabase import create_client
-        url = os.environ.get('SUPABASE_URL')
-        key = os.environ.get('SUPABASE_ANON_KEY')
-        if url and key:
-            return create_client(url, key)
+        result = table('players').select('*').eq('email', email.lower()).single().execute()
+        if result.data:
+            return result.data[0] if isinstance(result.data, list) else result.data
     except Exception:
         pass
     return None
 
 
-def get_authenticated_client(auth_header):
-    """Create a Supabase client with user's auth token for storage operations"""
-    if not auth_header or not auth_header.startswith('Bearer '):
-        return None, None
+def get_supabase_config():
+    """Get Supabase URL and key from environment"""
+    url = os.environ.get('SUPABASE_URL')
+    key = os.environ.get('SUPABASE_ANON_KEY')
+    return url, key
 
-    token = auth_header.replace('Bearer ', '')
 
-    try:
-        from supabase import create_client, ClientOptions
-        url = os.environ.get('SUPABASE_URL')
-        key = os.environ.get('SUPABASE_ANON_KEY')
+def get_storage_url(path=''):
+    """Get Supabase Storage URL"""
+    base_url, _ = get_supabase_config()
+    return f'{base_url}/storage/v1/object/{path}'
 
-        if not url or not key:
-            return None, None
 
-        # Create client and verify user
-        supabase = create_client(url, key)
-        user_response = supabase.auth.get_user(token)
+def get_storage_headers():
+    """Get headers for Storage API requests"""
+    _, key = get_supabase_config()
+    return {
+        'apikey': key,
+        'Authorization': f'Bearer {key}',
+    }
 
-        if not user_response or not user_response.user:
-            return None, None
 
-        # Set the auth token on the storage client for authenticated operations
-        try:
-            supabase.storage._client.headers["Authorization"] = f"Bearer {token}"
-        except:
-            pass  # If this fails, try without - might still work
+def upload_to_storage(filename, image_data, content_type='image/jpeg'):
+    """Upload file to Supabase Storage via REST API"""
+    url = get_storage_url(f'avatar/{filename}')
+    headers = get_storage_headers()
+    headers['Content-Type'] = content_type
 
-        return user_response.user, supabase
+    response = httpx.put(url, headers=headers, content=image_data)
+    if response.status_code not in (200, 201):
+        raise Exception(f"Storage upload failed: {response.text}")
+    return response
 
-    except Exception as e:
-        print(f"Auth error: {e}")
-        return None, None
+
+def delete_from_storage(filename):
+    """Delete file from Supabase Storage via REST API"""
+    url = get_storage_url(f'avatar/{filename}')
+    headers = get_storage_headers()
+
+    response = httpx.delete(url, headers=headers)
+    # Ignore errors if file doesn't exist
+    return response
+
+
+def get_public_url(filename):
+    """Get public URL for a storage file"""
+    base_url, _ = get_supabase_config()
+    return f'{base_url}/storage/v1/object/public/avatar/{filename}'
 
 
 def process_image(image_data, content_type):
@@ -208,20 +228,34 @@ class handler(BaseHTTPRequestHandler):
     def do_POST(self):
         """Handle photo upload"""
         try:
-            auth_header = self.headers.get('Authorization')
-            user, supabase = get_authenticated_client(auth_header)
+            from api.supabase_http import table
 
-            if not user or not supabase:
+            # Get email from Authorization header
+            auth_header = self.headers.get('Authorization', '')
+            email = None
+
+            if auth_header.startswith('Bearer '):
+                token_or_email = auth_header.replace('Bearer ', '')
+                if '@' in token_or_email:
+                    email = token_or_email.lower()
+                else:
+                    self._send_error(401, "Please provide your email in Authorization header")
+                    return
+
+            if not email:
+                email = self.headers.get('X-Player-Email', '').lower()
+
+            if not email:
                 self._send_error(401, "Authentication required")
                 return
 
             # Get player record
-            player = supabase.table('players').select('*').eq('email', user.email.lower()).single().execute()
-            if not player.data:
+            player = get_player_by_email(email)
+            if not player:
                 self._send_error(404, "Player profile not found")
                 return
 
-            player_id = player.data['id']
+            player_id = player['id']
 
             # Read body
             content_length = int(self.headers.get('Content-Length', 0))
@@ -268,30 +302,26 @@ class handler(BaseHTTPRequestHandler):
             unique_id = str(uuid.uuid4())[:8]
             filename = f"avatar_{player_id}_{timestamp}_{unique_id}.jpg"
 
-            # Upload to Supabase Storage
+            # Upload to Supabase Storage via REST API
             try:
                 # Delete old avatar if exists
-                old_avatar_url = player.data.get('avatar_url')
+                old_avatar_url = player.get('avatar_url')
                 if old_avatar_url:
                     try:
                         # Extract filename from URL
                         old_filename = old_avatar_url.split('/')[-1]
-                        supabase.storage.from_('avatar').remove([old_filename])
+                        delete_from_storage(old_filename)
                     except Exception:
                         pass  # Ignore errors deleting old file
 
                 # Upload new avatar
-                result = supabase.storage.from_('avatar').upload(
-                    filename,
-                    processed_image,
-                    file_options={"content-type": "image/jpeg"}
-                )
+                upload_to_storage(filename, processed_image, 'image/jpeg')
 
                 # Get public URL
-                public_url = supabase.storage.from_('avatar').get_public_url(filename)
+                public_url = get_public_url(filename)
 
                 # Update player record
-                supabase.table('players').update({
+                table('players').update({
                     'avatar_url': public_url
                 }).eq('id', player_id).execute()
 
@@ -310,32 +340,46 @@ class handler(BaseHTTPRequestHandler):
     def do_DELETE(self):
         """Remove avatar photo"""
         try:
-            auth_header = self.headers.get('Authorization')
-            user, supabase = get_authenticated_client(auth_header)
+            from api.supabase_http import table
 
-            if not user or not supabase:
+            # Get email from Authorization header
+            auth_header = self.headers.get('Authorization', '')
+            email = None
+
+            if auth_header.startswith('Bearer '):
+                token_or_email = auth_header.replace('Bearer ', '')
+                if '@' in token_or_email:
+                    email = token_or_email.lower()
+                else:
+                    self._send_error(401, "Please provide your email in Authorization header")
+                    return
+
+            if not email:
+                email = self.headers.get('X-Player-Email', '').lower()
+
+            if not email:
                 self._send_error(401, "Authentication required")
                 return
 
             # Get player record
-            player = supabase.table('players').select('*').eq('email', user.email.lower()).single().execute()
-            if not player.data:
+            player = get_player_by_email(email)
+            if not player:
                 self._send_error(404, "Player profile not found")
                 return
 
-            player_id = player.data['id']
-            avatar_url = player.data.get('avatar_url')
+            player_id = player['id']
+            avatar_url = player.get('avatar_url')
 
             if avatar_url:
                 try:
                     # Extract filename from URL
                     filename = avatar_url.split('/')[-1]
-                    supabase.storage.from_('avatar').remove([filename])
+                    delete_from_storage(filename)
                 except Exception:
                     pass  # Ignore errors deleting file
 
             # Clear avatar_url in database
-            supabase.table('players').update({
+            table('players').update({
                 'avatar_url': None
             }).eq('id', player_id).execute()
 

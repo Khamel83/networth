@@ -7,6 +7,7 @@ Endpoints:
 - POST: Update any player's info, pause/activate players
 
 Only accessible to users with is_admin=true in the database.
+Uses password-based auth (no Supabase Auth).
 """
 from http.server import BaseHTTPRequestHandler
 import json
@@ -15,43 +16,29 @@ from datetime import date, timedelta
 from urllib.parse import parse_qs, urlparse
 
 
-def get_supabase_client():
-    """Lazy initialization of Supabase client"""
-    try:
-        from supabase import create_client
-        url = os.environ.get('SUPABASE_URL')
-        key = os.environ.get('SUPABASE_ANON_KEY')
-        if url and key:
-            return create_client(url, key)
-    except Exception:
-        pass
-    return None
+def get_player_by_email(email):
+    """Get player from database by email (password-based auth)"""
+    from api.supabase_http import table
 
-
-def get_user_from_token(supabase, auth_header):
-    """Extract and verify user from Authorization header"""
-    if not auth_header or not auth_header.startswith('Bearer '):
+    if not email:
         return None
 
-    token = auth_header.replace('Bearer ', '')
     try:
-        user = supabase.auth.get_user(token)
-        if user and user.user:
-            return user.user
+        result = table('players').select('*').eq('email', email.lower()).single().execute()
+        if result.data:
+            return result.data[0] if isinstance(result.data, list) else result.data
     except Exception:
         pass
     return None
 
 
-def verify_admin(supabase, user):
+def verify_admin(email):
     """Check if the user is an admin"""
-    if not user:
+    if not email:
         return False
     try:
-        # Lowercase email to match how join.py stores it
-        email = user.email.lower() if user.email else ''
-        player = supabase.table('players').select('is_admin').eq('email', email).single().execute()
-        return player.data and player.data.get('is_admin', False)
+        player = get_player_by_email(email)
+        return player and player.get('is_admin', False)
     except Exception:
         return False
 
@@ -75,15 +62,24 @@ class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         """Get admin data: players list, pairings, or single player"""
         try:
-            supabase = get_supabase_client()
-            if not supabase:
-                self._send_error(503, "Database not available")
-                return
+            from api.supabase_http import table
 
-            auth_header = self.headers.get('Authorization')
-            user = get_user_from_token(supabase, auth_header)
+            # Get email from Authorization header
+            auth_header = self.headers.get('Authorization', '')
+            email = None
 
-            if not verify_admin(supabase, user):
+            if auth_header.startswith('Bearer '):
+                token_or_email = auth_header.replace('Bearer ', '')
+                if '@' in token_or_email:
+                    email = token_or_email.lower()
+                else:
+                    self._send_error(401, "Please provide your email in Authorization header")
+                    return
+
+            if not email:
+                email = self.headers.get('X-Player-Email', '').lower()
+
+            if not verify_admin(email):
                 self._send_error(403, "Admin access required")
                 return
 
@@ -94,7 +90,7 @@ class handler(BaseHTTPRequestHandler):
 
             if action == 'players':
                 # Get all players
-                result = supabase.table('players').select('*').order('rank').execute()
+                result = table('players').select('*').order('rank').execute()
                 players = []
                 for p in result.data:
                     unavailable_until = p.get('unavailable_until')
@@ -138,8 +134,8 @@ class handler(BaseHTTPRequestHandler):
                 today = date.today()
                 period = today.strftime('%B %Y')
 
-                result = supabase.table('match_assignments')\
-                    .select('*, player1:player1_id(id, name, email, skill_level), player2:player2_id(id, name, email, skill_level)')\
+                result = table('match_assignments')\
+                    .select('*')\
                     .eq('period_label', period)\
                     .execute()
 
@@ -155,12 +151,13 @@ class handler(BaseHTTPRequestHandler):
                     self._send_error(400, "Player ID required")
                     return
 
-                result = supabase.table('players').select('*').eq('id', player_id).single().execute()
+                result = table('players').select('*').eq('id', player_id).single().execute()
                 if not result.data:
                     self._send_error(404, "Player not found")
                     return
 
-                self._send_success({'player': result.data})
+                player_data = result.data[0] if isinstance(result.data, list) else result.data
+                self._send_success({'player': player_data})
 
             else:
                 self._send_error(400, f"Unknown action: {action}")
@@ -171,15 +168,24 @@ class handler(BaseHTTPRequestHandler):
     def do_POST(self):
         """Admin actions: update player, pause/activate, etc."""
         try:
-            supabase = get_supabase_client()
-            if not supabase:
-                self._send_error(503, "Database not available")
-                return
+            from api.supabase_http import table
 
-            auth_header = self.headers.get('Authorization')
-            user = get_user_from_token(supabase, auth_header)
+            # Get email from Authorization header
+            auth_header = self.headers.get('Authorization', '')
+            email = None
 
-            if not verify_admin(supabase, user):
+            if auth_header.startswith('Bearer '):
+                token_or_email = auth_header.replace('Bearer ', '')
+                if '@' in token_or_email:
+                    email = token_or_email.lower()
+                else:
+                    self._send_error(401, "Please provide your email in Authorization header")
+                    return
+
+            if not email:
+                email = self.headers.get('X-Player-Email', '').lower()
+
+            if not verify_admin(email):
                 self._send_error(403, "Admin access required")
                 return
 
@@ -196,11 +202,12 @@ class handler(BaseHTTPRequestHandler):
                 return
 
             # Verify player exists
-            player = supabase.table('players').select('id, name, email').eq('id', player_id).single().execute()
+            player = table('players').select('id, name, email').eq('id', player_id).single().execute()
             if not player.data:
                 self._send_error(404, "Player not found")
                 return
 
+            player_data = player.data[0] if isinstance(player.data, list) else player.data
             updates = {}
 
             if action == 'update':
@@ -247,9 +254,9 @@ class handler(BaseHTTPRequestHandler):
 
             elif action == 'reject':
                 # Reject player signup - deactivate (RLS blocks deletes)
-                supabase.table('players').update({'is_active': False}).eq('id', player_id).execute()
+                table('players').update({'is_active': False}).eq('id', player_id).execute()
                 self._send_success({
-                    'message': f"Player {player.data.get('name')} rejected",
+                    'message': f"Player {player_data.get('name')} rejected",
                     'rejected': True
                 })
                 return
@@ -259,14 +266,15 @@ class handler(BaseHTTPRequestHandler):
                 return
 
             if updates:
-                supabase.table('players').update(updates).eq('id', player_id).execute()
+                table('players').update(updates).eq('id', player_id).execute()
 
             # Return updated player
-            updated = supabase.table('players').select('*').eq('id', player_id).single().execute()
+            updated = table('players').select('*').eq('id', player_id).single().execute()
+            updated_data = updated.data[0] if isinstance(updated.data, list) else updated.data
 
             self._send_success({
                 'message': f"Player updated ({action})",
-                'player': updated.data
+                'player': updated_data
             })
 
         except Exception as e:

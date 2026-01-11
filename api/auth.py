@@ -1,7 +1,7 @@
 """
 Vercel Serverless Function: Authentication API
 Password-based authentication (magic links removed)
-Uses hashlib for password hashing (no bcrypt dependency to keep bundle size small)
+Uses hashlib for password hashing, HTTP calls for Supabase (no heavy dependencies)
 """
 from http.server import BaseHTTPRequestHandler
 import json
@@ -14,7 +14,7 @@ from datetime import datetime, timedelta
 
 def hash_password(password: str) -> str:
     """Hash password using PBKDF2-HMAC-SHA256"""
-    salt = os.urandom(32)  # Random salt
+    salt = os.urandom(32)
     key = hashlib.pbkdf2_hmac('sha256', password.encode(), salt, 100000)
     return base64.b64encode(salt + key).decode()
 
@@ -29,19 +29,6 @@ def verify_password(password: str, stored_hash: str) -> bool:
         return new_key == stored_key
     except Exception:
         return False
-
-
-def get_supabase_client():
-    """Lazy initialization of Supabase client"""
-    try:
-        from supabase import create_client
-        url = os.environ.get('SUPABASE_URL')
-        key = os.environ.get('SUPABASE_ANON_KEY')
-        if url and key:
-            return create_client(url, key)
-    except Exception:
-        pass
-    return None
 
 
 class handler(BaseHTTPRequestHandler):
@@ -61,45 +48,41 @@ class handler(BaseHTTPRequestHandler):
             action = data.get('action', '')
             email = data.get('email', '').lower().strip() if data.get('email') else ''
 
-            supabase = get_supabase_client()
+            # Import HTTP helper
+            from api.supabase_http import table
 
             if action == 'login':
-                # Password login
                 password = data.get('password', '')
 
                 if not email or not password:
                     self._send_error(400, "Email and password required")
                     return
 
-                if not supabase:
-                    self._send_error(503, "Database unavailable")
-                    return
-
                 try:
-                    player = supabase.table('players').select('*').eq('email', email).single().execute()
+                    result = table('players').select('*').eq('email', email).single().execute()
                 except Exception:
-                    # User not found or other error
                     self._send_error(401, "Invalid email or password")
                     return
 
-                if not player.data:
+                if not result.data or len(result.data) == 0:
                     self._send_error(401, "Invalid email or password")
                     return
 
-                stored_hash = player.data.get('password_hash')
+                player = result.data[0] if isinstance(result.data, list) else result.data
+
+                stored_hash = player.get('password_hash')
                 if not stored_hash:
                     self._send_error(401, "No password set. Please reset your password.")
                     return
 
                 if verify_password(password, stored_hash):
-                    # Generate session token
                     session_token = secrets.token_urlsafe(32)
 
                     self._send_success({
                         "authenticated": True,
-                        "player": player.data,
+                        "player": player,
                         "token": session_token,
-                        "password_changed": player.data.get('password_changed', False)
+                        "password_changed": player.get('password_changed', False)
                     })
                     return
                 else:
@@ -107,7 +90,6 @@ class handler(BaseHTTPRequestHandler):
                     return
 
             elif action == 'change_password':
-                # Change password (requires old password)
                 old_password = data.get('old_password', '')
                 new_password = data.get('new_password', '')
 
@@ -115,28 +97,26 @@ class handler(BaseHTTPRequestHandler):
                     self._send_error(400, "All fields required")
                     return
 
-                if not supabase:
-                    self._send_error(503, "Database unavailable")
-                    return
-
                 try:
-                    player = supabase.table('players').select('*').eq('email', email).single().execute()
+                    result = table('players').select('*').eq('email', email).single().execute()
                 except Exception:
                     self._send_error(404, "Player not found")
                     return
 
-                if not player.data:
+                if not result.data or len(result.data) == 0:
                     self._send_error(404, "Player not found")
                     return
 
-                stored_hash = player.data.get('password_hash')
+                player = result.data[0] if isinstance(result.data, list) else result.data
+
+                stored_hash = player.get('password_hash')
                 if not stored_hash or not verify_password(old_password, stored_hash):
                     self._send_error(401, "Current password is incorrect")
                     return
 
                 new_hash = hash_password(new_password)
 
-                supabase.table('players').update({
+                table('players').update({
                     'password_hash': new_hash,
                     'password_changed': True
                 }).eq('email', email).execute()
@@ -145,37 +125,30 @@ class handler(BaseHTTPRequestHandler):
                 return
 
             elif action == 'request_password_reset':
-                # Send password reset email via Resend
                 if not email:
                     self._send_error(400, "Email required")
                     return
 
-                if not supabase:
-                    self._send_error(503, "Database unavailable")
-                    return
-
                 try:
-                    player = supabase.table('players').select('*').eq('email', email).single().execute()
+                    result = table('players').select('*').eq('email', email).single().execute()
                 except Exception:
-                    # Don't reveal if email exists or not
                     self._send_success({"message": "If an account exists, a reset link will be sent."})
                     return
 
-                if not player.data:
-                    # Don't reveal if email exists or not
+                if not result.data or len(result.data) == 0:
                     self._send_success({"message": "If an account exists, a reset link will be sent."})
                     return
 
-                # Generate reset token (valid for 1 hour)
+                player = result.data[0] if isinstance(result.data, list) else result.data
+
                 reset_token = secrets.token_urlsafe(32)
                 expires = datetime.utcnow() + timedelta(hours=1)
 
-                supabase.table('players').update({
+                table('players').update({
                     'password_reset_token': reset_token,
                     'password_reset_expires': expires.isoformat()
                 }).eq('email', email).execute()
 
-                # Send reset email via Resend
                 try:
                     from resend import Resend
                     resend = Resend(os.environ.get('RESEND_API_KEY'))
@@ -206,7 +179,6 @@ class handler(BaseHTTPRequestHandler):
                     return
 
             elif action == 'reset_password':
-                # Complete password reset with token
                 reset_token = data.get('token')
                 new_password = data.get('new_password', '')
 
@@ -214,38 +186,33 @@ class handler(BaseHTTPRequestHandler):
                     self._send_error(400, "Token and password required")
                     return
 
-                if not supabase:
-                    self._send_error(503, "Database unavailable")
-                    return
-
-                # Find player with valid reset token
                 try:
-                    player = supabase.table('players').select('*').eq('password_reset_token', reset_token).single().execute()
+                    result = table('players').select('*').eq('password_reset_token', reset_token).single().execute()
                 except Exception:
                     self._send_error(400, "Invalid or expired reset link")
                     return
 
-                if not player.data:
+                if not result.data or len(result.data) == 0:
                     self._send_error(400, "Invalid or expired reset link")
                     return
 
-                # Check if token is expired
-                expires = player.data.get('password_reset_expires')
+                player = result.data[0] if isinstance(result.data, list) else result.data
+
+                expires = player.get('password_reset_expires')
                 if expires:
                     expire_time = datetime.fromisoformat(expires.replace('Z', '+00:00'))
                     if datetime.utcnow() > expire_time:
                         self._send_error(400, "Reset link has expired")
                         return
 
-                # Set new password and clear reset token
                 new_hash = hash_password(new_password)
 
-                supabase.table('players').update({
+                table('players').update({
                     'password_hash': new_hash,
                     'password_changed': True,
                     'password_reset_token': None,
                     'password_reset_expires': None
-                }).eq('id', player.data['id']).execute()
+                }).eq('id', player['id']).execute()
 
                 self._send_success({"message": "Password reset successful"})
                 return
