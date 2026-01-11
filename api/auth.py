@@ -150,32 +150,31 @@ class handler(BaseHTTPRequestHandler):
                 }).eq('email', email).execute()
 
                 try:
-                    from resend import Resend
-                    resend = Resend(os.environ.get('RESEND_API_KEY'))
+                    from api.email import send_email
 
                     site_url = os.environ.get('SITE_URL', 'https://networthtennis.com')
                     reset_link = f"{site_url}/reset-password?token={reset_token}"
 
-                    resend.emails.send({
-                        "from": "Net Worth Tennis <noreply@networthtennis.com>",
-                        "to": email,
-                        "subject": "Reset Your Net Worth Tennis Password",
-                        "html": f"""
-                            <h2>Reset Your Password</h2>
-                            <p>Click the link below to reset your password:</p>
-                            <p><a href="{reset_link}">Reset Password</a></p>
-                            <p>Or copy this link:</p>
-                            <p>{reset_link}</p>
-                            <p>This link will expire in 1 hour.</p>
-                            <p>If you didn't request this, you can ignore this email.</p>
-                        """
-                    })
+                    html = f"""
+                        <h2>Reset Your Password</h2>
+                        <p>Click the link below to reset your password:</p>
+                        <p><a href="{reset_link}">Reset Password</a></p>
+                        <p>Or copy this link:</p>
+                        <p>{reset_link}</p>
+                        <p>This link will expire in 1 hour.</p>
+                        <p>If you didn't request this, you can ignore this email.</p>
+                    """
 
-                    self._send_success({"message": "Password reset email sent"})
+                    result = send_email(email, "Reset Your Net Worth Tennis Password", html)
+
+                    if result.get('success'):
+                        self._send_success({"message": "Password reset email sent"})
+                    else:
+                        self._send_error(500, f"Failed to send reset email: {result.get('error', 'Unknown error')}")
                     return
                 except Exception as e:
                     print(f"Reset email error: {e}")
-                    self._send_error(500, "Failed to send reset email")
+                    self._send_error(500, f"Failed to send reset email: {str(e)}")
                     return
 
             elif action == 'reset_password':
