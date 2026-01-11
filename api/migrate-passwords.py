@@ -2,56 +2,88 @@
 One-time migration: Set initial passwords for all players
 Password = 10-digit phone number OR tennis123
 """
-import os
+from http.server import BaseHTTPRequestHandler
 import json
+import os
 import bcrypt
-from supabase import create_client
 
 
-def handler(event, context):
-    supabase_url = os.environ.get('SUPABASE_URL')
-    supabase_key = os.environ.get('SUPABASE_ANON_KEY')
+def get_supabase_client():
+    """Lazy initialization of Supabase client"""
+    try:
+        from supabase import create_client
+        url = os.environ.get('SUPABASE_URL')
+        key = os.environ.get('SUPABASE_ANON_KEY')
+        if url and key:
+            return create_client(url, key)
+    except Exception:
+        pass
+    return None
 
-    if not supabase_url or not supabase_key:
-        return {"statusCode": 500, "body": "Supabase credentials missing"}
 
-    supabase = create_client(supabase_url, supabase_key)
+class handler(BaseHTTPRequestHandler):
+    def do_OPTIONS(self):
+        self.send_response(200)
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+        self.end_headers()
 
-    players = supabase.table('players').select('id, email, phone').execute()
+    def do_GET(self):
+        supabase = get_supabase_client()
+        if not supabase:
+            self._send_error(500, "Supabase not available")
+            return
 
-    results = {"updated": 0, "skipped": 0, "errors": []}
-
-    for player in players.data:
         try:
-            if player.get('password_hash'):
-                results["skipped"] += 1
-                continue
+            players = supabase.table('players').select('id, email, phone').execute()
 
-            phone = player.get('phone', '')
+            results = {"updated": 0, "skipped": 0, "errors": []}
 
-            if phone:
-                # Strip to 10 digits only
-                digits = ''.join(c for c in phone if c.isdigit())
-                if len(digits) > 10:
-                    digits = digits[-10:]
-                password = digits
-            else:
-                password = 'tennis123'
+            for player in players.data:
+                try:
+                    if player.get('password_hash'):
+                        results["skipped"] += 1
+                        continue
 
-            hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+                    phone = player.get('phone', '')
 
-            supabase.table('players').update({
-                'password_hash': hashed,
-                'password_changed': False
-            }).eq('id', player['id']).execute()
+                    if phone:
+                        # Strip to 10 digits only
+                        digits = ''.join(c for c in phone if c.isdigit())
+                        if len(digits) > 10:
+                            digits = digits[-10:]
+                        password = digits
+                    else:
+                        password = 'tennis123'
 
-            results["updated"] += 1
+                    hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+
+                    supabase.table('players').update({
+                        'password_hash': hashed,
+                        'password_changed': False
+                    }).eq('id', player['id']).execute()
+
+                    results["updated"] += 1
+
+                except Exception as e:
+                    results["errors"].append(f"{player.get('email', 'unknown')}: {str(e)}")
+
+            self._send_success(results)
 
         except Exception as e:
-            results["errors"].append(f"{player.get('email', 'unknown')}: {str(e)}")
+            self._send_error(500, f"Migration failed: {str(e)}")
 
-    return {
-        "statusCode": 200,
-        "headers": {"Content-Type": "application/json"},
-        "body": json.dumps(results, indent=2)
-    }
+    def _send_success(self, data):
+        self.send_response(200)
+        self.send_header('Content-Type', 'application/json')
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.end_headers()
+        self.wfile.write(json.dumps({"success": True, **data}).encode())
+
+    def _send_error(self, status, message):
+        self.send_response(status)
+        self.send_header('Content-Type', 'application/json')
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.end_headers()
+        self.wfile.write(json.dumps({"success": False, "error": message}).encode())
