@@ -50,6 +50,10 @@
     {
       "src": "/admin",
       "dest": "/admin.html"
+    },
+    {
+      "src": "/reset-password",
+      "dest": "/reset-password.html"
     }
   ]
 }
