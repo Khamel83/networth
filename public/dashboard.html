@@ -1186,6 +1186,13 @@
                         Save My Info
                     </button>
                     <span class="save-feedback" id="save-feedback">Changes saved!</span>
+
+                    <!-- Password Section -->
+                    <div style="margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.1);">
+                        <h4 style="margin-bottom: 0.5rem;">Password</h4>
+                        <p id="password-status" style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1rem;"></p>
+                        <button class="btn btn-secondary" onclick="showChangePasswordModal()">Change Password</button>
+                    </div>
                 </div>
             </section>
 
@@ -1269,144 +1276,40 @@
         </div>
     </div>
 
+    <!-- Change Password Modal -->
+    <div id="change-password-modal" class="modal-backdrop hidden" style="display: none;">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title">Change Your Password</h3>
+                <button class="modal-close" onclick="closeChangePasswordModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="change-password-form" onsubmit="return false;">
+                    <div class="form-group">
+                        <label for="old-password">Current Password</label>
+                        <input type="password" id="old-password" placeholder="Enter your current password" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="new-password">New Password</label>
+                        <input type="password" id="new-password" placeholder="At least 6 characters" required minlength="6">
+                    </div>
+                    <div class="form-group">
+                        <label for="confirm-new-password">Confirm New Password</label>
+                        <input type="password" id="confirm-new-password" placeholder="Re-enter new password" required minlength="6">
+                    </div>
+                    <div id="password-change-error" style="color: #ef4444; font-size: 0.9rem; margin-bottom: 1rem;"></div>
+                    <button class="btn btn-primary" onclick="changePassword()">Update Password</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <script>
         // Check auth
         const urlParams = new URLSearchParams(window.location.search);
         const isTestMode = urlParams.has('test') || window.location.search.includes('test');
 
         let token, player, currentAssignment;
-
-        // Handle magic link callback
-        async function handleMagicLinkCallback() {
-            const hash = window.location.hash;
-            if (hash && hash.includes('access_token=')) {
-                const params = new URLSearchParams(hash.substring(1));
-                const accessToken = params.get('access_token');
-                const refreshToken = params.get('refresh_token');
-
-                if (accessToken) {
-                    try {
-                        console.log('Verifying magic link token...');
-                        const response = await fetch('/api/auth', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ action: 'verify', token: accessToken })
-                        });
-
-                        const data = await response.json();
-                        console.log('Auth response:', data);
-
-                        if (data.success && data.player) {
-                            // Store tokens in localStorage
-                            localStorage.setItem('networth_token', accessToken);
-                            localStorage.setItem('networth_refresh_token', refreshToken || '');
-                            localStorage.setItem('networth_player', JSON.stringify(data.player));
-
-                            // Set global variables directly (no reload needed)
-                            token = accessToken;
-                            player = data.player;
-
-                            // Clear hash from URL without reload
-                            window.history.replaceState(null, '', '/dashboard');
-
-                            // Update UI with player data
-                            document.getElementById('player-name').textContent = player.name || 'Player';
-                            document.getElementById('stat-rank').textContent = `#${player.rank || '-'}`;
-                            document.getElementById('stat-games').textContent = player.total_games || '0';
-                            document.getElementById('stat-matches').textContent = player.matches_played || '0';
-
-                            // Load full profile and other data
-                            loadProfile();
-                            loadScoreGrid();
-                            loadOutstandingMatches();
-                            loadMatchHistory();
-
-                            return true;
-                        } else {
-                            console.error('Auth failed:', data.error || 'No player data returned');
-                            return false;
-                        }
-                    } catch (err) {
-                        console.error('Token verification failed:', err);
-                        return false;
-                    }
-                }
-            }
-            return false;
-        }
-
-        // Auto-refresh expired tokens
-        async function refreshAuthToken() {
-            const refreshToken = localStorage.getItem('networth_refresh_token');
-            if (!refreshToken) {
-                console.log('No refresh token available, redirecting to login');
-                localStorage.removeItem('networth_token');
-                localStorage.removeItem('networth_player');
-                window.location.href = '/login';
-                return null;
-            }
-
-            try {
-                const response = await fetch('/api/auth', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'refresh', refresh_token: refreshToken })
-                });
-
-                const data = await response.json();
-                if (data.success && data.access_token) {
-                    localStorage.setItem('networth_token', data.access_token);
-                    if (data.refresh_token) {
-                        localStorage.setItem('networth_refresh_token', data.refresh_token);
-                    }
-                    token = data.access_token;
-                    return data.access_token;
-                }
-            } catch (err) {
-                console.error('Token refresh failed:', err);
-            }
-
-            // Refresh failed, redirect to login
-            localStorage.removeItem('networth_token');
-            localStorage.removeItem('networth_refresh_token');
-            localStorage.removeItem('networth_player');
-            window.location.href = '/login';
-            return null;
-        }
-
-        // Wrapper for API calls with auto-retry on 401
-        async function fetchWithAuth(url, options = {}) {
-            options.headers = options.headers || {};
-            options.headers['Authorization'] = `Bearer ${token}`;
-
-            let response = await fetch(url, options);
-
-            // If 401, try to refresh token and retry once
-            if (response.status === 401) {
-                console.log('Token expired, attempting refresh...');
-                const newToken = await refreshAuthToken();
-                if (newToken) {
-                    options.headers['Authorization'] = `Bearer ${newToken}`;
-                    response = await fetch(url, options);
-                }
-            }
-
-            return response;
-        }
-
-        // Check for magic link callback first
-        if (window.location.hash.includes('access_token=')) {
-            handleMagicLinkCallback().then(success => {
-                if (!success) {
-                    // Token verification failed - clear hash and redirect to login with error
-                    console.error('Magic link verification failed');
-                    window.location.href = '/login?error=auth_failed';
-                }
-            }).catch(err => {
-                console.error('Magic link error:', err);
-                window.location.href = '/login?error=auth_failed';
-            });
-        }
 
         if (isTestMode) {
             token = 'test-token';
@@ -1430,7 +1333,7 @@
         } else {
             token = localStorage.getItem('networth_token');
             player = JSON.parse(localStorage.getItem('networth_player') || '{}');
-            if (!token && !window.location.hash.includes('access_token=')) {
+            if (!token) {
                 window.location.href = '/login';
             }
         }
@@ -1569,7 +1472,7 @@
                     };
                 }
 
-                const response = await fetchWithAuth('/api/profile', {
+                const response = await fetch('/api/profile', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(requestData)
@@ -1603,7 +1506,7 @@
             }
 
             try {
-                const response = await fetchWithAuth('/api/profile', {});
+                const response = await fetch('/api/profile', {});
                 const data = await response.json();
 
                 if (!data.success) {
@@ -1847,7 +1750,7 @@
                 }
 
                 // Save profile data (include player_id for email sync scenarios)
-                const response = await fetchWithAuth('/api/profile', {
+                const response = await fetch('/api/profile', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -1904,7 +1807,7 @@
             btn.textContent = 'Updating...';
 
             try {
-                const response = await fetchWithAuth('/api/profile', {
+                const response = await fetch('/api/profile', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ action: 'pause' })
@@ -1937,7 +1840,7 @@
             btn.textContent = 'Updating...';
 
             try {
-                const response = await fetchWithAuth('/api/profile', {
+                const response = await fetch('/api/profile', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ action: 'unpause' })
@@ -1967,7 +1870,7 @@
             }
 
             try {
-                const response = await fetchWithAuth('/api/profile', {
+                const response = await fetch('/api/profile', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ action: 'upgrade_tier' })
@@ -2644,7 +2547,7 @@
             };
 
             try {
-                const response = await fetchWithAuth('/api/profile', {
+                const response = await fetch('/api/profile', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ action: 'update', availability })
@@ -2673,6 +2576,79 @@
             });
         }
 
+        // Password functions
+        function updatePasswordStatus() {
+            const player = JSON.parse(localStorage.getItem('networth_player') || '{}');
+            const statusEl = document.getElementById('password-status');
+
+            if (player.password_changed) {
+                statusEl.innerHTML = 'You have set a custom password.';
+            } else {
+                statusEl.innerHTML = '<strong>Using default password.</strong> For better security, consider changing to a private password.';
+            }
+        }
+
+        function showChangePasswordModal() {
+            document.getElementById('change-password-modal').style.display = 'flex';
+            document.getElementById('password-change-error').textContent = '';
+        }
+
+        function closeChangePasswordModal() {
+            document.getElementById('change-password-modal').style.display = 'none';
+            document.getElementById('old-password').value = '';
+            document.getElementById('new-password').value = '';
+            document.getElementById('confirm-new-password').value = '';
+            document.getElementById('password-change-error').textContent = '';
+        }
+
+        async function changePassword() {
+            const oldPassword = document.getElementById('old-password').value;
+            const newPassword = document.getElementById('new-password').value;
+            const confirmPassword = document.getElementById('confirm-new-password').value;
+            const errorEl = document.getElementById('password-change-error');
+
+            errorEl.textContent = '';
+
+            if (newPassword !== confirmPassword) {
+                errorEl.textContent = 'Passwords do not match';
+                return;
+            }
+
+            if (newPassword.length < 6) {
+                errorEl.textContent = 'Password must be at least 6 characters';
+                return;
+            }
+
+            const player = JSON.parse(localStorage.getItem('networth_player') || '{}');
+
+            try {
+                const response = await fetch('/api/auth', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'change_password',
+                        email: player.email,
+                        old_password: oldPassword,
+                        new_password: newPassword
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    alert('Password updated!');
+                    closeChangePasswordModal();
+                    player.password_changed = true;
+                    localStorage.setItem('networth_player', JSON.stringify(player));
+                    updatePasswordStatus();
+                } else {
+                    errorEl.textContent = data.error || 'Failed to update password';
+                }
+            } catch (err) {
+                errorEl.textContent = 'Connection error. Please try again.';
+            }
+        }
+
         // Initialize
         loadProfile();
         loadScoreGrid();
@@ -2680,6 +2656,7 @@
         loadMatchHistory();
         checkAdminAndLoad();
         setupAvailabilityAutoSave();
+        updatePasswordStatus();
     </script>
 </body>
 </html>

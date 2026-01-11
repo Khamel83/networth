@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-    <title>Sign In | Net Worth Tennis</title>
+    <title>Log In | Net Worth Tennis</title>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -20,11 +20,9 @@
             --text-dark: #1a1a1a;
             --text-muted: rgba(255, 255, 255, 0.7);
             --card-bg: rgba(255, 255, 255, 0.15);
-            --card-bg-solid: rgba(255, 255, 255, 0.95);
             --card-border: rgba(255, 255, 255, 0.2);
             --font-display: 'Poppins', 'Helvetica Neue', sans-serif;
             --font-body: 'Inter', 'Helvetica Neue', sans-serif;
-            --success-green: #22c55e;
             --error-red: #ef4444;
         }
 
@@ -98,7 +96,8 @@
             margin-bottom: 0.5rem;
         }
 
-        input[type="email"] {
+        input[type="email"],
+        input[type="password"] {
             width: 100%;
             padding: 1rem;
             background: rgba(255, 255, 255, 0.1);
@@ -145,58 +144,39 @@
             transform: none;
         }
 
-        .message {
-            padding: 1rem;
-            font-size: 0.9rem;
-            margin-bottom: 1.5rem;
-            border-radius: 12px;
-            display: none;
-        }
-
-        .message.show {
-            display: block;
-        }
-
-        .message.error {
+        .error-message {
             background: rgba(239, 68, 68, 0.2);
             border: 1px solid var(--error-red);
             color: #fecaca;
-        }
-
-        .message.success {
-            background: rgba(34, 197, 94, 0.2);
-            border: 1px solid var(--success-green);
-            color: #bbf7d0;
-        }
-
-        .login-info {
-            margin-top: 1.5rem;
             padding: 1rem;
-            background: rgba(255, 255, 255, 0.1);
             border-radius: 12px;
-            font-size: 0.85rem;
-            color: var(--text-muted);
-            text-align: center;
-            line-height: 1.6;
+            font-size: 0.9rem;
+            margin-bottom: 1.5rem;
+            display: none;
         }
 
-        .login-footer {
-            margin-top: 2rem;
+        .error-message.show {
+            display: block;
+        }
+
+        .help-text {
+            margin-top: 1.5rem;
             text-align: center;
         }
 
-        .login-footer p {
+        .help-text p {
             color: var(--text-muted);
             font-size: 0.9rem;
+            margin: 0.5rem 0;
         }
 
-        .login-footer a {
+        .help-text a {
             color: var(--text-white);
             text-decoration: none;
             font-weight: 600;
         }
 
-        .login-footer a:hover {
+        .help-text a:hover {
             text-decoration: underline;
         }
 
@@ -215,44 +195,6 @@
         .back-link:hover {
             opacity: 1;
         }
-
-        /* Success state */
-        .check-email {
-            text-align: center;
-            padding: 1rem 0;
-        }
-
-        .check-email svg {
-            width: 64px;
-            height: 64px;
-            color: var(--text-white);
-            margin-bottom: 1.5rem;
-        }
-
-        .check-email h2 {
-            font-family: var(--font-display);
-            font-size: 1.75rem;
-            font-weight: 700;
-            color: var(--text-white);
-            margin-bottom: 1rem;
-        }
-
-        .check-email p {
-            color: var(--text-muted);
-            font-size: 1rem;
-            line-height: 1.6;
-        }
-
-        .check-email .email-sent {
-            color: var(--text-white);
-            font-weight: 600;
-        }
-
-        .check-email .small-text {
-            margin-top: 1.5rem;
-            font-size: 0.85rem;
-            color: var(--text-muted);
-        }
     </style>
 </head>
 <body>
@@ -265,146 +207,77 @@
         </a>
 
         <div class="login-card">
-            <div id="login-form-section">
-                <div class="login-header">
-                    <h1 class="login-logo">net worth</h1>
-                    <p class="login-subtitle">Sign in to your account</p>
-                </div>
-
-                <div id="message" class="message"></div>
-
-                <form id="login-form">
-                    <div class="form-group">
-                        <label for="email">Email Address</label>
-                        <input type="email" id="email" name="email" placeholder="you@example.com" required autocomplete="email">
-                    </div>
-
-                    <button type="submit" class="btn-login" id="submit-btn">
-                        Send Sign-In Link
-                    </button>
-                </form>
-
-                <div class="login-info">
-                    After entering your email, you'll receive a sign-in link from Supabase Auth (noreply@mail.app.supabase.io). Click the link in that email to access your profile. No password required.
-                </div>
-
-                <div class="login-footer">
-                    <p>Not in the league yet? <a href="/join">Join us</a></p>
-                </div>
+            <div class="login-header">
+                <h1 class="login-logo">net worth</h1>
+                <p class="login-subtitle">Log in to your account</p>
             </div>
 
-            <!-- Success state after sending magic link -->
-            <div id="success-section" style="display: none;">
-                <div class="check-email">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M22 6c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6zm-2 0l-8 5-8-5h16zm0 12H4V8l8 5 8-5v10z"/>
-                    </svg>
-                    <h2>Check Your Email!</h2>
-                    <p>We sent a sign-in link to<br><span class="email-sent" id="sent-email"></span></p>
-                    <p class="small-text">
-                        Click the link in your email to access your profile.<br>
-                        Link expires in 1 hour.
-                    </p>
+            <div id="error-message" class="error-message"></div>
+
+            <form id="login-form">
+                <div class="form-group">
+                    <label for="email">Email Address</label>
+                    <input type="email" id="email" name="email" placeholder="you@example.com" required autocomplete="email">
                 </div>
 
-                <div class="login-footer" style="margin-top: 2rem;">
-                    <a href="/" class="back-link" style="justify-content: center;">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M19 12H5M12 19l-7-7 7-7"/>
-                        </svg>
-                        Back to Net Worth
-                    </a>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" placeholder="Password" required autocomplete="current-password">
                 </div>
+
+                <button type="submit" class="btn-login" id="submit-btn">
+                    Log In
+                </button>
+            </form>
+
+            <div class="help-text">
+                <p><a href="/reset-password">Forgot your password?</a></p>
+                <p><a href="/join">Need to create an account?</a></p>
             </div>
         </div>
     </div>
 
     <script>
         const form = document.getElementById('login-form');
-        const messageEl = document.getElementById('message');
+        const errorEl = document.getElementById('error-message');
         const submitBtn = document.getElementById('submit-btn');
-        const formSection = document.getElementById('login-form-section');
-        const successSection = document.getElementById('success-section');
 
-        // Handle magic link callback (token in URL hash)
-        async function handleMagicLinkCallback() {
-            const hash = window.location.hash;
-            if (hash && hash.includes('access_token=')) {
-                const params = new URLSearchParams(hash.substring(1));
-                const accessToken = params.get('access_token');
-
-                if (accessToken) {
-                    try {
-                        const response = await fetch('/api/auth', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ action: 'verify', token: accessToken })
-                        });
-
-                        const data = await response.json();
-
-                        if (data.success && data.player) {
-                            localStorage.setItem('networth_token', accessToken);
-                            localStorage.setItem('networth_player', JSON.stringify(data.player));
-                            window.location.href = '/dashboard';
-                            return true;
-                        }
-                    } catch (err) {
-                        console.error('Token verification failed:', err);
-                    }
-                }
-            }
-            return false;
+        function showError(message) {
+            errorEl.textContent = message;
+            errorEl.className = 'error-message show';
         }
-
-        handleMagicLinkCallback();
 
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
-            messageEl.className = 'message';
+            errorEl.className = 'error-message';
             submitBtn.disabled = true;
-            submitBtn.textContent = 'Sending...';
+            submitBtn.textContent = 'Logging in...';
 
             const email = document.getElementById('email').value.trim().toLowerCase();
+            const password = document.getElementById('password').value;
 
             try {
-                // Use AbortController for timeout (30 seconds for cold starts)
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 30000);
-
                 const response = await fetch('/api/auth', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'magic_link', email }),
-                    signal: controller.signal
+                    body: JSON.stringify({ action: 'login', email, password })
                 });
 
-                clearTimeout(timeoutId);
                 const data = await response.json();
 
                 if (data.success) {
-                    document.getElementById('sent-email').textContent = email;
-                    formSection.style.display = 'none';
-                    successSection.style.display = 'block';
+                    localStorage.setItem('networth_token', data.token);
+                    localStorage.setItem('networth_player', JSON.stringify(data.player));
+                    window.location.href = '/dashboard';
                 } else {
-                    // Check for rate limit error
-                    if (data.error && data.error.includes('security purposes')) {
-                        throw new Error('Please wait 30 seconds before requesting another link.');
-                    }
-                    throw new Error(data.error || 'Something went wrong');
+                    showError(data.error || 'Login failed');
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Log In';
                 }
             } catch (err) {
-                // Handle timeout/network errors
-                if (err.name === 'AbortError') {
-                    messageEl.textContent = 'Request timed out. Please try again.';
-                } else if (err.message === 'Failed to fetch') {
-                    messageEl.textContent = 'Network error. Please check your connection and try again.';
-                } else {
-                    messageEl.textContent = err.message;
-                }
-                messageEl.className = 'message error show';
+                showError('Connection error. Please try again.');
                 submitBtn.disabled = false;
-                submitBtn.textContent = 'Send Sign-In Link';
+                submitBtn.textContent = 'Log In';
             }
         });
     </script>

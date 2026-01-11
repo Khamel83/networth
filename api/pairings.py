@@ -155,6 +155,11 @@ def is_player_available(player):
     if not player.get('is_active', True):
         return False
 
+    # Exclude admin from matching
+    admin_email = os.environ.get('ADMIN_EMAIL', 'khamel@khamel.com')
+    if player.get('email') == admin_email:
+        return False
+
     # Social Butterflies are never included in matching
     if player.get('membership_tier') == 'social_butterfly':
         return False
@@ -454,11 +459,13 @@ class handler(BaseHTTPRequestHandler):
                 self._send_error(503, "Database not configured")
                 return
 
-            # 1. Get all active Players (exclude Social Butterflies)
+            # 1. Get all active Players (exclude Social Butterflies and admin)
+            admin_email = os.environ.get('ADMIN_EMAIL', 'khamel@khamel.com')
             players_resp = supabase.table('players')\
                 .select('id, name, email, skill_level, rank, is_active, unavailable_until, membership_tier, rms_score, rms_band, avail_weekday_early, avail_weekday_day, avail_weekday_late, avail_weekend_early, avail_weekend_day, avail_weekend_late, available_morning, available_afternoon, available_evening')\
                 .eq('is_active', True)\
                 .neq('membership_tier', 'social_butterfly')\
+                .neq('email', admin_email)\
                 .execute()
             players = players_resp.data
 

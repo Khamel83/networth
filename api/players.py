@@ -53,7 +53,9 @@ class handler(BaseHTTPRequestHandler):
         try:
             supabase = get_supabase_client()
             if supabase:
-                response = supabase.table('players').select('*').eq('is_active', True).order('rank').execute()
+                # Filter out admin from player lists
+                admin_email = os.environ.get('ADMIN_EMAIL', 'khamel@khamel.com')
+                response = supabase.table('players').select('*').eq('is_active', True).neq('email', admin_email).order('rank').execute()
                 players = response.data
                 source = "supabase"
             else:
