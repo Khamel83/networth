@@ -835,11 +835,30 @@
     </div>
 
     <script>
-        // Auth check
-        const token = localStorage.getItem('networth_token');
-        const player = JSON.parse(localStorage.getItem('networth_player') || '{}');
+        function syncAuth() {
+            const storedPlayer = JSON.parse(localStorage.getItem('networth_player') || '{}');
+            const storedToken = localStorage.getItem('networth_token') || '';
+            let email = storedPlayer.email || '';
+            if (!email && storedToken.includes('@')) {
+                email = storedToken;
+            }
+            if (email) {
+                if (storedToken !== email) {
+                    localStorage.setItem('networth_token', email);
+                }
+                if (!storedPlayer.email) {
+                    storedPlayer.email = email;
+                    localStorage.setItem('networth_player', JSON.stringify(storedPlayer));
+                }
+            }
+            return email;
+        }
 
-        if (!token) {
+        // Auth check
+        const player = JSON.parse(localStorage.getItem('networth_player') || '{}');
+        const authEmail = syncAuth();
+
+        if (!authEmail) {
             window.location.href = '/login';
         }
 
@@ -851,7 +870,7 @@
         async function loadPlayers() {
             try {
                 const response = await fetch('/api/admin?action=players', {
-                    headers: { 'Authorization': `Bearer ${token}` }
+                    headers: { 'Authorization': `Bearer ${authEmail}` }
                 });
 
                 // Handle auth errors
@@ -929,7 +948,7 @@
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
+                        'Authorization': `Bearer ${authEmail}`
                     },
                     body: JSON.stringify({
                         action: 'approve',
@@ -960,7 +979,7 @@
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
+                        'Authorization': `Bearer ${authEmail}`
                     },
                     body: JSON.stringify({
                         action: 'reject',
@@ -984,7 +1003,7 @@
         async function loadPairingsCount() {
             try {
                 const response = await fetch('/api/admin?action=pairings', {
-                    headers: { 'Authorization': `Bearer ${token}` }
+                    headers: { 'Authorization': `Bearer ${authEmail}` }
                 });
                 const data = await response.json();
 
@@ -1113,7 +1132,7 @@
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
+                        'Authorization': `Bearer ${authEmail}`
                     },
                     body: JSON.stringify({
                         action: 'update',
@@ -1149,7 +1168,7 @@
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
+                        'Authorization': `Bearer ${authEmail}`
                     },
                     body: JSON.stringify({
                         action,
@@ -1180,7 +1199,7 @@
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
+                        'Authorization': `Bearer ${authEmail}`
                     },
                     body: JSON.stringify({
                         action,

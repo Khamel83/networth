@@ -1312,6 +1312,25 @@
         const urlParams = new URLSearchParams(window.location.search);
         const isTestMode = urlParams.has('test') || window.location.search.includes('test');
 
+        function syncAuth() {
+            const storedPlayer = JSON.parse(localStorage.getItem('networth_player') || '{}');
+            const storedToken = localStorage.getItem('networth_token') || '';
+            let email = storedPlayer.email || '';
+            if (!email && storedToken.includes('@')) {
+                email = storedToken;
+            }
+            if (email) {
+                if (storedToken !== email) {
+                    localStorage.setItem('networth_token', email);
+                }
+                if (!storedPlayer.email) {
+                    storedPlayer.email = email;
+                    localStorage.setItem('networth_player', JSON.stringify(storedPlayer));
+                }
+            }
+            return email;
+        }
+
         let token, player, currentAssignment;
 
         if (isTestMode) {
@@ -1334,10 +1353,11 @@
                 is_paused: false
             };
         } else {
-            token = localStorage.getItem('networth_token');
+            const authEmail = syncAuth();
+            token = authEmail;
             player = JSON.parse(localStorage.getItem('networth_player') || '{}');
             // For password-based auth, check for player.email instead of token
-            if (!player.email) {
+            if (!authEmail || !player.email) {
                 window.location.href = '/login';
             }
         }
