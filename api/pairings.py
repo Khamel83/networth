@@ -10,25 +10,13 @@ Generates monthly match pairings based on:
 6. Only matches Players (not Social Butterflies)
 
 Updated for Ashley's Christmas 2025 feedback.
+Uses Supabase REST API (no Python supabase client).
 """
 from http.server import BaseHTTPRequestHandler
 import json
 import os
 from datetime import datetime, date
 import random
-
-
-def get_supabase_client():
-    """Lazy initialization of Supabase client"""
-    try:
-        from supabase import create_client
-        url = os.environ.get('SUPABASE_URL')
-        key = os.environ.get('SUPABASE_ANON_KEY')
-        if url and key:
-            return create_client(url, key)
-    except Exception:
-        pass
-    return None
 
 
 def calculate_rms(player_id, matches):
@@ -388,12 +376,14 @@ def generate_pairings(players, blocked_pairs, recent_matches, all_matches):
     return pairings, skipped
 
 
-def update_player_rms(supabase, player_id, matches):
+def update_player_rms(player_id, matches):
     """Update a player's RMS score and band in the database"""
+    from api.supabase_http import table
+
     rms = calculate_rms(player_id, matches)
     band, _ = get_performance_band(rms)
 
-    supabase.table('players').update({
+    table('players').update({
         'rms_score': rms,
         'rms_band': band
     }).eq('id', player_id).execute()
@@ -412,19 +402,35 @@ class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         """Get current month's pairings"""
         try:
-            supabase = get_supabase_client()
+            from api.supabase_http import table
+
             current_month = datetime.now().strftime('%B %Y')
 
-            if supabase:
-                response = supabase.table('match_assignments')\
-                    .select('*, player1:players!player1_id(id, name, email, rms_score, rms_band, avail_weekday_early, avail_weekday_day, avail_weekday_late, avail_weekend_early, avail_weekend_day, avail_weekend_late, available_morning, available_afternoon, available_evening), player2:players!player2_id(id, name, email, rms_score, rms_band, avail_weekday_early, avail_weekday_day, avail_weekday_late, avail_weekend_early, avail_weekend_day, avail_weekend_late, available_morning, available_afternoon, available_evening)')\
-                    .eq('period_label', current_month)\
-                    .execute()
+            # Get match assignments (without complex joins for simplicity)
+            response = table('match_assignments')\
+                .select('*')\
+                .eq('period_label', current_month)\
+                .execute()
+
+            if response.data:
+                # Get player IDs to look up player details
+                player_ids = set()
+                for p in response.data:
+                    player_ids.add(p.get('player1_id'))
+                    player_ids.add(p.get('player2_id'))
+
+                # Get all relevant players
+                players_result = table('players').select('*').execute()
+                players_map = {pl['id']: pl for pl in players_result.data if pl['id'] in player_ids}
 
                 pairings_with_availability = []
                 for p in response.data:
-                    p['player1_availability'] = get_availability_text(p.get('player1', {}))
-                    p['player2_availability'] = get_availability_text(p.get('player2', {}))
+                    p1 = players_map.get(p.get('player1_id'), {})
+                    p2 = players_map.get(p.get('player2_id'), {})
+                    p['player1'] = p1
+                    p['player2'] = p2
+                    p['player1_availability'] = get_availability_text(p1)
+                    p['player2_availability'] = get_availability_text(p2)
                     pairings_with_availability.append(p)
 
                 self._send_success({
@@ -446,6 +452,8 @@ class handler(BaseHTTPRequestHandler):
     def do_POST(self):
         """Generate new pairings for current or specified month"""
         try:
+            from api.supabase_http import table
+
             content_length = int(self.headers.get('Content-Length', 0))
             body = self.rfile.read(content_length).decode('utf-8')
             data = json.loads(body) if body else {}
@@ -453,15 +461,9 @@ class handler(BaseHTTPRequestHandler):
             period_label = data.get('period_label', datetime.now().strftime('%B %Y'))
             period_type = data.get('period_type', 'month')
 
-            supabase = get_supabase_client()
-
-            if not supabase:
-                self._send_error(503, "Database not configured")
-                return
-
             # 1. Get all active Players (exclude Social Butterflies and admin)
             admin_email = os.environ.get('ADMIN_EMAIL', 'khamel@khamel.com')
-            players_resp = supabase.table('players')\
+            players_resp = table('players')\
                 .select('id, name, email, skill_level, rank, is_active, unavailable_until, membership_tier, rms_score, rms_band, avail_weekday_early, avail_weekday_day, avail_weekday_late, avail_weekend_early, avail_weekend_day, avail_weekend_late, available_morning, available_afternoon, available_evening')\
                 .eq('is_active', True)\
                 .neq('membership_tier', 'social_butterfly')\
@@ -470,7 +472,7 @@ class handler(BaseHTTPRequestHandler):
             players = players_resp.data
 
             # 2. Get blocked pairs (from "would not play again" feedback)
-            blocked_resp = supabase.table('match_feedback')\
+            blocked_resp = table('match_feedback')\
                 .select('from_player_id, about_player_id')\
                 .eq('would_play_again', False)\
                 .execute()
@@ -482,7 +484,7 @@ class handler(BaseHTTPRequestHandler):
                 })
 
             # 3. Get recent match assignments (last 3 months for anti-staleness)
-            recent_resp = supabase.table('match_assignments')\
+            recent_resp = table('match_assignments')\
                 .select('player1_id, player2_id')\
                 .order('created_at', desc=True)\
                 .limit(200)\
@@ -490,7 +492,7 @@ class handler(BaseHTTPRequestHandler):
             recent_matches = recent_resp.data
 
             # 4. Get all matches with scores (for RMS calculation)
-            all_matches_resp = supabase.table('matches')\
+            all_matches_resp = table('matches')\
                 .select('player1_id, player2_id, set1_p1, set1_p2, set2_p1, set2_p2')\
                 .order('created_at', desc=True)\
                 .limit(500)\
@@ -513,7 +515,7 @@ class handler(BaseHTTPRequestHandler):
                 assignments.append(assignment)
 
             if assignments:
-                supabase.table('match_assignments').insert(assignments).execute()
+                table('match_assignments').insert(assignments).execute()
 
             # 7. Send match assignment emails
             emails_sent = 0
@@ -550,7 +552,7 @@ class handler(BaseHTTPRequestHandler):
 
             # 8. Update RMS scores for all players
             for player in players:
-                update_player_rms(supabase, player['id'], all_matches)
+                update_player_rms(player['id'], all_matches)
 
             self._send_success({
                 'period': period_label,

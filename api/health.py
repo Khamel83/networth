@@ -1,24 +1,12 @@
 """
 Vercel Serverless Function: Health Check
 Simple health endpoint for monitoring
+Uses Supabase REST API (no Python supabase client).
 """
 from http.server import BaseHTTPRequestHandler
 import json
 import os
 from datetime import datetime, timezone
-
-
-def get_supabase_client():
-    """Lazy initialization of Supabase client"""
-    try:
-        from supabase import create_client
-        url = os.environ.get('SUPABASE_URL')
-        key = os.environ.get('SUPABASE_ANON_KEY')
-        if url and key:
-            return create_client(url, key)
-    except Exception:
-        pass
-    return None
 
 
 class handler(BaseHTTPRequestHandler):
@@ -27,11 +15,12 @@ class handler(BaseHTTPRequestHandler):
         supabase_available = False
 
         try:
-            supabase = get_supabase_client()
-            if supabase:
+            from api.supabase_http import table
+
+            if os.environ.get('SUPABASE_URL') and os.environ.get('SUPABASE_ANON_KEY'):
                 supabase_available = True
                 try:
-                    supabase.table('players').select('id').limit(1).execute()
+                    table('players').select('id').limit(1).execute()
                     db_status = "connected"
                 except Exception:
                     db_status = "error"
