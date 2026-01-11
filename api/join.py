@@ -1,11 +1,12 @@
 """
 Vercel Serverless Function: Join Request API
 Handles new player requests to join the ladder.
-Creates player in database, admin approves via dashboard.
+Creates player in database with password authentication.
 """
 from http.server import BaseHTTPRequestHandler
 import json
 import os
+import bcrypt
 
 
 def get_supabase_client():
@@ -38,8 +39,17 @@ class handler(BaseHTTPRequestHandler):
             name = data.get('name', '').strip()
             email = data.get('email', '').strip().lower()
             phone = data.get('phone', '').strip()
+            password = data.get('password', '')
             membership_tier = data.get('membership_tier', 'player').strip()
             favorite_players = data.get('favorite_players', '').strip()
+
+            # Validate password
+            if not password or len(password) < 6:
+                self._send_error(400, "Password must be at least 6 characters")
+                return
+
+            # Hash password
+            password_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 
             # Availability fields
             avail_weekday_early = data.get('avail_weekday_early', False)
@@ -69,6 +79,8 @@ class handler(BaseHTTPRequestHandler):
                 'name': name,
                 'email': email,
                 'phone': phone if phone else None,
+                'password_hash': password_hash,
+                'password_changed': True,  # They chose their own password
                 'membership_tier': membership_tier,
                 'favorite_players': favorite_players if favorite_players else None,
                 'avail_weekday_early': avail_weekday_early,
