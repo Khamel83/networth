@@ -2,11 +2,20 @@
 Vercel Serverless Function: Join Request API
 Handles new player requests to join the ladder.
 Creates player in database with password authentication.
+Uses hashlib for password hashing (no bcrypt dependency to keep bundle size small)
 """
 from http.server import BaseHTTPRequestHandler
 import json
 import os
-import bcrypt
+import hashlib
+import base64
+
+
+def hash_password(password: str) -> str:
+    """Hash password using PBKDF2-HMAC-SHA256"""
+    salt = os.urandom(32)  # Random salt
+    key = hashlib.pbkdf2_hmac('sha256', password.encode(), salt, 100000)
+    return base64.b64encode(salt + key).decode()
 
 
 def get_supabase_client():
@@ -49,7 +58,7 @@ class handler(BaseHTTPRequestHandler):
                 return
 
             # Hash password
-            password_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+            password_hash = hash_password(password)
 
             # Availability fields
             avail_weekday_early = data.get('avail_weekday_early', False)

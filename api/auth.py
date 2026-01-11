@@ -1,13 +1,34 @@
 """
 Vercel Serverless Function: Authentication API
 Password-based authentication (magic links removed)
+Uses hashlib for password hashing (no bcrypt dependency to keep bundle size small)
 """
 from http.server import BaseHTTPRequestHandler
 import json
 import os
 import secrets
-import bcrypt
+import hashlib
+import base64
 from datetime import datetime, timedelta
+
+
+def hash_password(password: str) -> str:
+    """Hash password using PBKDF2-HMAC-SHA256"""
+    salt = os.urandom(32)  # Random salt
+    key = hashlib.pbkdf2_hmac('sha256', password.encode(), salt, 100000)
+    return base64.b64encode(salt + key).decode()
+
+
+def verify_password(password: str, stored_hash: str) -> bool:
+    """Verify password against stored hash"""
+    try:
+        decoded = base64.b64decode(stored_hash)
+        salt = decoded[:32]
+        stored_key = decoded[32:]
+        new_key = hashlib.pbkdf2_hmac('sha256', password.encode(), salt, 100000)
+        return new_key == stored_key
+    except Exception:
+        return False
 
 
 def get_supabase_client():
@@ -65,7 +86,7 @@ class handler(BaseHTTPRequestHandler):
                     self._send_error(401, "No password set. Please reset your password.")
                     return
 
-                if bcrypt.checkpw(password.encode(), stored_hash.encode()):
+                if verify_password(password, stored_hash):
                     # Generate session token
                     session_token = secrets.token_urlsafe(32)
 
@@ -99,11 +120,11 @@ class handler(BaseHTTPRequestHandler):
                     return
 
                 stored_hash = player.data.get('password_hash')
-                if not stored_hash or not bcrypt.checkpw(old_password.encode(), stored_hash.encode()):
+                if not stored_hash or not verify_password(old_password, stored_hash):
                     self._send_error(401, "Current password is incorrect")
                     return
 
-                new_hash = bcrypt.hashpw(new_password.encode(), bcrypt.gensalt()).decode()
+                new_hash = hash_password(new_password)
 
                 supabase.table('players').update({
                     'password_hash': new_hash,
@@ -198,7 +219,7 @@ class handler(BaseHTTPRequestHandler):
                         return
 
                 # Set new password and clear reset token
-                new_hash = bcrypt.hashpw(new_password.encode(), bcrypt.gensalt()).decode()
+                new_hash = hash_password(new_password)
 
                 supabase.table('players').update({
                     'password_hash': new_hash,

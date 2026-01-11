@@ -1,11 +1,20 @@
 """
 One-time migration: Set initial passwords for all players
 Password = 10-digit phone number OR tennis123
+Uses hashlib for password hashing (no bcrypt dependency to keep bundle size small)
 """
 from http.server import BaseHTTPRequestHandler
 import json
 import os
-import bcrypt
+import hashlib
+import base64
+
+
+def hash_password(password: str) -> str:
+    """Hash password using PBKDF2-HMAC-SHA256"""
+    salt = os.urandom(32)  # Random salt
+    key = hashlib.pbkdf2_hmac('sha256', password.encode(), salt, 100000)
+    return base64.b64encode(salt + key).decode()
 
 
 def get_supabase_client():
@@ -57,7 +66,7 @@ class handler(BaseHTTPRequestHandler):
                     else:
                         password = 'tennis123'
 
-                    hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+                    hashed = hash_password(password)
 
                     supabase.table('players').update({
                         'password_hash': hashed,
