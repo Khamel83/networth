@@ -1,5 +1,5 @@
 # Vercel serverless functions - using Supabase REST API
 # NO supabase Python package - using httpx for lightweight HTTP calls instead
+# NO Pillow - image processing moved to frontend (Canvas API)
 httpx>=0.24.0
-Pillow>=10.0.0
 resend>=0.5.0

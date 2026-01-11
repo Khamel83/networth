@@ -1304,6 +1304,9 @@
         </div>
     </div>
 
+    <!-- Frontend image processing module -->
+    <script type="module" src="/js/avatar-upload.js"></script>
+
     <script>
         // Check auth
         const urlParams = new URLSearchParams(window.location.search);
@@ -1333,7 +1336,8 @@
         } else {
             token = localStorage.getItem('networth_token');
             player = JSON.parse(localStorage.getItem('networth_player') || '{}');
-            if (!token) {
+            // For password-based auth, check for player.email instead of token
+            if (!player.email) {
                 window.location.href = '/login';
             }
         }
@@ -1474,7 +1478,7 @@
 
                 const response = await fetch('/api/profile', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${player.email}` },
                     body: JSON.stringify(requestData)
                 });
                 const data = await response.json();
@@ -1506,7 +1510,9 @@
             }
 
             try {
-                const response = await fetch('/api/profile', {});
+                const response = await fetch('/api/profile', {
+                    headers: { 'Authorization': `Bearer ${player.email}` }
+                });
                 const data = await response.json();
 
                 if (!data.success) {
@@ -1724,35 +1730,10 @@
             }
 
             try {
-                // If email changed, trigger Supabase auth email update
-                if (emailChanged) {
-                    try {
-                        const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm');
-                        const supabaseUrl = 'https://bwfunodgmlfspddlkycd.supabase.co';
-                        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ3ZnVub2RnbWxmc3BkZGxreWNkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzI2NzM0MDIsImV4cCI6MjA0ODI0OTQwMn0.zMqRhSXw9TYxuOAGpLWVNaLGmGSgLgimpSHXuHwNyOg';
-                        const supabase = createClient(supabaseUrl, supabaseKey);
-
-                        // Set the session
-                        await supabase.auth.setSession({
-                            access_token: token,
-                            refresh_token: localStorage.getItem('networth_refresh_token') || ''
-                        });
-
-                        // Update auth email (will send verification)
-                        const { error } = await supabase.auth.updateUser({ email: email });
-                        if (error) {
-                            throw new Error(`Email update failed: ${error.message}`);
-                        }
-                    } catch (authErr) {
-                        showMessage(`Email change failed: ${authErr.message}. Other changes saved.`, 'error');
-                        // Continue to save other changes
-                    }
-                }
-
                 // Save profile data (include player_id for email sync scenarios)
                 const response = await fetch('/api/profile', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${player.email}` },
                     body: JSON.stringify({
                         action: 'update',
                         player_id: player.id,
@@ -1809,7 +1790,7 @@
             try {
                 const response = await fetch('/api/profile', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${player.email}` },
                     body: JSON.stringify({ action: 'pause' })
                 });
                 const data = await response.json();
@@ -1842,7 +1823,7 @@
             try {
                 const response = await fetch('/api/profile', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${player.email}` },
                     body: JSON.stringify({ action: 'unpause' })
                 });
                 const data = await response.json();
@@ -1872,7 +1853,7 @@
             try {
                 const response = await fetch('/api/profile', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${player.email}` },
                     body: JSON.stringify({ action: 'upgrade_tier' })
                 });
                 const data = await response.json();
@@ -1904,7 +1885,9 @@
             }
 
             try {
-                const response = await fetch('/api/pairings');
+                const response = await fetch('/api/pairings', {
+                    headers: { 'Authorization': `Bearer ${player.email}` }
+                });
                 const data = await response.json();
 
                 const container = document.getElementById('outstanding-matches');
@@ -2001,8 +1984,8 @@
             // Fetch match history and assignments to populate scores
             try {
                 const [historyRes, pairingsRes] = await Promise.all([
-                    fetch('/api/matches'),
-                    fetch('/api/pairings')
+                    fetch('/api/matches', { headers: { 'Authorization': `Bearer ${player.email}` } }),
+                    fetch('/api/pairings', { headers: { 'Authorization': `Bearer ${player.email}` } })
                 ]);
 
                 const historyData = await historyRes.json();
@@ -2109,7 +2092,9 @@
             }
 
             try {
-                const response = await fetch('/api/matches');
+                const response = await fetch('/api/matches', {
+                    headers: { 'Authorization': `Bearer ${player.email}` }
+                });
                 const data = await response.json();
 
                 if (!data.success || !data.matches || data.matches.length === 0) {
@@ -2221,7 +2206,7 @@
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
+                        'Authorization': `Bearer ${player.email}`
                     },
                     body: JSON.stringify(matchData)
                 });
@@ -2279,7 +2264,7 @@
 
             try {
                 const response = await fetch('/api/admin?action=players', {
-                    headers: { 'Authorization': `Bearer ${token}` }
+                    headers: { 'Authorization': `Bearer ${player.email}` }
                 });
 
                 if (response.status === 403) return;
@@ -2363,7 +2348,7 @@
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
+                        'Authorization': `Bearer ${player.email}`
                     },
                     body: JSON.stringify({
                         action,
@@ -2395,7 +2380,7 @@
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
+                        'Authorization': `Bearer ${player.email}`
                     },
                     body: JSON.stringify({
                         action,
@@ -2438,28 +2423,60 @@
                 return;
             }
 
-            // Show preview immediately
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                updateAvatarPreview(e.target.result);
-            };
-            reader.readAsDataURL(file);
-
-            if (isTestMode) {
-                showMessage('Photo uploaded (test mode)', 'success');
-                document.getElementById('remove-photo-btn').style.display = 'block';
-                return;
-            }
-
-            // Upload to server
+            // Process image on frontend using Canvas API
             try {
+                // Load image
+                const img = await new Promise((resolve, reject) => {
+                    const img = new Image();
+                    img.onload = () => resolve(img);
+                    img.onerror = () => reject(new Error('Failed to load image'));
+                    img.src = URL.createObjectURL(file);
+                });
+
+                // Calculate crop dimensions (center crop to square)
+                const size = Math.min(img.width, img.height);
+                const startX = (img.width - size) / 2;
+                const startY = (img.height - size) / 2;
+
+                // Create canvas and resize to 200x200
+                const canvas = document.createElement('canvas');
+                canvas.width = 200;
+                canvas.height = 200;
+                const ctx = canvas.getContext('2d');
+
+                // Fill white background (for transparent images)
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, 200, 200);
+
+                // Draw cropped and resized image
+                ctx.drawImage(
+                    img,
+                    startX, startY, size, size,  // Source crop
+                    0, 0, 200, 200              // Destination
+                );
+
+                // Convert to blob (JPEG at 85% quality)
+                const blob = await new Promise(resolve => {
+                    canvas.toBlob(resolve, 'image/jpeg', 0.85);
+                });
+
+                // Show preview
+                updateAvatarPreview(URL.createObjectURL(blob));
+
+                if (isTestMode) {
+                    showMessage('Photo uploaded (test mode)', 'success');
+                    document.getElementById('remove-photo-btn').style.display = 'block';
+                    return;
+                }
+
+                // Upload processed image to server
                 const formData = new FormData();
-                formData.append('file', file);
+                formData.append('file', blob, `avatar_${Date.now()}.jpg`);
 
                 const response = await fetch('/api/upload', {
                     method: 'POST',
                     headers: {
-                        'Authorization': `Bearer ${token}`
+                        'Authorization': `Bearer ${player.email}`
                     },
                     body: formData
                 });
@@ -2494,7 +2511,7 @@
                 const response = await fetch('/api/upload', {
                     method: 'DELETE',
                     headers: {
-                        'Authorization': `Bearer ${token}`
+                        'Authorization': `Bearer ${player.email}`
                     }
                 });
 
@@ -2549,7 +2566,7 @@
             try {
                 const response = await fetch('/api/profile', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${player.email}` },
                     body: JSON.stringify({ action: 'update', availability })
                 });
                 const data = await response.json();

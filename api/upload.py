@@ -2,13 +2,12 @@
 Vercel Serverless Function: Photo Upload API
 
 Handles avatar photo uploads:
-- Accepts image files (JPEG, PNG, WebP)
+- Accepts pre-processed image files (200x200 JPEG from frontend)
 - Validates file size (max 2MB)
-- Resizes to 200x200 thumbnail
 - Uploads to Supabase Storage 'avatar' bucket via REST API
 - Updates player.avatar_url
 
-Updated for Ashley's Christmas 2025 feedback.
+Image processing moved to frontend (Canvas API) for faster builds.
 Uses Supabase REST API (no Python storage client).
 """
 from http.server import BaseHTTPRequestHandler
@@ -85,58 +84,6 @@ def get_public_url(filename):
     """Get public URL for a storage file"""
     base_url, _ = get_supabase_config()
     return f'{base_url}/storage/v1/object/public/avatar/{filename}'
-
-
-def process_image(image_data, content_type):
-    """Resize image to 200x200 thumbnail and return as bytes"""
-    try:
-        from PIL import Image
-
-        # Open image from bytes
-        img = Image.open(io.BytesIO(image_data))
-
-        # Convert to RGB if necessary (handles PNG transparency, etc.)
-        if img.mode in ('RGBA', 'LA', 'P'):
-            # Create white background for transparent images
-            background = Image.new('RGB', img.size, (255, 255, 255))
-            if img.mode == 'P':
-                img = img.convert('RGBA')
-            background.paste(img, mask=img.split()[-1] if img.mode == 'RGBA' else None)
-            img = background
-        elif img.mode != 'RGB':
-            img = img.convert('RGB')
-
-        # Resize to 200x200 with aspect ratio preservation and crop
-        # First, determine the scaling factor
-        width, height = img.size
-        target_size = 200
-
-        # Scale to fit the smaller dimension to 200
-        if width < height:
-            new_width = target_size
-            new_height = int(height * (target_size / width))
-        else:
-            new_height = target_size
-            new_width = int(width * (target_size / height))
-
-        img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
-
-        # Center crop to 200x200
-        left = (new_width - target_size) // 2
-        top = (new_height - target_size) // 2
-        right = left + target_size
-        bottom = top + target_size
-        img = img.crop((left, top, right, bottom))
-
-        # Save to bytes
-        output = io.BytesIO()
-        img.save(output, format='JPEG', quality=85)
-        output.seek(0)
-
-        return output.getvalue()
-
-    except Exception as e:
-        raise ValueError(f"Image processing failed: {str(e)}")
 
 
 def parse_multipart_form(body, content_type):
@@ -290,12 +237,9 @@ class handler(BaseHTTPRequestHandler):
                 self._send_error(413, "File too large. Maximum size is 2MB")
                 return
 
-            # Process image (resize to 200x200)
-            try:
-                processed_image = process_image(image_data, file_type)
-            except ValueError as e:
-                self._send_error(400, str(e))
-                return
+            # Image processing is now done on frontend (Canvas API)
+            # Upload as-is
+            processed_image = image_data
 
             # Generate unique filename
             timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
