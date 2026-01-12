@@ -651,6 +651,88 @@
             flex: 1;
         }
 
+        /* Admin Actions Section */
+        .admin-actions-card {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px dashed var(--card-border);
+        }
+
+        .admin-actions-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1rem;
+        }
+
+        @media (min-width: 600px) {
+            .admin-actions-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        .admin-action-item {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 1rem;
+        }
+
+        .admin-action-item h4 {
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .admin-action-item p {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-bottom: 0.75rem;
+        }
+
+        .btn-admin-action {
+            font-family: var(--font-body);
+            font-size: 0.8rem;
+            font-weight: 600;
+            padding: 0.6rem 1rem;
+            border: 1px solid var(--card-border);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-white);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+        }
+
+        .btn-admin-action:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-admin-action:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .action-result {
+            margin-top: 0.75rem;
+            padding: 0.75rem;
+            border-radius: 8px;
+            font-size: 0.75rem;
+            display: none;
+        }
+
+        .action-result.show {
+            display: block;
+        }
+
+        .action-result.success {
+            background: rgba(34, 197, 94, 0.2);
+            border: 1px solid var(--success-green);
+            color: #bbf7d0;
+        }
+
+        .action-result.error {
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid var(--error-red);
+            color: #fecaca;
+        }
+
         /* Responsive */
         @media (max-width: 768px) {
             .data-table {
@@ -708,6 +790,26 @@
                 <p class="stat-value" id="stat-pairings">-</p>
             </div>
         </div>
+
+        <!-- Admin Actions Section -->
+        <section class="section">
+            <div class="section-card admin-actions-card">
+                <div class="section-header">
+                    <h2 class="section-title">Admin Actions</h2>
+                    <span class="pending-hint">Manual triggers (normally automatic)</span>
+                </div>
+                <div class="admin-actions-grid">
+                    <div class="admin-action-item">
+                        <h4>Generate Monthly Pairings</h4>
+                        <p>Creates match pairings and sends emails to all paired players. Runs automatically on the 1st of each month - only use this for manual triggers.</p>
+                        <button class="btn-admin-action" id="generate-pairings-btn" onclick="generatePairings()">
+                            Generate Pairings
+                        </button>
+                        <div class="action-result" id="pairings-result"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
 
         <!-- Pending Approval Section -->
         <section class="section" id="pending-section">
@@ -1248,6 +1350,54 @@
             localStorage.removeItem('networth_token');
             localStorage.removeItem('networth_player');
             window.location.href = '/';
+        }
+
+        // Generate pairings manually
+        async function generatePairings() {
+            const btn = document.getElementById('generate-pairings-btn');
+            const resultDiv = document.getElementById('pairings-result');
+
+            if (!confirm('Generate pairings for this month? This will send match emails to all paired players.')) {
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = 'Generating...';
+            resultDiv.className = 'action-result';
+            resultDiv.classList.remove('show');
+
+            try {
+                const response = await fetch('/api/pairings', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authEmail}`
+                    },
+                    body: JSON.stringify({})
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    const skipped = data.players_skipped || [];
+                    const skippedNames = skipped.map(s => s.name).join(', ');
+                    let message = `Created ${data.pairings_created} pairings, sent ${data.emails_sent} emails.`;
+                    if (skippedNames) {
+                        message += ` Skipped: ${skippedNames}`;
+                    }
+                    resultDiv.textContent = message;
+                    resultDiv.className = 'action-result success show';
+                    loadPairingsCount();
+                } else {
+                    throw new Error(data.error || 'Failed to generate pairings');
+                }
+            } catch (err) {
+                resultDiv.textContent = 'Error: ' + err.message;
+                resultDiv.className = 'action-result error show';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Generate Pairings';
+            }
         }
 
         // Initialize
