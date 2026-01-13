@@ -86,12 +86,19 @@ jobs:
 
       - name: Send monthly availability emails
         run: |
-          curl -X POST "${{ secrets.SITE_URL }}/api/email" \
+          RESPONSE=$(curl -sL --post301 --post302 --post303 \
+            -X POST "${{ secrets.SITE_URL }}/api/email" \
             -H "Content-Type: application/json" \
-            -d '{"action": "send_availability_check"}'
+            -d '{"action": "send_availability_check"}')
+          echo "Response: $RESPONSE"
 
-      - name: Log completion
-        run: echo "Monthly availability emails completed"
+          SENT=$(echo "$RESPONSE" | jq -r '.sent // 0')
+          echo "::notice::Emails sent: $SENT"
+
+          if [ "$(echo "$RESPONSE" | jq -r '.success')" != "true" ]; then
+            echo "::error::API returned failure: $RESPONSE"
+            exit 1
+          fi
 
   final-availability:
     needs: determine-action
@@ -105,12 +112,19 @@ jobs:
 
       - name: Send final availability emails
         run: |
-          curl -X POST "${{ secrets.SITE_URL }}/api/email" \
+          RESPONSE=$(curl -sL --post301 --post302 --post303 \
+            -X POST "${{ secrets.SITE_URL }}/api/email" \
             -H "Content-Type: application/json" \
-            -d '{"action": "send_final_reminder"}'
+            -d '{"action": "send_final_reminder"}')
+          echo "Response: $RESPONSE"
 
-      - name: Log completion
-        run: echo "Final availability emails completed"
+          SENT=$(echo "$RESPONSE" | jq -r '.sent // 0')
+          echo "::notice::Emails sent: $SENT"
+
+          if [ "$(echo "$RESPONSE" | jq -r '.success')" != "true" ]; then
+            echo "::error::API returned failure: $RESPONSE"
+            exit 1
+          fi
 
   generate-pairings:
     needs: determine-action
@@ -126,12 +140,22 @@ jobs:
 
       - name: Generate pairings and send emails
         run: |
-          curl -X POST "${{ secrets.SITE_URL }}/api/pairings" \
+          RESPONSE=$(curl -sL --post301 --post302 --post303 \
+            -X POST "${{ secrets.SITE_URL }}/api/pairings" \
             -H "Content-Type: application/json" \
-            -d '{}'
+            -d '{}')
+          echo "Response: $RESPONSE"
 
-      - name: Log completion
-        run: echo "Pairings generated and emails sent"
+          SUCCESS=$(echo "$RESPONSE" | jq -r '.success')
+          PAIRINGS=$(echo "$RESPONSE" | jq -r '.pairings_created // 0')
+          EMAILS=$(echo "$RESPONSE" | jq -r '.emails_sent // 0')
+
+          echo "::notice::Pairings created: $PAIRINGS, Emails sent: $EMAILS"
+
+          if [ "$SUCCESS" != "true" ]; then
+            echo "::error::API returned failure: $RESPONSE"
+            exit 1
+          fi
 
   mid-month-reminder:
     needs: determine-action
@@ -145,9 +169,16 @@ jobs:
 
       - name: Send mid-month reminder emails
         run: |
-          curl -X POST "${{ secrets.SITE_URL }}/api/email" \
+          RESPONSE=$(curl -sL --post301 --post302 --post303 \
+            -X POST "${{ secrets.SITE_URL }}/api/email" \
             -H "Content-Type: application/json" \
-            -d '{"action": "send_midmonth_reminders"}'
+            -d '{"action": "send_midmonth_reminders"}')
+          echo "Response: $RESPONSE"
 
-      - name: Log completion
-        run: echo "Mid-month reminder emails completed"
+          SENT=$(echo "$RESPONSE" | jq -r '.sent // 0')
+          echo "::notice::Emails sent: $SENT"
+
+          if [ "$(echo "$RESPONSE" | jq -r '.success')" != "true" ]; then
+            echo "::error::API returned failure: $RESPONSE"
+            exit 1
+          fi
