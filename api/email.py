@@ -10,7 +10,7 @@ from datetime import datetime
 
 # Email Configuration
 SENDER_NAME = 'Net Worth Tennis'
-SENDER_EMAIL = f'{SENDER_NAME} <noreply@networthtennis.com>'
+SENDER_EMAIL = f'{SENDER_NAME} <hello@networthtennis.com>'
 REPLY_TO_EMAIL = 'ashleybrooke.kaufman@gmail.com'
 
 
