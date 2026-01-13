@@ -15,11 +15,13 @@ REPLY_TO_EMAIL = 'ashleybrooke.kaufman@gmail.com'
 
 
 def _normalize_reply_to(reply_to):
+    """Normalize reply_to for Resend API - accepts string or list"""
     if not reply_to:
         return None
     if isinstance(reply_to, (list, tuple, set)):
+        # Resend accepts array of emails directly
         cleaned = [str(item).strip() for item in reply_to if item and str(item).strip()]
-        return ", ".join(cleaned) if cleaned else None
+        return cleaned if cleaned else None
     value = str(reply_to).strip()
     return value or None
 
@@ -475,11 +477,15 @@ class handler(BaseHTTPRequestHandler):
                     self._send_success({"message": "No active players to email", "sent": 0})
                     return
 
+                import time
                 html = get_availability_check_email_html()
                 sent = 0
                 errors = []
 
-                for player in players.data:
+                for i, player in enumerate(players.data):
+                    # Rate limit: Resend allows 2 req/sec
+                    if i > 0:
+                        time.sleep(0.6)
                     result = send_email(player['email'], "Quick check: are you playing next month?", html)
                     if result['success']:
                         sent += 1
@@ -501,11 +507,15 @@ class handler(BaseHTTPRequestHandler):
                     self._send_success({"message": "No active players to email", "sent": 0})
                     return
 
+                import time
                 html = get_final_reminder_email_html()
                 sent = 0
                 errors = []
 
-                for player in players.data:
+                for i, player in enumerate(players.data):
+                    # Rate limit: Resend allows 2 req/sec
+                    if i > 0:
+                        time.sleep(0.6)
                     result = send_email(player['email'], "Last call: update your playing status", html)
                     if result['success']:
                         sent += 1

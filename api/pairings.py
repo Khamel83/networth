@@ -521,8 +521,12 @@ class handler(BaseHTTPRequestHandler):
             emails_sent = 0
             email_errors = []
             try:
+                import time
                 from api.email import send_email, get_match_assignment_email_html
-                for p in pairings:
+                for i, p in enumerate(pairings):
+                    # Rate limit: Resend allows 2 req/sec, add delay between emails
+                    if i > 0:
+                        time.sleep(0.6)
                     p1 = p['player1']
                     p2 = p['player2']
                     html = get_match_assignment_email_html(
