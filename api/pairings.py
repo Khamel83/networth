@@ -539,8 +539,8 @@ class handler(BaseHTTPRequestHandler):
                         p2.get('phone', '')
                     )
                     subject = f"{p1['name']}, meet {p2['name']} - You're matched for {period_label}!"
-                    # Set reply-to to both players so Ashley isn't included in replies
-                    reply_to = [p1['email'], p2['email']]
+                    # Reply-to first player so they can coordinate
+                    reply_to = p1['email']
                     result = send_email(
                         [p1['email'], p2['email']],
                         subject,
