@@ -581,6 +581,70 @@ class handler(BaseHTTPRequestHandler):
                     "errors": errors if errors else None
                 })
 
+            elif action == 'resend_match_emails':
+                # Resend match assignment emails for current month
+                import time
+                from api.supabase_http import table
+
+                month = datetime.now().strftime('%B %Y')
+                matches = table('match_assignments').select('*').eq('period_label', month).execute()
+
+                if not matches.data:
+                    self._send_success({"message": "No matches found for current month", "sent": 0})
+                    return
+
+                # Get all players
+                players_result = table('players').select('id, name, email, phone, avail_weekday_early, avail_weekday_day, avail_weekday_late, avail_weekend_early, avail_weekend_day, avail_weekend_late').execute()
+                players_map = {p['id']: p for p in players_result.data}
+
+                sent = 0
+                errors = []
+
+                for i, match in enumerate(matches.data):
+                    if i > 0:
+                        time.sleep(0.6)
+
+                    p1 = players_map.get(match.get('player1_id'), {})
+                    p2 = players_map.get(match.get('player2_id'), {})
+
+                    if not p1 or not p2:
+                        errors.append(f"Match {match.get('id')}: Player not found")
+                        continue
+
+                    # Build availability text
+                    def get_avail(p):
+                        parts = []
+                        wd = []
+                        if p.get('avail_weekday_early'): wd.append('before 9am')
+                        if p.get('avail_weekday_day'): wd.append('9-5')
+                        if p.get('avail_weekday_late'): wd.append('after 5pm')
+                        if wd: parts.append(f"Weekdays: {', '.join(wd)}")
+                        we = []
+                        if p.get('avail_weekend_early'): we.append('before 9am')
+                        if p.get('avail_weekend_day'): we.append('9-5')
+                        if p.get('avail_weekend_late'): we.append('after 5pm')
+                        if we: parts.append(f"Weekends: {', '.join(we)}")
+                        return ' | '.join(parts) if parts else ''
+
+                    html = get_match_assignment_email_html(
+                        p1['name'], p2['name'], month,
+                        get_avail(p1), get_avail(p2),
+                        p1.get('phone', ''), p2.get('phone', '')
+                    )
+                    subject = f"{p1['name']}, meet {p2['name']} - You're matched for {month}!"
+
+                    result = send_email([p1['email'], p2['email']], subject, html, reply_to=p1['email'])
+                    if result.get('success'):
+                        sent += 1
+                    else:
+                        errors.append(f"{p1['name']} & {p2['name']}: {result.get('error')}")
+
+                self._send_success({
+                    "message": f"Sent match emails to {sent} pairs",
+                    "sent": sent,
+                    "errors": errors if errors else None
+                })
+
             else:
                 self._send_error(400, f"Unknown action: {action}")
 
