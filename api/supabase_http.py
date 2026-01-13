@@ -85,9 +85,9 @@ class SelectBuilder:
         self.filters.append((column, 'neq', value))
         return self
 
-    def order(self, column: str) -> 'SelectBuilder':
+    def order(self, column: str, desc: bool = False) -> 'SelectBuilder':
         """Order results"""
-        self.order_by = column
+        self.order_by = f"{column}.desc" if desc else column
         return self
 
     def limit(self, n: int) -> 'SelectBuilder':
