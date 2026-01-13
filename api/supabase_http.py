@@ -48,12 +48,12 @@ class Table:
         """Start a SELECT query"""
         return SelectBuilder(self.table_name, columns)
 
-    def insert(self, data: Dict[str, Any]) -> Dict[str, Any]:
-        """Insert a row"""
+    def insert(self, data) -> 'Result':
+        """Insert row(s) - accepts dict for single row or list for multiple"""
         url = _build_url(self.table_name)
         headers = _get_headers()
         response = httpx.post(url, headers=headers, json=data)
-        return _parse_response(response)
+        return Result(response)
 
     def update(self, data: Dict[str, Any]) -> 'UpdateBuilder':
         """Start an UPDATE query"""
@@ -189,12 +189,23 @@ class Result:
     def __init__(self, response: httpx.Response):
         self.response = response
         self.status_code = response.status_code
+        self.error = None
         try:
-            self.data = response.json()
-            if isinstance(self.data, dict) and len(self.data) == 1:
-                # Single row returned as dict
-                self.data = [self.data]
-            elif not self.data:
+            parsed = response.json()
+            # Check if this is an error response
+            if isinstance(parsed, dict) and ('error' in parsed or 'message' in parsed or 'code' in parsed):
+                # This is an error response, not data
+                self.error = parsed.get('error') or parsed.get('message') or str(parsed)
+                self.data = []
+            elif isinstance(parsed, list):
+                # Normal list of rows
+                self.data = parsed
+            elif isinstance(parsed, dict):
+                # Single row returned as dict - wrap in list
+                self.data = [parsed]
+            elif not parsed:
+                self.data = []
+            else:
                 self.data = []
         except:
             self.data = []
