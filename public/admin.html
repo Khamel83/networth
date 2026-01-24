@@ -791,6 +791,19 @@
             </div>
         </div>
 
+        <!-- Current Pairings Section -->
+        <section class="section">
+            <div class="section-card">
+                <div class="section-header">
+                    <h2 class="section-title">Current Pairings</h2>
+                    <span class="pending-hint" id="pairings-period">Loading...</span>
+                </div>
+                <div id="pairings-list">
+                    <p class="empty-state">Loading...</p>
+                </div>
+            </div>
+        </section>
+
         <!-- Admin Actions Section -->
         <section class="section">
             <div class="section-card admin-actions-card">
@@ -839,13 +852,14 @@
                                 <th>Rank</th>
                                 <th>Member</th>
                                 <th class="hide-mobile">Tier</th>
+                                <th class="hide-mobile">Paid</th>
                                 <th>Status</th>
                                 <th class="hide-mobile">Games</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody id="players-body">
-                            <tr><td colspan="6" style="text-align: center; color: var(--text-muted);">Loading...</td></tr>
+                            <tr><td colspan="7" style="text-align: center; color: var(--text-muted);">Loading...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -1101,22 +1115,6 @@
             }
         }
 
-        // Load pairings count
-        async function loadPairingsCount() {
-            try {
-                const response = await fetch('/api/admin?action=pairings', {
-                    headers: { 'Authorization': `Bearer ${authEmail}` }
-                });
-                const data = await response.json();
-
-                if (data.success && data.pairings) {
-                    document.getElementById('stat-pairings').textContent = data.pairings.length;
-                }
-            } catch (err) {
-                console.error('Failed to load pairings:', err);
-            }
-        }
-
         function updateStats(players) {
             const nonAdmin = players.filter(p => !p.is_admin);
             const pending = nonAdmin.filter(p => !p.is_active);
@@ -1137,7 +1135,7 @@
             const tbody = document.getElementById('players-body');
 
             if (players.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-muted);">No members found</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-muted);">No members found</td></tr>';
                 return;
             }
 
@@ -1160,6 +1158,13 @@
                     tierBadge = '<span class="tier-badge">Player</span>';
                 }
 
+                const paidCheckbox = p.is_admin ? '-' : `
+                    <input type="checkbox"
+                           ${p.has_paid ? 'checked' : ''}
+                           onchange="updatePayment('${p.id}', this.checked)"
+                           style="width: 18px; height: 18px; accent-color: var(--success-green); cursor: pointer;">
+                `;
+
                 return `
                     <tr>
                         <td>${p.is_admin ? '-' : (p.membership_tier === 'social_butterfly' ? '-' : '#' + p.rank)}</td>
@@ -1168,6 +1173,7 @@
                             <div class="player-email">${escapeHtml(p.email)}</div>
                         </td>
                         <td class="hide-mobile">${tierBadge}</td>
+                        <td class="hide-mobile">${paidCheckbox}</td>
                         <td>${statusBadge}</td>
                         <td class="hide-mobile">${p.membership_tier === 'social_butterfly' ? '-' : (p.total_games || 0)}</td>
                         <td>
@@ -1387,7 +1393,7 @@
                     }
                     resultDiv.textContent = message;
                     resultDiv.className = 'action-result success show';
-                    loadPairingsCount();
+                    loadPairings();
                 } else {
                     throw new Error(data.error || 'Failed to generate pairings');
                 }
@@ -1400,9 +1406,97 @@
             }
         }
 
+        // Update payment status
+        async function updatePayment(playerId, hasPaid) {
+            try {
+                const response = await fetch('/api/admin', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authEmail}`
+                    },
+                    body: JSON.stringify({
+                        action: 'update_payment',
+                        player_id: playerId,
+                        has_paid: hasPaid
+                    })
+                });
+
+                const data = await response.json();
+                if (!data.success) {
+                    throw new Error(data.error);
+                }
+                // Silently update - no reload needed
+            } catch (err) {
+                showMessage('Failed to update payment: ' + err.message, 'error');
+                // Reload to reset checkbox state
+                loadPlayers();
+            }
+        }
+
+        // Load and render pairings
+        async function loadPairings() {
+            try {
+                const response = await fetch('/api/admin?action=pairings', {
+                    headers: { 'Authorization': `Bearer ${authEmail}` }
+                });
+                const data = await response.json();
+
+                if (data.success && data.pairings) {
+                    document.getElementById('stat-pairings').textContent = data.pairings.length;
+                    renderPairings(data.pairings, data.period);
+                }
+            } catch (err) {
+                console.error('Failed to load pairings:', err);
+            }
+        }
+
+        function renderPairings(pairings, period) {
+            const container = document.getElementById('pairings-list');
+            const periodLabel = document.getElementById('pairings-period');
+
+            periodLabel.textContent = period;
+
+            if (pairings.length === 0) {
+                container.innerHTML = '<p class="empty-state">No pairings for this month yet</p>';
+                return;
+            }
+
+            container.innerHTML = `
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Player 1</th>
+                            <th>Player 2</th>
+                            <th class="hide-mobile">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${pairings.map(p => `
+                            <tr>
+                                <td>
+                                    <div class="player-name">${escapeHtml(p.player1_name)}</div>
+                                    <div class="player-email">${escapeHtml(p.player1_email)}</div>
+                                    ${p.player1_phone ? `<div class="player-email">${escapeHtml(p.player1_phone)}</div>` : ''}
+                                </td>
+                                <td>
+                                    <div class="player-name">${escapeHtml(p.player2_name)}</div>
+                                    <div class="player-email">${escapeHtml(p.player2_email)}</div>
+                                    ${p.player2_phone ? `<div class="player-email">${escapeHtml(p.player2_phone)}</div>` : ''}
+                                </td>
+                                <td class="hide-mobile">
+                                    <span class="status-badge ${p.status === 'completed' ? 'status-active' : 'status-paused'}">${p.status}</span>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+        }
+
         // Initialize
         loadPlayers();
-        loadPairingsCount();
+        loadPairings();
     </script>
 </body>
 </html>

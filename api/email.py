@@ -100,10 +100,13 @@ def get_email_styles():
     """
 
 
-def get_welcome_email_html(player_name):
+def get_welcome_email_html(player_name, membership_tier='player'):
     """
     Welcome email sent to new signups
     """
+    # Show correct price based on tier
+    price = '$45' if membership_tier == 'social_butterfly' else '$35'
+
     return f"""
     <!DOCTYPE html>
     <html>
@@ -118,7 +121,7 @@ def get_welcome_email_html(player_name):
 
                 <p>Thanks for signing up for the Net Worth Tennis League! We're so excited to have you.</p>
 
-                <p>If you haven't sent your membership fee yet, please send <strong>$35</strong> via Venmo to <strong>@NCOFFEN</strong> (Natalie) to complete your registration.</p>
+                <p>If you haven't sent your membership fee yet, please send <strong>{price}</strong> via Venmo to <strong>@NCOFFEN</strong> (Natalie) to complete your registration.</p>
 
                 <p>You'll receive emails from us about match assignments, events, and league updates soon. Feel free to sign in to your player dashboard.</p>
 
@@ -470,8 +473,8 @@ class handler(BaseHTTPRequestHandler):
                 # Send availability check to all active players
                 from api.supabase_http import table
 
-                # Get all active players
-                players = table('players').select('email, name').eq('is_active', True).execute()
+                # Get all active players (Players only, not Social Butterflies)
+                players = table('players').select('email, name').eq('is_active', True).eq('membership_tier', 'player').execute()
 
                 if not players.data:
                     self._send_success({"message": "No active players to email", "sent": 0})
@@ -501,7 +504,8 @@ class handler(BaseHTTPRequestHandler):
             elif action == 'send_final_reminder':
                 from api.supabase_http import table
 
-                players = table('players').select('email, name').eq('is_active', True).execute()
+                # Players only, not Social Butterflies
+                players = table('players').select('email, name').eq('is_active', True).eq('membership_tier', 'player').execute()
 
                 if not players.data:
                     self._send_success({"message": "No active players to email", "sent": 0})

@@ -109,7 +109,7 @@ class handler(BaseHTTPRequestHandler):
                     email_error = None
                     try:
                         from api.email import send_email, get_welcome_email_html
-                        welcome_html = get_welcome_email_html(name)
+                        welcome_html = get_welcome_email_html(name, membership_tier)
                         email_result = send_email(email, "Welcome to Net Worth Tennis!", welcome_html)
                         email_sent = email_result.get('success', False)
                         if not email_sent:

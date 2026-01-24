@@ -116,6 +116,7 @@ class handler(BaseHTTPRequestHandler):
                         'is_paused': is_paused,
                         'unavailable_until': str(unavailable_until) if unavailable_until else None,
                         'membership_tier': p.get('membership_tier', 'player'),
+                        'has_paid': p.get('has_paid', False),
                         'available_morning': p.get('available_morning', True),
                         'available_afternoon': p.get('available_afternoon', True),
                         'available_evening': p.get('available_evening', True),
@@ -130,7 +131,7 @@ class handler(BaseHTTPRequestHandler):
                 self._send_success({'players': players})
 
             elif action == 'pairings':
-                # Get current month's pairings
+                # Get current month's pairings with player details
                 today = date.today()
                 period = today.strftime('%B %Y')
 
@@ -139,9 +140,32 @@ class handler(BaseHTTPRequestHandler):
                     .eq('period_label', period)\
                     .execute()
 
+                # Get all players to enrich pairings
+                players_result = table('players').select('id, name, email, phone').execute()
+                players_map = {p['id']: p for p in players_result.data}
+
+                # Enrich pairings with player info
+                enriched_pairings = []
+                for pairing in result.data:
+                    p1 = players_map.get(pairing.get('player1_id'), {})
+                    p2 = players_map.get(pairing.get('player2_id'), {})
+                    enriched_pairings.append({
+                        'id': pairing.get('id'),
+                        'player1_id': pairing.get('player1_id'),
+                        'player1_name': p1.get('name', 'Unknown'),
+                        'player1_email': p1.get('email', ''),
+                        'player1_phone': p1.get('phone', ''),
+                        'player2_id': pairing.get('player2_id'),
+                        'player2_name': p2.get('name', 'Unknown'),
+                        'player2_email': p2.get('email', ''),
+                        'player2_phone': p2.get('phone', ''),
+                        'status': pairing.get('status', 'pending'),
+                        'period_label': pairing.get('period_label')
+                    })
+
                 self._send_success({
                     'period': period,
-                    'pairings': result.data
+                    'pairings': enriched_pairings
                 })
 
             elif action == 'player':
@@ -258,6 +282,16 @@ class handler(BaseHTTPRequestHandler):
                 self._send_success({
                     'message': f"Player {player_data.get('name')} rejected",
                     'rejected': True
+                })
+                return
+
+            elif action == 'update_payment':
+                # Toggle payment status
+                has_paid = data.get('has_paid', False)
+                table('players').update({'has_paid': has_paid}).eq('id', player_id).execute()
+                self._send_success({
+                    'message': f"Payment status updated for {player_data.get('name')}",
+                    'has_paid': has_paid
                 })
                 return
 
