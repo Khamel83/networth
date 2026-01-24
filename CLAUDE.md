@@ -26,10 +26,31 @@ Players self-register via join page → immediately active → can log in right 
 - `api/pairings.py` - Matching algorithm (skill-based), sends match emails
 - `api/email.py` - Resend API sender + 7 email templates
 - `api/join.py` - Player registration (handles re-registration of inactive accounts)
-- `api/admin.py` - Admin dashboard API (approve/reject/pause players)
+- `api/admin.py` - Admin dashboard API (approve/reject/pause players, payment tracking)
 - `api/auth.py` - Magic link authentication via Supabase Auth
 - `api/profile.py` - Profile viewing and updates (includes auto-save for availability)
 - `.github/workflows/biweekly-emails.yml` - Scheduled email automation
+
+---
+
+## Admin Dashboard (`/admin`)
+
+### Features:
+- **Stats row**: Pending, Players, Social, Active, Paused, Matches counts
+- **Current Pairings**: Shows this month's matches with player names, emails, phones, status
+- **Pending Approval**: New signups awaiting Venmo verification
+- **All Members**: Searchable table with Paid checkbox, tier badge, status
+- **Generate Pairings**: Manual trigger for monthly pairing generation
+
+### Payment Tracking:
+- `has_paid` boolean in database
+- Checkbox in admin table auto-saves on click
+- Admin-only (no effect on matching - tracking only)
+
+### Admin Actions:
+- `GET /api/admin?action=players` - List all players with has_paid
+- `GET /api/admin?action=pairings` - Current month pairings with player details
+- `POST /api/admin` with `action: update_payment` - Toggle payment status
 
 ---
 
@@ -50,9 +71,9 @@ Authentication Flow
     → Subsequent requests use Bearer token
 
 Automated Emails (GitHub Actions)
-    → 27th of month: Availability check to all active players
-    → Last day of month: Final availability reminder
-    → 1st of month: Generate pairings + send match emails
+    → 27th of month: Availability check (Players only, not Social Butterflies)
+    → Last day of month: Final availability reminder (Players only)
+    → 1st of month: Generate pairings + send match emails (Players only)
     → 15th of month: Mid-month reminder for pending matches
 ```
 
@@ -73,15 +94,15 @@ Automated Emails (GitHub Actions)
 
 ### 7 Email Templates (in api/email.py)
 
-| Email | Trigger | Subject |
-|-------|---------|---------|
-| Welcome | Signup via `/join` | Welcome to Net Worth Tennis! |
-| Match Assignment | Pairing generation | {Player1}, meet {Player2} - You're matched for {Month}! |
-| Availability Check | Cron (27th) | Quick check: are you playing next month? |
-| Final Reminder | Cron (last day) | Last call: update your playing status |
-| Mid-Month Reminder | Cron (15th) | Friendly reminder to play your {Month} match |
-| Sit-Out Confirmation | Player pauses | You're sitting out {Month} |
-| Rejoin Confirmation | Player rejoins | Welcome back! You're in for {Month} |
+| Email | Trigger | Subject | Notes |
+|-------|---------|---------|-------|
+| Welcome | Signup via `/join` | Welcome to Net Worth Tennis! | Shows $35 or $45 based on tier |
+| Match Assignment | Pairing generation | {Player1}, meet {Player2} - You're matched for {Month}! | Players only |
+| Availability Check | Cron (27th) | Quick check: are you playing next month? | Players only |
+| Final Reminder | Cron (last day) | Last call: update your playing status | Players only |
+| Mid-Month Reminder | Cron (15th) | Friendly reminder to play your {Month} match | |
+| Sit-Out Confirmation | Player pauses | You're sitting out {Month} | |
+| Rejoin Confirmation | Player rejoins | Welcome back! You're in for {Month} | |
 
 ---
 
@@ -96,6 +117,7 @@ players
   - avail_weekday_early/day/late, avail_weekend_early/day/late
   - favorite_players, avatar_url
   - membership_tier (player | social_butterfly)
+  - has_paid (boolean, for admin payment tracking)
 
 matches
   - player1_id, player2_id
@@ -327,3 +349,7 @@ if (response.status === 401) {
 - Extended Vercel function timeout to 30s for cold starts
 - Added rate limit handling for Supabase OTP requests
 - Updated "Favorite Players" to "Favorite Pro Players" with better placeholder
+- **Admin: Current Pairings view** - Shows who is matched with whom (names, emails, phones)
+- **Admin: Payment tracking** - Added `has_paid` checkbox column in members table
+- **Email filtering** - Reminder emails (27th, last day) now only go to Players, not Social Butterflies
+- **Welcome email** - Now shows correct tier price ($35 Player / $45 Social Butterfly)
