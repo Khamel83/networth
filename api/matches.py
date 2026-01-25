@@ -150,24 +150,9 @@ class handler(BaseHTTPRequestHandler):
                 }
                 table('match_feedback').insert(feedback_data).execute()
 
-            # Update player total_games
-            # Get current values first
-            p1 = table('players').select('total_games, matches_played').eq('id', data['player1_id']).single().execute()
-            p2 = table('players').select('total_games, matches_played').eq('id', data['player2_id']).single().execute()
-
-            if p1.data:
-                p1_data = p1.data[0] if isinstance(p1.data, list) else p1.data
-                table('players').update({
-                    'total_games': (p1_data.get('total_games') or 0) + player1_games,
-                    'matches_played': (p1_data.get('matches_played') or 0) + 1
-                }).eq('id', data['player1_id']).execute()
-
-            if p2.data:
-                p2_data = p2.data[0] if isinstance(p2.data, list) else p2.data
-                table('players').update({
-                    'total_games': (p2_data.get('total_games') or 0) + player2_games,
-                    'matches_played': (p2_data.get('matches_played') or 0) + 1
-                }).eq('id', data['player2_id']).execute()
+            # NOTE: Player totals are updated automatically by database trigger
+            # (update_player_games function in supabase-final-setup.sql)
+            # No manual update needed here - trigger handles it atomically
 
             self.send_response(201)
             self.send_header('Content-Type', 'application/json')

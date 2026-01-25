@@ -276,6 +276,29 @@ api/players.py    api/profile.py    api/upload.py
 **Cause:** Catching exceptions without proper error messages
 **Fix:** Always return meaningful error messages, log to console
 
+### 7. Doubled Scores from Duplicate Match Inserts
+**Symptom:** Player total_games and matches_played are doubled (e.g., 11 becomes 22)
+**Cause:** The `update_player_games()` trigger fires on every INSERT to matches table. If a match is submitted twice (double-click, network retry), the trigger runs twice and doubles the scores.
+**Fix:** Added unique index to prevent duplicate matches:
+```sql
+CREATE UNIQUE INDEX idx_unique_match_per_period
+ON matches (LEAST(player1_id, player2_id), GREATEST(player1_id, player2_id), period_label);
+```
+This ensures each player pair can only have ONE match per period. Duplicate submissions return HTTP 409.
+
+### 8. NULL Ranks Appearing at Top of Rankings
+**Symptom:** Players with NULL rank appear at position #1 instead of bottom
+**Cause:** JavaScript's `null < 99` returns `true` (null coerces to 0), so NULL-ranked players pass filters and sort to top
+**Fix:** Don't rely on database rank field. Compute rank from array position:
+```javascript
+// DON'T: .sort((a, b) => a.rank - b.rank)
+// DO: Use index from API-ordered results
+players.map((player, index) => {
+    const rank = index + 1;  // Compute from position
+});
+```
+The API returns players ordered by `total_games DESC NULLS LAST`, so position IS the rank.
+
 ---
 
 ## Abstractable Patterns for Future Projects
@@ -353,3 +376,6 @@ if (response.status === 401) {
 - **Admin: Payment tracking** - Added `has_paid` checkbox column in members table
 - **Email filtering** - Reminder emails (27th, last day) now only go to Players, not Social Butterflies
 - **Welcome email** - Now shows correct tier price ($35 Player / $45 Social Butterfly)
+- **Fixed NULL ranks at top of rankings** - Removed JS sort by rank, compute rank from array position instead
+- **Fixed doubled scores** - Added unique index `idx_unique_match_per_period` to prevent duplicate match inserts
+- **Admin: update_games action** - New API action to manually correct player total_games values

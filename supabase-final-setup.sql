@@ -221,7 +221,7 @@ CREATE OR REPLACE FUNCTION recalculate_rankings()
 RETURNS void AS $$
 BEGIN
     WITH ranked AS (
-        SELECT id, ROW_NUMBER() OVER (ORDER BY total_games DESC, name ASC) as new_rank
+        SELECT id, ROW_NUMBER() OVER (ORDER BY total_games DESC NULLS LAST, name ASC) as new_rank
         FROM players
         WHERE is_active = true AND is_admin = false
     )
