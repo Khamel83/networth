@@ -295,6 +295,19 @@ class handler(BaseHTTPRequestHandler):
                 })
                 return
 
+            elif action == 'update_games':
+                # Admin fix for total_games (e.g., correcting doubled scores)
+                total_games = data.get('total_games')
+                if total_games is None:
+                    self._send_error(400, "total_games required")
+                    return
+                table('players').update({'total_games': int(total_games)}).eq('id', player_id).execute()
+                self._send_success({
+                    'message': f"Games updated for {player_data.get('name')}",
+                    'total_games': int(total_games)
+                })
+                return
+
             else:
                 self._send_error(400, f"Unknown action: {action}")
                 return
