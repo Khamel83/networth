@@ -1214,7 +1214,7 @@
             const container = document.getElementById('rankings-rows');
             const loggedIn = isLoggedIn();
 
-            container.innerHTML = players.map(player => {
+            container.innerHTML = players.map((player, index) => {
                 // Build avatar HTML
                 let avatarContent = '🎾';
                 if (player.avatar_url) {
@@ -1229,9 +1229,10 @@
                     ? `<a href="/profile?id=${player.id}" class="player-name-link"><span class="player-name">${player.name}</span></a>`
                     : `<span class="player-name">${player.name}</span>`;
 
+                const rank = index + 1;
                 return `
                     <div class="rankings-row">
-                        <span class="rank rank-${player.rank}">${player.rank}</span>
+                        <span class="rank rank-${rank}">${rank}</span>
                         <div class="player-info">
                             <div class="player-avatar ${clickableClass}" ${avatarClick}>${avatarContent}</div>
                             ${nameHtml}
@@ -1249,9 +1250,9 @@
                 const data = await response.json();
                 if (data.success && data.players && data.players.length > 0) {
                     // Only show Players (not Social Butterflies) in rankings
+                    // API returns players sorted by total_games DESC - use that order
                     const activePlayers = data.players
-                        .filter(p => p.rank < 99 && p.membership_tier !== 'social_butterfly')
-                        .sort((a, b) => a.rank - b.rank);
+                        .filter(p => p.membership_tier !== 'social_butterfly');
                     renderRankings(activePlayers);
                 } else {
                     renderRankings(fallbackPlayers);
