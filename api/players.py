@@ -42,8 +42,9 @@ class handler(BaseHTTPRequestHandler):
             from api.supabase_http import table
 
             # Filter out admin from player lists
+            # Order by total_games descending with NULLS LAST (so 0-game players rank at bottom)
             admin_email = os.environ.get('ADMIN_EMAIL', 'khamel@khamel.com')
-            result = table('players').select('*').eq('is_active', True).neq('email', admin_email).order('rank').execute()
+            result = table('players').select('*').eq('is_active', True).neq('email', admin_email).order('total_games', desc=True, nulls='last').execute()
 
             if result.data:
                 players = result.data
