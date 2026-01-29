@@ -473,8 +473,8 @@ class handler(BaseHTTPRequestHandler):
                 # Send availability check to all players (including paused - they need to know to reactivate!)
                 from api.supabase_http import table
 
-                # Get all players (Players only, not Social Butterflies, NOT admins) - active AND paused
-                players = table('players').select('email, name').eq('membership_tier', 'player').eq('is_admin', False).execute()
+                # Get all players with 'player' tier (excludes 'social_butterfly' and 'admin' tiers)
+                players = table('players').select('email, name').eq('membership_tier', 'player').execute()
 
                 if not players.data:
                     self._send_success({"message": "No active players to email", "sent": 0})
@@ -505,8 +505,8 @@ class handler(BaseHTTPRequestHandler):
                 from api.supabase_http import table
 
                 # All players (including paused - they need to know to reactivate!)
-                # Players only, not Social Butterflies, NOT admins
-                players = table('players').select('email, name').eq('membership_tier', 'player').eq('is_admin', False).execute()
+                # Players with 'player' tier only (excludes 'social_butterfly' and 'admin' tiers)
+                players = table('players').select('email, name').eq('membership_tier', 'player').execute()
 
                 if not players.data:
                     self._send_success({"message": "No players to email", "sent": 0})
@@ -537,8 +537,8 @@ class handler(BaseHTTPRequestHandler):
                 # Send availability check ONLY to paused players (catch-up for those who missed it)
                 from api.supabase_http import table
 
-                # Get paused players only (Players tier, is_active=false, NOT admins)
-                players = table('players').select('email, name').eq('is_active', False).eq('membership_tier', 'player').eq('is_admin', False).execute()
+                # Get paused players with 'player' tier only (excludes 'social_butterfly' and 'admin' tiers)
+                players = table('players').select('email, name').eq('is_active', False).eq('membership_tier', 'player').execute()
 
                 if not players.data:
                     self._send_success({"message": "No paused players to email", "sent": 0})
