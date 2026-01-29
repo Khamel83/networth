@@ -98,8 +98,8 @@ Automated Emails (GitHub Actions)
 |-------|---------|---------|-------|
 | Welcome | Signup via `/join` | Welcome to Net Worth Tennis! | Shows $35 or $45 based on tier |
 | Match Assignment | Pairing generation | {Player1}, meet {Player2} - You're matched for {Month}! | Players only |
-| Availability Check | Cron (27th) | Quick check: are you playing next month? | Players only |
-| Final Reminder | Cron (last day) | Last call: update your playing status | Players only |
+| Availability Check | Cron (27th) | Quick check: are you playing next month? | All Players (active + paused), not Social Butterflies |
+| Final Reminder | Cron (last day) | Last call: update your playing status | All Players (active + paused), not Social Butterflies |
 | Mid-Month Reminder | Cron (15th) | Friendly reminder to play your {Month} match | |
 | Sit-Out Confirmation | Player pauses | You're sitting out {Month} | |
 | Rejoin Confirmation | Player rejoins | Welcome back! You're in for {Month} | |
@@ -113,10 +113,11 @@ players
   - id, email, name, phone, skill_level
   - rank, total_games, matches_played
   - is_active (true for new signups, no approval needed)
+  - is_admin (boolean - league admins like Ashley, Natalie, Khamel)
   - unavailable_until (pause feature)
   - avail_weekday_early/day/late, avail_weekend_early/day/late
   - favorite_players, avatar_url
-  - membership_tier (player | social_butterfly)
+  - membership_tier (player | social_butterfly | admin)
   - has_paid (boolean, for admin payment tracking)
 
 matches
@@ -299,6 +300,12 @@ players.map((player, index) => {
 ```
 The API returns players ordered by `total_games DESC NULLS LAST`, so position IS the rank.
 
+### 9. Paused Players Never Get Reactivation Reminders
+**Symptom:** Players who pause never receive availability emails, so they have no way to know they need to reactivate
+**Cause:** Email queries filtered by `is_active = true`, excluding paused players
+**Fix:** Include all Players (active + paused) in availability emails, but filter by `membership_tier = 'player'` to exclude admins and Social Butterflies
+**Note:** Use `membership_tier = 'admin'` for non-playing admins (like Khamel) so they're excluded from automated emails
+
 ---
 
 ## Abstractable Patterns for Future Projects
@@ -379,3 +386,5 @@ if (response.status === 401) {
 - **Fixed NULL ranks at top of rankings** - Removed JS sort by rank, compute rank from array position instead
 - **Fixed doubled scores** - Added unique index `idx_unique_match_per_period` to prevent duplicate match inserts
 - **Admin: update_games action** - New API action to manually correct player total_games values
+- **Fixed paused player email exclusion** - Availability emails now go to ALL Players (active + paused) so they know to reactivate
+- **Admin tier exclusion** - Changed Khamel from 'player' to 'admin' tier; emails now filter by membership_tier to exclude non-playing admins
