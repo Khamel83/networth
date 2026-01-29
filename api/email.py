@@ -470,11 +470,11 @@ class handler(BaseHTTPRequestHandler):
                     self._send_error(500, result.get('error'))
 
             elif action == 'send_availability_check':
-                # Send availability check to all active players
+                # Send availability check to all players (including paused - they need to know to reactivate!)
                 from api.supabase_http import table
 
-                # Get all active players (Players only, not Social Butterflies)
-                players = table('players').select('email, name').eq('is_active', True).eq('membership_tier', 'player').execute()
+                # Get all players (Players only, not Social Butterflies) - active AND paused
+                players = table('players').select('email, name').eq('membership_tier', 'player').execute()
 
                 if not players.data:
                     self._send_success({"message": "No active players to email", "sent": 0})
@@ -504,11 +504,12 @@ class handler(BaseHTTPRequestHandler):
             elif action == 'send_final_reminder':
                 from api.supabase_http import table
 
+                # All players (including paused - they need to know to reactivate!)
                 # Players only, not Social Butterflies
-                players = table('players').select('email, name').eq('is_active', True).eq('membership_tier', 'player').execute()
+                players = table('players').select('email, name').eq('membership_tier', 'player').execute()
 
                 if not players.data:
-                    self._send_success({"message": "No active players to email", "sent": 0})
+                    self._send_success({"message": "No players to email", "sent": 0})
                     return
 
                 import time
@@ -528,6 +529,38 @@ class handler(BaseHTTPRequestHandler):
 
                 self._send_success({
                     "message": f"Sent final reminder to {sent} players",
+                    "sent": sent,
+                    "errors": errors if errors else None
+                })
+
+            elif action == 'send_availability_check_paused_only':
+                # Send availability check ONLY to paused players (catch-up for those who missed it)
+                from api.supabase_http import table
+
+                # Get paused players only (Players tier, is_active=false)
+                players = table('players').select('email, name').eq('is_active', False).eq('membership_tier', 'player').execute()
+
+                if not players.data:
+                    self._send_success({"message": "No paused players to email", "sent": 0})
+                    return
+
+                import time
+                html = get_availability_check_email_html()
+                sent = 0
+                errors = []
+
+                for i, player in enumerate(players.data):
+                    # Rate limit: Resend allows 2 req/sec
+                    if i > 0:
+                        time.sleep(0.6)
+                    result = send_email(player['email'], "Quick check: are you playing next month?", html)
+                    if result['success']:
+                        sent += 1
+                    else:
+                        errors.append(f"{player['email']}: {result.get('error')}")
+
+                self._send_success({
+                    "message": f"Sent availability check to {sent} paused players",
                     "sent": sent,
                     "errors": errors if errors else None
                 })
