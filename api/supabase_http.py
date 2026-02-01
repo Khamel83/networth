@@ -228,3 +228,4 @@ class Result:
 def table(table_name: str) -> Table:
     """Get a table client"""
     return Table(table_name)
+# Deploy test 1769982882
