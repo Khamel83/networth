@@ -16,6 +16,7 @@ from http.server import BaseHTTPRequestHandler
 import json
 import os
 from datetime import datetime, date
+from urllib.parse import parse_qs, urlparse
 import random
 
 
@@ -403,7 +404,6 @@ class handler(BaseHTTPRequestHandler):
         """Get pairings - current month or all pending matches"""
         try:
             from api.supabase_http import table
-            from urllib.parse import parse_qs, urlparse
 
             # Parse query params
             parsed = urlparse(self.path)
