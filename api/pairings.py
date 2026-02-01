@@ -16,7 +16,6 @@ from http.server import BaseHTTPRequestHandler
 import json
 import os
 from datetime import datetime, date
-from urllib.parse import parse_qs, urlparse
 import random
 
 
@@ -401,29 +400,17 @@ class handler(BaseHTTPRequestHandler):
         self.end_headers()
 
     def do_GET(self):
-        """Get pairings - current month or all pending matches"""
+        """Get current month's pairings"""
         try:
             from api.supabase_http import table
 
-            # Parse query params
-            parsed = urlparse(self.path)
-            params = parse_qs(parsed.query)
-            include_all = params.get('include_all', ['false'])[0].lower() == 'true'
-
             current_month = datetime.now().strftime('%B %Y')
 
-            # Get match assignments
-            if include_all:
-                # Get ALL assignments, filter for non-completed in Python
-                response = table('match_assignments').select('*').execute()
-                # Filter out completed matches
-                response.data = [m for m in response.data if m.get('status') != 'completed']
-            else:
-                # Get only current month's pairings
-                response = table('match_assignments')\
-                    .select('*')\
-                    .eq('period_label', current_month)\
-                    .execute()
+            # Get match assignments (without complex joins for simplicity)
+            response = table('match_assignments')\
+                .select('*')\
+                .eq('period_label', current_month)\
+                .execute()
 
             if response.data:
                 # Get player IDs to look up player details
@@ -449,15 +436,14 @@ class handler(BaseHTTPRequestHandler):
                 self._send_success({
                     'period': current_month,
                     'pairings': pairings_with_availability,
-                    'count': len(response.data),
-                    'include_all': include_all
+                    'count': len(response.data)
                 })
             else:
                 self._send_success({
                     'period': current_month,
                     'pairings': [],
                     'count': 0,
-                    'include_all': include_all
+                    'demo': True
                 })
 
         except Exception as e:
