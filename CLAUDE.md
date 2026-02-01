@@ -388,3 +388,9 @@ if (response.status === 401) {
 - **Admin: update_games action** - New API action to manually correct player total_games values
 - **Fixed paused player email exclusion** - Availability emails now go to ALL Players (active + paused) so they know to reactivate
 - **Admin tier exclusion** - Changed Khamel from 'player' to 'admin' tier; emails now filter by membership_tier to exclude non-playing admins
+
+<!--
+  ONE-SHOT Heartbeat Metadata
+  oneshot:last-check: 2026-02-01
+  oneshot:machine: instance-first
+-->
