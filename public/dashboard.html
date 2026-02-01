@@ -1081,7 +1081,7 @@
             <section class="section" id="outstanding-section">
                 <div class="section-card">
                     <h2 class="section-title">Report Score</h2>
-                    <p class="score-section-help">Enter your match scores below. If you played a match but don't see it listed, contact us.</p>
+                    <p class="score-section-help">Enter your match scores below. Shows all unplayed matches.</p>
                     <div id="outstanding-matches">
                         <p class="empty-state">Loading...</p>
                     </div>
@@ -1906,7 +1906,7 @@
             }
 
             try {
-                const response = await fetch('/api/pairings?include_all=true', {
+                const response = await fetch('/api/pending-matches', {
                     headers: { 'Authorization': `Bearer ${player.email}` }
                 });
                 const data = await response.json();
@@ -2006,7 +2006,7 @@
             try {
                 const [historyRes, pairingsRes] = await Promise.all([
                     fetch('/api/matches', { headers: { 'Authorization': `Bearer ${player.email}` } }),
-                    fetch('/api/pairings?include_all=true', { headers: { 'Authorization': `Bearer ${player.email}` } })
+                    fetch('/api/pending-matches', { headers: { 'Authorization': `Bearer ${player.email}` } })
                 ]);
 
                 const historyData = await historyRes.json();
