@@ -103,6 +103,11 @@ class SelectBuilder:
         self.single_result = True
         return self
 
+    def or_(self, filter_str: str) -> 'SelectBuilder':
+        """Add OR filter - accepts Supabase filter string like 'column1.eq.value1,column2.eq.value2'"""
+        self.filters.append(('or', 'or', filter_str))
+        return self
+
     def execute(self) -> 'Result':
         """Execute the query"""
         url = _build_url(self.table_name)
@@ -112,7 +117,9 @@ class SelectBuilder:
 
         # Add filters
         for column, operator, value in self.filters:
-            if operator == 'eq':
+            if operator == 'or':
+                params['or'] = value
+            elif operator == 'eq':
                 params[f'{column}'] = f'eq.{value}'
             elif operator == 'neq':
                 params[f'{column}'] = f'neq.{value}'
