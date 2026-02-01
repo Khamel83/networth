@@ -152,8 +152,16 @@ jobs:
 
           echo "::notice::Pairings created: $PAIRINGS, Emails sent: $EMAILS"
 
+          # Fail if API returned failure
           if [ "$SUCCESS" != "true" ]; then
             echo "::error::API returned failure: $RESPONSE"
+            exit 1
+          fi
+
+          # Fail if no pairings were created (this should never happen on the 1st)
+          if [ "$PAIRINGS" -eq 0 ]; then
+            echo "::error::No pairings were created! This is unexpected on the 1st of the month."
+            echo "::error::Response was: $RESPONSE"
             exit 1
           fi
 
