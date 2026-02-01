@@ -371,7 +371,7 @@ if (response.status === 401) {
 ## Recent Changes Log
 
 ### January 2026
-- Switched from Gmail SMTP to Resend for email delivery
+- Password reset flow: Players can request reset via email link (/reset-password?token=...)
 - Fixed magic link redirect loop (removed reload, set variables directly)
 - Added email and phone display on player profile pages
 - Fixed availability key mismatch between API response formats

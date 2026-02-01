@@ -39,7 +39,32 @@ on:
           - health_check
 
 jobs:
+  # Gate-check: Skip execution on days 28-30 when not the actual last day
+  # This saves GitHub Actions minutes by not running unnecessary workflow jobs
+  gate-check:
+    runs-on: ubuntu-latest
+    outputs:
+      should_run: ${{ steps.check.outputs.should_run }}
+    steps:
+      - name: Check if today is last day
+        id: check
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            # Always allow manual triggers
+            echo "should_run=true" >> $GITHUB_OUTPUT
+          else
+            LAST_DAY=$(date -d "$(date +%Y-%m-01) +1 month -1 day" +%d)
+            TODAY=$(date +%d)
+            if [ "$TODAY" = "$LAST_DAY" ] || [ "$TODAY" = "27" ] || [ "$TODAY" = "1" ] || [ "$TODAY" = "15" ]; then
+              echo "should_run=true" >> $GITHUB_OUTPUT
+            else
+              echo "should_run=false" >> $GITHUB_OUTPUT
+            fi
+          fi
+
   determine-action:
+    needs: gate-check
+    if: needs.gate-check.outputs.should_run == 'true'
     runs-on: ubuntu-latest
     outputs:
       action: ${{ steps.set-action.outputs.action }}
@@ -86,8 +111,8 @@ jobs:
           fi
 
   monthly-availability:
-    needs: determine-action
-    if: needs.determine-action.outputs.action == 'monthly_availability'
+    needs: [gate-check, determine-action]
+    if: needs.gate-check.outputs.should_run == 'true' && needs.determine-action.outputs.action == 'monthly_availability'
     runs-on: ubuntu-latest
     steps:
       - name: Log action
@@ -112,8 +137,8 @@ jobs:
           fi
 
   final-availability:
-    needs: determine-action
-    if: needs.determine-action.outputs.action == 'final_availability'
+    needs: [gate-check, determine-action]
+    if: needs.gate-check.outputs.should_run == 'true' && needs.determine-action.outputs.action == 'final_availability'
     runs-on: ubuntu-latest
     steps:
       - name: Log action
@@ -138,10 +163,20 @@ jobs:
           fi
 
   generate-pairings:
-    needs: determine-action
-    if: needs.determine-action.outputs.action == 'generate_pairings'
+    needs: [gate-check, determine-action]
+    if: needs.gate-check.outputs.should_run == 'true' && needs.determine-action.outputs.action == 'generate_pairings'
     runs-on: ubuntu-latest
     steps:
+      - name: Notify admins of failure
+        if: failure()
+        run: |
+          curl -sL -X POST "${{ secrets.SITE_URL }}/api/email" \
+            -H "Content-Type: application-json" \
+            -d '{
+              "action": "send_admin_alert",
+              "subject": "🚨 Net Worth: Pairing Generation Failed",
+              "message": "Pairing generation failed during scheduled run. Self-healing will attempt recovery at 12pm PT.\n\nWorkflow: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            }'
       - name: Log action
         run: |
           echo "Running: GENERATE PAIRINGS (with retry logic)"
@@ -191,8 +226,8 @@ jobs:
           fi
 
   mid-month-reminder:
-    needs: determine-action
-    if: needs.determine-action.outputs.action == 'mid_month_reminder'
+    needs: [gate-check, determine-action]
+    if: needs.gate-check.outputs.should_run == 'true' && needs.determine-action.outputs.action == 'mid_month_reminder'
     runs-on: ubuntu-latest
     steps:
       - name: Log action
@@ -217,10 +252,20 @@ jobs:
           fi
 
   health-check:
-    needs: determine-action
-    if: needs.determine-action.outputs.action == 'health_check'
+    needs: [gate-check, determine-action]
+    if: needs.gate-check.outputs.should_run == 'true' && needs.determine-action.outputs.action == 'health_check'
     runs-on: ubuntu-latest
     steps:
+      - name: Notify admins of failure
+        if: failure()
+        run: |
+          curl -sL -X POST "${{ secrets.SITE_URL }}/api/email" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "action": "send_admin_alert",
+              "subject": "🚨 Net Worth: Health Check Failed",
+              "message": "Self-healing failed to recover pairings. Manual intervention required.\n\nWorkflow: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            }'
       - name: Log action
         run: |
           echo "Running: HEALTH CHECK (self-healing backup)"
