@@ -4,6 +4,7 @@
 # - 27th of month at 9am PT: Monthly availability reminder
 # - Last day of month at 9am PT: Final availability reminder
 # - 1st of month at 9am PT: Generate pairings (emails sent automatically)
+# - 1st of month at 12pm PT: Health check (self-healing if pairings failed)
 # - 15th of month at 9am PT: Mid-month match reminder
 #
 # Note: Emails are sent via Resend (noreply@networthtennis.com)
@@ -19,6 +20,8 @@ on:
     - cron: '0 17 28-31 * *'
     # 1st of month at 9am PT (5pm UTC) - Generate pairings
     - cron: '0 17 1 * *'
+    # 1st of month at 12pm PT (8pm UTC) - Health check / self-healing backup
+    - cron: '0 20 1 * *'
     # 15th of month at 9am PT (5pm UTC) - Mid-month match reminder
     - cron: '0 17 15 * *'
   workflow_dispatch:
@@ -33,6 +36,7 @@ on:
           - monthly_availability
           - final_availability
           - mid_month_reminder
+          - health_check
 
 jobs:
   determine-action:
@@ -49,6 +53,7 @@ jobs:
             echo "is_last_day=false" >> $GITHUB_OUTPUT
           else
             DAY=$(date +%d)
+            HOUR=$(date +%H | sed 's/^0//')  # Remove leading zero
             MONTH=$(date +%m)
             YEAR=$(date +%Y)
 
@@ -62,8 +67,14 @@ jobs:
               echo "action=final_availability" >> $GITHUB_OUTPUT
               echo "is_last_day=true" >> $GITHUB_OUTPUT
             elif [ "$DAY" = "1" ]; then
-              echo "action=generate_pairings" >> $GITHUB_OUTPUT
-              echo "is_last_day=false" >> $GITHUB_OUTPUT
+              # On the 1st, check hour to distinguish main run (9am/17UTC) from health check (12pm/20UTC)
+              if [ "$HOUR" -ge 19 ]; then
+                echo "action=health_check" >> $GITHUB_OUTPUT
+                echo "is_last_day=false" >> $GITHUB_OUTPUT
+              else
+                echo "action=generate_pairings" >> $GITHUB_OUTPUT
+                echo "is_last_day=false" >> $GITHUB_OUTPUT
+              fi
             elif [ "$DAY" = "15" ]; then
               echo "action=mid_month_reminder" >> $GITHUB_OUTPUT
               echo "is_last_day=false" >> $GITHUB_OUTPUT
@@ -133,35 +144,49 @@ jobs:
     steps:
       - name: Log action
         run: |
-          echo "Running: GENERATE PAIRINGS"
+          echo "Running: GENERATE PAIRINGS (with retry logic)"
           echo "This will:"
           echo "  1. Generate new pairings for this month"
-          echo "  2. Send match assignment emails to all paired players (automatic)"
+          echo "  2. Send match assignment emails to all paired players"
+          echo "  3. Retry up to 3 times if it fails"
 
-      - name: Generate pairings and send emails
+      - name: Generate pairings and send emails (with retry)
         run: |
-          RESPONSE=$(curl -sL --post301 --post302 --post303 \
-            -X POST "${{ secrets.SITE_URL }}/api/pairings" \
-            -H "Content-Type: application/json" \
-            -d '{}')
-          echo "Response: $RESPONSE"
+          MAX_RETRIES=3
+          RETRY_COUNT=0
+          SUCCESS=false
 
-          SUCCESS=$(echo "$RESPONSE" | jq -r '.success')
-          PAIRINGS=$(echo "$RESPONSE" | jq -r '.pairings_created // 0')
-          EMAILS=$(echo "$RESPONSE" | jq -r '.emails_sent // 0')
+          while [ $RETRY_COUNT -lt $MAX_RETRIES ] && [ "$SUCCESS" = "false" ]; do
+            RETRY_COUNT=$((RETRY_COUNT + 1))
+            echo "Attempt $RETRY_COUNT of $MAX_RETRIES..."
 
-          echo "::notice::Pairings created: $PAIRINGS, Emails sent: $EMAILS"
+            # Wait before retry (exponential backoff: 10s, 30s, 90s)
+            if [ $RETRY_COUNT -gt 1 ]; then
+              WAIT_TIME=$((10 * (3 ** (RETRY_COUNT - 2))))
+              echo "Waiting ${WAIT_TIME}s before retry..."
+              sleep $WAIT_TIME
+            fi
 
-          # Fail if API returned failure
-          if [ "$SUCCESS" != "true" ]; then
-            echo "::error::API returned failure: $RESPONSE"
-            exit 1
-          fi
+            RESPONSE=$(curl -sL --post301 --post302 --post303 \
+              -X POST "${{ secrets.SITE_URL }}/api/pairings" \
+              -H "Content-Type: application/json" \
+              -d '{}')
+            echo "Response: $RESPONSE"
 
-          # Fail if no pairings were created (this should never happen on the 1st)
-          if [ "$PAIRINGS" -eq 0 ]; then
-            echo "::error::No pairings were created! This is unexpected on the 1st of the month."
-            echo "::error::Response was: $RESPONSE"
+            API_SUCCESS=$(echo "$RESPONSE" | jq -r '.success // false')
+            PAIRINGS=$(echo "$RESPONSE" | jq -r '.pairings_created // 0')
+            EMAILS=$(echo "$RESPONSE" | jq -r '.emails_sent // 0')
+
+            if [ "$API_SUCCESS" = "true" ] && [ "$PAIRINGS" -gt 0 ]; then
+              SUCCESS=true
+              echo "::notice::SUCCESS! Pairings created: $PAIRINGS, Emails sent: $EMAILS"
+            else
+              echo "::warning::Attempt $RETRY_COUNT failed. API success: $API_SUCCESS, Pairings: $PAIRINGS"
+            fi
+          done
+
+          if [ "$SUCCESS" = "false" ]; then
+            echo "::error::All retry attempts failed. Health check will run at 12pm PT to recover."
             exit 1
           fi
 
@@ -189,4 +214,69 @@ jobs:
           if [ "$(echo "$RESPONSE" | jq -r '.success')" != "true" ]; then
             echo "::error::API returned failure: $RESPONSE"
             exit 1
+          fi
+
+  health-check:
+    needs: determine-action
+    if: needs.determine-action.outputs.action == 'health_check'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Log action
+        run: |
+          echo "Running: HEALTH CHECK (self-healing backup)"
+          echo "This checks if pairings were created and retries if needed"
+
+      - name: Check pairings and regenerate if missing
+        run: |
+          MONTH=$(date -d "$YEAR-$MONTH-01" +%B)
+          YEAR=$(date +%Y)
+          PERIOD="$MONTH $YEAR"
+
+          # Check if pairings exist for this month
+          CHECK_RESPONSE=$(curl -sL "${{ secrets.SITE_URL }}/api/pairings")
+          EXISTING_COUNT=$(echo "$CHECK_RESPONSE" | jq -r '.count // 0')
+
+          echo "::notice::Current pairings for $PERIOD: $EXISTING_COUNT"
+
+          if [ "$EXISTING_COUNT" -eq 0 ]; then
+            echo "::warning::No pairings found! Attempting recovery..."
+
+            # Try to generate pairings with retry
+            MAX_RETRIES=3
+            RETRY_COUNT=0
+            SUCCESS=false
+
+            while [ $RETRY_COUNT -lt $MAX_RETRIES ] && [ "$SUCCESS" = "false" ]; do
+              RETRY_COUNT=$((RETRY_COUNT + 1))
+              echo "Recovery attempt $RETRY_COUNT of $MAX_RETRIES..."
+
+              if [ $RETRY_COUNT -gt 1 ]; then
+                WAIT_TIME=$((10 * (3 ** (RETRY_COUNT - 2))))
+                echo "Waiting ${WAIT_TIME}s before retry..."
+                sleep $WAIT_TIME
+              fi
+
+              RESPONSE=$(curl -sL --post301 --post302 --post303 \
+                -X POST "${{ secrets.SITE_URL }}/api/pairings" \
+                -H "Content-Type: application/json" \
+                -d '{}')
+
+              API_SUCCESS=$(echo "$RESPONSE" | jq -r '.success // false')
+              PAIRINGS=$(echo "$RESPONSE" | jq -r '.pairings_created // 0')
+              EMAILS=$(echo "$RESPONSE" | jq -r '.emails_sent // 0')
+
+              if [ "$API_SUCCESS" = "true" ] && [ "$PAIRINGS" -gt 0 ]; then
+                SUCCESS=true
+                echo "::notice::RECOVERY SUCCESSFUL! Pairings created: $PAIRINGS, Emails sent: $EMAILS"
+              else
+                echo "::warning::Recovery attempt $RETRY_COUNT failed"
+              fi
+            done
+
+            if [ "$SUCCESS" = "false" ]; then
+              echo "::error::Health check failed to recover. Manual intervention required!"
+              exit 1
+            fi
+          else
+            echo "::notice::Pairings already exist. No action needed."
           fi
