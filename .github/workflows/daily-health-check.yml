@@ -160,7 +160,7 @@ jobs:
             echo "📅 Tomorrow (16th): Mid-month match reminders"
           fi
 
-      - name: Send daily success report
+      - name: Send reminder alert (last day of month only)
         if: success()
         run: |
           DAY=$(date +%d)
@@ -168,20 +168,16 @@ jobs:
           YEAR=$(date +%Y)
           LAST_DAY=$(date -d "$YEAR-$MONTH-01 +1 month -1 day" +%d)
 
-          MESSAGE="All systems operational. API endpoints responding, emails configured, workflows valid."
-
-          # Add upcoming events to message
+          # Only send email on last day of month (remind about pairings tomorrow)
           if [ "$DAY" = "$LAST_DAY" ]; then
-            MESSAGE="$MESSAGE\n\n⚠️ REMINDER: Pairings generate TOMORROW (1st)"
+            curl -sL -X POST "${{ secrets.SITE_URL }}/api/email" \
+              -H "Content-Type: application/json" \
+              -d '{
+                "action": "send_admin_alert",
+                "subject": "⚠️ Reminder: Pairings Tomorrow",
+                "message": "Daily health check passed. Pairings will generate tomorrow (1st of month). Make sure players have updated availability."
+              }'
           fi
-
-          curl -sL -X POST "${{ secrets.SITE_URL }}/api/email" \
-            -H "Content-Type: application/json" \
-            -d "{
-              \"action\": \"send_admin_alert\",
-              \"subject\": \"✅ Daily Health Check Passed\",
-              \"message\": \"$MESSAGE\n\nWorkflow: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"
-            }" || echo "Email notification failed (non-critical)"
 
       - name: Send failure alert
         if: failure()
