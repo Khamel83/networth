@@ -417,7 +417,7 @@ class handler(BaseHTTPRequestHandler):
 
             if include_all:
                 # Get ALL pending match assignments (not just current month)
-                query = query.not('status', 'completed')
+                query = query.neq('status', 'completed')
             else:
                 # Get only current month's pairings
                 query = query.eq('period_label', current_month)
