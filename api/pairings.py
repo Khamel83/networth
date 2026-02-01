@@ -464,7 +464,7 @@ class handler(BaseHTTPRequestHandler):
             # 1. Get all active Players (exclude Social Butterflies and admin)
             admin_email = os.environ.get('ADMIN_EMAIL', 'khamel@khamel.com')
             players_resp = table('players')\
-                .select('id, name, email, skill_level, rank, is_active, unavailable_until, membership_tier, rms_score, rms_band, avail_weekday_early, avail_weekday_day, avail_weekday_late, avail_weekend_early, avail_weekend_day, avail_weekend_late, available_morning, available_afternoon, available_evening')\
+                .select('id, name, email, phone, skill_level, rank, is_active, unavailable_until, membership_tier, rms_score, rms_band, avail_weekday_early, avail_weekday_day, avail_weekday_late, avail_weekend_early, avail_weekend_day, avail_weekend_late, available_morning, available_afternoon, available_evening')\
                 .eq('is_active', True)\
                 .neq('membership_tier', 'social_butterfly')\
                 .neq('email', admin_email)\
