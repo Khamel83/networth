@@ -168,10 +168,10 @@
         statusEl.innerHTML = '<span style="color: #666;">Sending report...</span>';
 
         try {
-            const response = await fetch('/api/report_issue', {
+            const response = await fetch('/api/system', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
+                body: JSON.stringify({ action: 'report_issue', ...data })
             });
 
             const result = await response.json();

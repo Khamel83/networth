@@ -78,12 +78,30 @@ class TestEmailAPI:
             mock_handler.send_response.assert_called_with(200)
 
 
-class TestReportIssueAPI:
-    """Test report_issue endpoint functionality"""
+class TestSystemAPI:
+    """Test system endpoint functionality (health check + report issue)"""
 
-    def test_report_issue_endpoint_requires_message(self):
-        """POST /api/report_issue should require message field"""
-        from api.report_issue import handler
+    def test_system_health_returns_ok(self):
+        """GET /api/system should return healthy status"""
+        from api.system import handler
+        import io
+
+        mock_request = Mock()
+        mock_handler = handler(mock_request, None, None)
+
+        mock_handler.send_response = Mock()
+        mock_handler.send_header = Mock()
+        mock_handler.end_headers = Mock()
+        mock_handler.wfile = Mock()
+
+        mock_handler.do_GET()
+
+        # Verify success response
+        mock_handler.send_response.assert_called_with(200)
+
+    def test_report_issue_requires_message(self):
+        """POST /api/system with report_issue should require message field"""
+        from api.system import handler
         import io
 
         mock_request = Mock()
@@ -96,6 +114,7 @@ class TestReportIssueAPI:
 
         # Missing message
         body = json.dumps({
+            'action': 'report_issue',
             'reporter_email': 'test@test.com',
             'page_path': '/test'
         }).encode()
@@ -104,15 +123,15 @@ class TestReportIssueAPI:
         mock_handler.headers.get = Mock(return_value=str(len(body)))
         mock_handler.rfile = io.BytesIO(body)
 
-        with patch('api.report_issue.resend'):
+        with patch('api.system.resend'):
             mock_handler.do_POST()
 
             # Should return 400 error
             mock_handler.send_response.assert_called_with(400)
 
     def test_report_issue_accepts_valid_report(self):
-        """POST /api/report_issue should accept valid report"""
-        from api.report_issue import handler
+        """POST /api/system with report_issue should accept valid report"""
+        from api.system import handler
         import io
 
         mock_request = Mock()
@@ -124,6 +143,7 @@ class TestReportIssueAPI:
         mock_handler.wfile = Mock()
 
         body = json.dumps({
+            'action': 'report_issue',
             'reporter_email': 'test@test.com',
             'reporter_name': 'Test User',
             'page_path': '/dashboard',
@@ -134,8 +154,8 @@ class TestReportIssueAPI:
         mock_handler.headers.get = Mock(return_value=str(len(body)))
         mock_handler.rfile = io.BytesIO(body)
 
-        with patch('api.report_issue.table') as mock_table, \
-             patch('api.report_issue.resend') as mock_resend:
+        with patch('api.system.table') as mock_table, \
+             patch('api.system.resend') as mock_resend:
 
             mock_table.return_value.select.return_value.eq.return_value.execute.return_value.data = [
                 {'email': 'admin@test.com'}
@@ -149,28 +169,6 @@ class TestReportIssueAPI:
             mock_handler.send_response.assert_called_with(200)
 
 
-class TestHealthAPI:
-    """Test health endpoint functionality"""
-
-    def test_health_endpoint_returns_ok(self):
-        """GET /api/health should return healthy status"""
-        # Import health module
-        spec = __import__('api.health', fromlist=['handler'])
-        handler_class = getattr(spec, 'handler', None)
-
-        if handler_class:
-            mock_request = Mock()
-            mock_handler = handler_class(mock_request, None, None)
-
-            mock_handler.send_response = Mock()
-            mock_handler.send_header = Mock()
-            mock_handler.end_headers = Mock()
-            mock_handler.wfile = Mock()
-
-            mock_handler.do_GET()
-
-            # Verify success response
-            mock_handler.send_response.assert_called_with(200)
 
 
 class TestSupabaseHTTP:
@@ -390,7 +388,7 @@ def test_imports():
     """Test that all API modules are importable"""
     modules = [
         'api.email',
-        'api.report_issue',
+        'api.system',
         'api.supabase_http',
     ]
 

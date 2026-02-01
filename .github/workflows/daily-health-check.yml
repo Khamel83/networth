@@ -53,7 +53,7 @@ jobs:
           check("Admin", f"{SITE_URL}/admin")
 
           # Check API endpoints
-          check("Health API", f"{SITE_URL}/api/health")
+          check("System API (health)", f"{SITE_URL}/api/system")
           check("Email API status", f"{SITE_URL}/api/email")
 
           # Check report-issue script exists on homepage
@@ -99,7 +99,7 @@ jobs:
 
       - name: Check API count not exceeded
         run: |
-          COUNT=$(ls api/*.py 2>/dev/null | grep -v __pycache__ | grep -v supabase_http | grep -v migrate-passwords | wc -l)
+          COUNT=$(ls api/*.py 2>/dev/null | grep -v __pycache__ | grep -v supabase_http | wc -l)
           echo "API functions: $COUNT / 12"
           if [ $COUNT -gt 12 ]; then
               echo "✗ Exceeds Vercel limit"

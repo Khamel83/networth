@@ -149,8 +149,8 @@ If it says "not_configured", the Gmail password is missing:
 
 **Check database is working:**
 ```
-Visit: https://networthtennis.com/api/health
-Expected: {"status": "ok"}
+Visit: https://networthtennis.com/api/system
+Expected: {"status": "healthy"}
 ```
 
 ### Players Can't Log In

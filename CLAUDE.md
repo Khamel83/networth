@@ -29,7 +29,7 @@ Players self-register via join page → immediately active → can log in right 
 - `api/admin.py` - Admin dashboard API (approve/reject/pause players, payment tracking)
 - `api/auth.py` - Magic link authentication via Supabase Auth
 - `api/profile.py` - Profile viewing and updates (includes auto-save for availability)
-- `api/report_issue.py` - User bug reports (sends email to admins)
+- `api/system.py` - Health check and user bug reports (consolidated endpoint)
 - `.github/workflows/biweekly-emails.yml` - Scheduled email automation
 - `.github/workflows/daily-health-check.yml` - Daily health check with email alerts
 - `.github/workflows/tests.yml` - CI/CD test runner
@@ -238,14 +238,15 @@ checkbox.addEventListener('change', async () => {
 
 ### Hobby plan limit: 12 serverless functions max
 
-Current count: 12 (AT LIMIT - cannot add more without removing one)
+Current count: 10 (2 slots available for future features)
 ```
-api/admin.py           api/auth.py            api/email.py
-api/health.py          api/join.py            api/matches.py
-api/migrate-passwords.py   api/pairings.py    api/players.py
-api/profile.py         api/report_issue.py    api/upload.py
+api/admin.py      api/auth.py       api/email.py
+api/join.py       api/matches.py    api/pairings.py
+api/players.py    api/profile.py    api/system.py
+api/upload.py
 ```
 Note: `api/supabase_http.py` is a utility module (no handler), doesn't count.
+Consolidated: `health.py` + `report_issue.py` → `system.py`; deleted `migrate-passwords.py`
 
 ---
 

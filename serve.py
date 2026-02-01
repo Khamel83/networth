@@ -121,7 +121,19 @@ class NetWorthHandler(http.server.SimpleHTTPRequestHandler):
             else:
                 self.send_error(405)
 
+        elif path == '/api/system':
+            from datetime import datetime
+            self.send_json({
+                "status": "healthy",
+                "service": "networth-tennis",
+                "version": "2.0.0",
+                "timestamp": datetime.utcnow().isoformat(),
+                "database": {"status": "local-demo"},
+                "environment": "development"
+            })
+
         elif path == '/api/health':
+            # Legacy redirect - still support old endpoint
             from datetime import datetime
             self.send_json({
                 "status": "healthy",
@@ -157,7 +169,7 @@ def main():
 ║                                                               ║
 ║   Local:     http://localhost:{PORT}                            ║
 ║   Network:   http://0.0.0.0:{PORT}                              ║
-║   Health:    http://localhost:{PORT}/api/health                 ║
+║   Health:    http://localhost:{PORT}/api/system                 ║
 ║                                                               ║
 ║   Demo Login: any email + password 'tennis123'                ║
 ║                                                               ║
