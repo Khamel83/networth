@@ -1,0 +1,195 @@
+name: Daily Health Check
+
+on:
+  schedule:
+    # Every day at 9am PT (4pm UTC)
+    - cron: '0 16 * * *'
+  workflow_dispatch:
+
+jobs:
+  comprehensive-test:
+    name: Test Everything
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --quiet pytest requests
+
+      - name: Test API endpoints (live)
+        run: |
+          python3 << 'EOF'
+          import requests
+          import sys
+
+          SITE_URL = "https://networthtennis.com"
+          errors = []
+          checks = []
+
+          def check(name, url, expected_status=200):
+              try:
+                  r = requests.get(url, timeout=10)
+                  if r.status_code == expected_status:
+                      checks.append(f"✓ {name}")
+                  else:
+                      errors.append(f"✗ {name}: got {r.status_code}, expected {expected_status}")
+              except Exception as e:
+                  errors.append(f"✗ {name}: {str(e)}")
+
+          # Check all main pages load
+          check("Homepage", f"{SITE_URL}/")
+          check("Login", f"{SITE_URL}/login")
+          check("Join", f"{SITE_URL}/join")
+          check("Dashboard", f"{SITE_URL}/dashboard")
+          check("Rules", f"{SITE_URL}/rules")
+          check("Admin", f"{SITE_URL}/admin")
+
+          # Check API endpoints
+          check("Health API", f"{SITE_URL}/api/health")
+          check("Email API status", f"{SITE_URL}/api/email")
+
+          # Check report-issue script exists on homepage
+          try:
+              r = requests.get(f"{SITE_URL}/", timeout=10)
+              if "report-issue.js" in r.text:
+                  checks.append("✓ Report Issue button included")
+              else:
+                  errors.append("✗ Report Issue button missing")
+          except Exception as e:
+              errors.append(f"✗ Report Issue check: {e}")
+
+          # Print results
+          print("\n=== HEALTH CHECK RESULTS ===\n")
+          for c in checks:
+              print(c)
+          if errors:
+              print("\n=== ERRORS ===\n")
+              for e in errors:
+                  print(e)
+              sys.exit(1)
+          else:
+              print("\n✓ ALL CHECKS PASSED\n")
+          EOF
+
+      - name: Verify email templates compile
+        run: |
+          python3 << 'EOF'
+          import sys
+          sys.path.insert(0, 'api')
+          from email import (
+              get_welcome_email_html,
+              get_match_assignment_email_html,
+              get_admin_alert_email_html
+          )
+
+          # Test each template generates HTML
+          assert "Welcome" in get_welcome_email_html("Test", "player")
+          assert "Player One" in get_match_assignment_email_html("P1", "P2", "March 2025")
+          assert "Admin Alert" in get_admin_alert_email_html("Test", "Msg")
+          print("✓ All email templates generate valid HTML")
+          EOF
+
+      - name: Check API count not exceeded
+        run: |
+          COUNT=$(ls api/*.py 2>/dev/null | grep -v __pycache__ | grep -v supabase_http | grep -v migrate-passwords | wc -l)
+          echo "API functions: $COUNT / 12"
+          if [ $COUNT -gt 12 ]; then
+              echo "✗ Exceeds Vercel limit"
+              exit 1
+          fi
+          echo "✓ Within Vercel limit"
+
+      - name: Check workflow files are valid
+        run: |
+          for wf in .github/workflows/*.yml; do
+            python3 -c "import yaml; yaml.safe_load(open('$wf'))" && echo "✓ $(basename $wf)"
+          done
+
+      - name: Check report-issue button on all pages
+        run: |
+          MISSING=0
+          for file in public/*.html; do
+            if ! grep -q "report-issue.js" "$file"; then
+              echo "✗ $file missing report-issue.js"
+              MISSING=$((MISSING + 1))
+            fi
+          done
+          if [ $MISSING -eq 0 ]; then
+            echo "✓ All pages have report-issue button"
+          else
+            exit 1
+          fi
+
+      - name: Verify password reset flow exists
+        run: |
+          [ -f "public/reset-password.html" ] && echo "✓ reset-password.html exists"
+          grep -q "reset_password" api/auth.py && echo "✓ auth.py has reset_password"
+          grep -q "request_password_reset" api/auth.py && echo "✓ auth.py has request_password_reset"
+
+      - name: Check what's coming up
+        run: |
+          DAY=$(date +%d)
+          MONTH=$(date +%m)
+          YEAR=$(date +%Y)
+          LAST_DAY=$(date -d "$YEAR-$MONTH-01 +1 month -1 day" +%d)
+
+          echo "=== UPCOMING EVENTS ==="
+
+          if [ "$DAY" = "27" ]; then
+            echo "📅 Tomorrow (28th): Check if last day - final availability reminder may run"
+          fi
+
+          if [ "$DAY" = "$LAST_DAY" ]; then
+            echo "📅 TOMORROW: Pairing generation (1st of month)"
+          fi
+
+          if [ "$DAY" = "1" ]; then
+            echo "📅 Today: Pairing generation ran this morning"
+            echo "📅 Today at 12pm PT: Health check / self-healing"
+          fi
+
+          if [ "$DAY" = "15" ]; then
+            echo "📅 Tomorrow (16th): Mid-month match reminders"
+          fi
+
+      - name: Send daily success report
+        if: success()
+        run: |
+          DAY=$(date +%d)
+          MONTH=$(date +%m)
+          YEAR=$(date +%Y)
+          LAST_DAY=$(date -d "$YEAR-$MONTH-01 +1 month -1 day" +%d)
+
+          MESSAGE="All systems operational. API endpoints responding, emails configured, workflows valid."
+
+          # Add upcoming events to message
+          if [ "$DAY" = "$LAST_DAY" ]; then
+            MESSAGE="$MESSAGE\n\n⚠️ REMINDER: Pairings generate TOMORROW (1st)"
+          fi
+
+          curl -sL -X POST "${{ secrets.SITE_URL }}/api/email" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"action\": \"send_admin_alert\",
+              \"subject\": \"✅ Daily Health Check Passed\",
+              \"message\": \"$MESSAGE\n\nWorkflow: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"
+            }" || echo "Email notification failed (non-critical)"
+
+      - name: Send failure alert
+        if: failure()
+        run: |
+          curl -sL -X POST "${{ secrets.SITE_URL }}/api/email" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "action": "send_admin_alert",
+              "subject": "🚨 Daily Health Check Failed",
+              "message": "Automated daily health check detected failures. Check workflow: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            }'
