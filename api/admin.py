@@ -131,9 +131,11 @@ class handler(BaseHTTPRequestHandler):
                 self._send_success({'players': players})
 
             elif action == 'pairings':
-                # Get current month's pairings with player details
+                # Get pairings with player details
+                # Supports optional 'period' query param (e.g., "January 2026")
+                # Default: current month
                 today = date.today()
-                period = today.strftime('%B %Y')
+                period = params.get('period', [today.strftime('%B %Y')])[0]
 
                 result = table('match_assignments')\
                     .select('*')\
