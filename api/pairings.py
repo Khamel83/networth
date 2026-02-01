@@ -412,13 +412,12 @@ class handler(BaseHTTPRequestHandler):
 
             current_month = datetime.now().strftime('%B %Y')
 
-            # Build query - use chained methods like original
+            # Get match assignments
             if include_all:
-                # Get ALL pending match assignments (not just current month)
-                response = table('match_assignments')\
-                    .select('*')\
-                    .neq('status', 'completed')\
-                    .execute()
+                # Get ALL assignments, filter for non-completed in Python
+                response = table('match_assignments').select('*').execute()
+                # Filter out completed matches
+                response.data = [m for m in response.data if m.get('status') != 'completed']
             else:
                 # Get only current month's pairings
                 response = table('match_assignments')\
