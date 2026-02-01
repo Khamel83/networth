@@ -132,9 +132,10 @@ class handler(BaseHTTPRequestHandler):
             player_id = player['id']
 
             # Get all pending match assignments for this player (as player1 OR player2)
+            # Supabase OR filter format: (column1.eq.value1,column2.eq.value2)
             assignments_result = table('match_assignments')\
                 .select('*')\
-                .or_(f'player1_id.eq.{player_id},player2_id.eq.{player_id}')\
+                .or_(f'(player1_id.eq.{player_id},player2_id.eq.{player_id})')\
                 .eq('status', 'pending')\
                 .execute()
 
