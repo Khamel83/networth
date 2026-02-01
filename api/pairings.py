@@ -412,17 +412,19 @@ class handler(BaseHTTPRequestHandler):
 
             current_month = datetime.now().strftime('%B %Y')
 
-            # Build query
-            query = table('match_assignments').select('*')
-
+            # Build query - use chained methods like original
             if include_all:
                 # Get ALL pending match assignments (not just current month)
-                query = query.neq('status', 'completed')
+                response = table('match_assignments')\
+                    .select('*')\
+                    .neq('status', 'completed')\
+                    .execute()
             else:
                 # Get only current month's pairings
-                query = query.eq('period_label', current_month)
-
-            response = query.execute()
+                response = table('match_assignments')\
+                    .select('*')\
+                    .eq('period_label', current_month)\
+                    .execute()
 
             if response.data:
                 # Get player IDs to look up player details
