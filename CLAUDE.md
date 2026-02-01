@@ -24,12 +24,15 @@ Players self-register via join page → immediately active → can log in right 
 
 ### Key files:
 - `api/pairings.py` - Matching algorithm (skill-based), sends match emails
-- `api/email.py` - Resend API sender + 7 email templates
+- `api/email.py` - Resend API sender + 8 email templates (including admin alerts)
 - `api/join.py` - Player registration (handles re-registration of inactive accounts)
 - `api/admin.py` - Admin dashboard API (approve/reject/pause players, payment tracking)
 - `api/auth.py` - Magic link authentication via Supabase Auth
 - `api/profile.py` - Profile viewing and updates (includes auto-save for availability)
+- `api/report_issue.py` - User bug reports (sends email to admins)
 - `.github/workflows/biweekly-emails.yml` - Scheduled email automation
+- `.github/workflows/daily-health-check.yml` - Daily health check with email alerts
+- `.github/workflows/tests.yml` - CI/CD test runner
 
 ---
 
@@ -92,7 +95,7 @@ Automated Emails (GitHub Actions)
 - Better deliverability tracking
 - Free tier: 3,000 emails/month (we use ~100)
 
-### 7 Email Templates (in api/email.py)
+### 8 Email Templates (in api/email.py)
 
 | Email | Trigger | Subject | Notes |
 |-------|---------|---------|-------|
@@ -103,6 +106,7 @@ Automated Emails (GitHub Actions)
 | Mid-Month Reminder | Cron (15th) | Friendly reminder to play your {Month} match | |
 | Sit-Out Confirmation | Player pauses | You're sitting out {Month} | |
 | Rejoin Confirmation | Player rejoins | Welcome back! You're in for {Month} | |
+| Admin Alert | Health check failure / Bug report | Net Worth Alert: {subject} | Goes to admin emails |
 
 ---
 
@@ -234,12 +238,14 @@ checkbox.addEventListener('change', async () => {
 
 ### Hobby plan limit: 12 serverless functions max
 
-Current count: 11 (1 slot available)
+Current count: 12 (AT LIMIT - cannot add more without removing one)
 ```
-api/admin.py      api/auth.py       api/email.py      api/health.py
-api/join.py       api/matches.py    api/migrate.py    api/pairings.py
-api/players.py    api/profile.py    api/upload.py
+api/admin.py           api/auth.py            api/email.py
+api/health.py          api/join.py            api/matches.py
+api/migrate-passwords.py   api/pairings.py    api/players.py
+api/profile.py         api/report_issue.py    api/upload.py
 ```
+Note: `api/supabase_http.py` is a utility module (no handler), doesn't count.
 
 ---
 
@@ -388,6 +394,13 @@ if (response.status === 401) {
 - **Admin: update_games action** - New API action to manually correct player total_games values
 - **Fixed paused player email exclusion** - Availability emails now go to ALL Players (active + paused) so they know to reactivate
 - **Admin tier exclusion** - Changed Khamel from 'player' to 'admin' tier; emails now filter by membership_tier to exclude non-playing admins
+
+### February 2026
+- **Report Issue feature** - Users can report bugs from dashboard via `/api/report_issue` (sends admin alert email)
+- **Daily health check** - GitHub Actions workflow runs daily health check with email alerts on failure
+- **CI/CD tests** - Added `tests.yml` workflow for automated testing
+- **Admin alert emails** - New email template for system alerts (8 templates total)
+- **Documentation audit** - Updated CLAUDE.md to match actual codebase (12 functions at limit)
 
 <!--
   ONE-SHOT Heartbeat Metadata
