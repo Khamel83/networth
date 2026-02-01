@@ -45,12 +45,19 @@ class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         try:
             from api.supabase_http import table
+            from urllib.parse import parse_qs, urlparse
 
-            # Get matches (without joins for simplicity - client can look up players)
+            # Parse query params
+            parsed = urlparse(self.path)
+            params = parse_qs(parsed.query)
+            action = params.get('action', ['history'])[0]
+
+            if action == 'outstanding':
+                # Get pending matches for the authenticated player
+                return self._get_outstanding_matches()
+
+            # Default: return match history (completed matches)
             response = table('matches').select('*').execute()
-
-            # For backward compatibility, we could enrich with player data here
-            # But for simplicity, returning matches as-is
             matches = response.data
             source = "supabase"
 
@@ -62,6 +69,125 @@ class handler(BaseHTTPRequestHandler):
                 "success": True,
                 "matches": matches,
                 "source": source
+            }).encode())
+
+    def _get_outstanding_matches(self):
+        """Get pending match assignments for the authenticated player"""
+        try:
+            from api.supabase_http import table
+            from urllib.parse import parse_qs, urlparse
+
+            # Parse query params
+            parsed = urlparse(self.path)
+            params = parse_qs(parsed.query)
+
+            # Get player email from auth header
+            auth_header = self.headers.get('Authorization', '')
+            player_email = None
+            if auth_header.startswith('Bearer '):
+                token_or_email = auth_header.replace('Bearer ', '')
+                if '@' in token_or_email:
+                    player_email = token_or_email.lower()
+
+            if not player_email:
+                player_email = params.get('player_email', [''])[0].lower()
+
+            if not player_email:
+                self.send_response(401)
+                self.send_header('Content-Type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    "success": False,
+                    "error": "Authentication required"
+                }).encode())
+                return
+
+            # Get player by email
+            player_result = table('players').select('id, name, email').eq('email', player_email).single().execute()
+            if not player_result.data:
+                self.send_response(404)
+                self.send_header('Content-Type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    "success": False,
+                    "error": "Player not found"
+                }).encode())
+                return
+
+            player = player_result.data[0] if isinstance(player_result.data, list) else player_result.data
+            player_id = player['id']
+
+            # Get all pending match assignments for this player (as player1 OR player2)
+            assignments_result = table('match_assignments')\
+                .select('*')\
+                .or_(f'player1_id.eq.{player_id},player2_id.eq.{player_id}')\
+                .eq('status', 'pending')\
+                .execute()
+
+            # Get all players for enrichment
+            players_result = table('players').select('id, name, email, phone, skill_level').execute()
+            players_map = {p['id']: p for p in players_result.data}
+
+            # Enrich assignments with opponent info
+            outstanding = []
+            for assignment in assignments_result.data:
+                p1_id = assignment.get('player1_id')
+                p2_id = assignment.get('player2_id')
+
+                # Determine which is the opponent
+                if player_id == p1_id:
+                    opponent_id = p2_id
+                else:
+                    opponent_id = p1_id
+
+                opponent = players_map.get(opponent_id, {})
+
+                # Get opponent availability for display
+                opponent_avail = []
+                if opponent.get('avail_weekday_early'):
+                    opponent_avail.append('Weekday mornings')
+                if opponent.get('avail_weekday_day'):
+                    opponent_avail.append('Weekday afternoons')
+                if opponent.get('avail_weekday_late'):
+                    opponent_avail.append('Weekday evenings')
+                if opponent.get('avail_weekend_early'):
+                    opponent_avail.append('Weekend mornings')
+                if opponent.get('avail_weekend_day'):
+                    opponent_avail.append('Weekend afternoons')
+                if opponent.get('avail_weekend_late'):
+                    opponent_avail.append('Weekend evenings')
+
+                outstanding.append({
+                    'id': assignment.get('id'),
+                    'period_label': assignment.get('period_label'),
+                    'opponent_id': opponent.get('id'),
+                    'opponent_name': opponent.get('name', 'Unknown'),
+                    'opponent_email': opponent.get('email', ''),
+                    'opponent_phone': opponent.get('phone', ''),
+                    'opponent_availability': ', '.join(opponent_avail) if opponent_avail else 'Not specified',
+                    'status': assignment.get('status', 'pending')
+                })
+
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            self.wfile.write(json.dumps({
+                "success": True,
+                "matches": outstanding,
+                "count": len(outstanding)
+            }).encode())
+
+        except Exception as e:
+            self.send_response(500)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            self.wfile.write(json.dumps({
+                "success": False,
+                "error": str(e)
             }).encode())
 
         except Exception as e:

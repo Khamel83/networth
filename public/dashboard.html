@@ -1888,7 +1888,7 @@
             }
         }
 
-        // Load outstanding matches
+        // Load outstanding matches (pending matches from any month)
         async function loadOutstandingMatches() {
             if (isTestMode) {
                 document.getElementById('outstanding-matches').innerHTML = `
@@ -1906,75 +1906,23 @@
             }
 
             try {
-                // Get current and previous month pairings to show all pending matches
-                const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-                const currentMonth = new Date().getMonth();
-                const currentYear = new Date().getFullYear();
+                const res = await fetch(`/api/matches?action=outstanding`, {
+                    headers: { 'Authorization': `Bearer ${player.email}` }
+                });
 
-                // Fetch current month and previous month's pairings
-                const currentPeriod = `${months[currentMonth]} ${currentYear}`;
-                const prevMonthIndex = currentMonth === 0 ? 11 : currentMonth - 1;
-                const prevYear = currentMonth === 0 ? currentYear - 1 : currentYear;
-                const prevPeriod = `${months[prevMonthIndex]} ${prevYear}`;
-
-                const [currentRes, prevRes] = await Promise.all([
-                    fetch(`/api/admin?action=pairings&period=${encodeURIComponent(currentPeriod)}`, {
-                        headers: { 'Authorization': `Bearer ${player.email}` }
-                    }),
-                    fetch(`/api/admin?action=pairings&period=${encodeURIComponent(prevPeriod)}`, {
-                        headers: { 'Authorization': `Bearer ${player.email}` }
-                    })
-                ]);
-
-                const currentData = await currentRes.json();
-                const prevData = await prevRes.json();
-
+                const data = await res.json();
                 const container = document.getElementById('outstanding-matches');
 
-                // Combine all pending matches from both months
-                const allPairings = [
-                    ...(currentData.success ? currentData.pairings || [] : []),
-                    ...(prevData.success ? prevData.pairings || [] : [])
-                ];
-
-                if (allPairings.length === 0) {
+                if (!data.success || !data.matches || data.matches.length === 0) {
                     container.innerHTML = '<p class="empty-state">No pending matches. Check back after pairings are announced on the 1st!</p>';
                     return;
                 }
 
-                const myMatches = allPairings.filter(p => {
-                    const isPlayer1 = p.player1_id === player.id;
-                    const isPlayer2 = p.player2_id === player.id;
-                    return (isPlayer1 || isPlayer2) && p.status !== 'completed';
-                });
-
-                if (myMatches.length === 0) {
-                    container.innerHTML = '<p class="empty-state">All caught up! No outstanding matches.</p>';
-                    return;
-                }
-
-                container.innerHTML = myMatches.map(match => {
-                    const isPlayer1 = match.player1_id === player.id;
-                    const opponent = isPlayer1 ?
-                        { id: match.player2_id, name: match.player2_name, email: match.player2_email, phone: match.player2_phone } :
-                        { id: match.player1_id, name: match.player1_name, email: match.player1_email, phone: match.player1_phone };
-
-                    const opponentName = opponent.name || 'Unknown';
-                    const opponentPhone = opponent.phone ? `<br>Phone: <a href="tel:${opponent.phone}">${opponent.phone}</a>` : '';
-                    const opponentEmail = opponent.email ? `<br>Email: <a href="mailto:${opponent.email}">${opponent.email}</a>` : '';
-
-                    // Build availability string from new fields
-                    let availStr = '';
-                    const avails = [];
-                    if (opponent?.avail_weekday_early) avails.push('Weekdays before 9am');
-                    if (opponent?.avail_weekday_day) avails.push('Weekdays 9-5');
-                    if (opponent?.avail_weekday_late) avails.push('Weekdays after 5pm');
-                    if (opponent?.avail_weekend_early) avails.push('Weekends before 9am');
-                    if (opponent?.avail_weekend_day) avails.push('Weekends 9-5');
-                    if (opponent?.avail_weekend_late) avails.push('Weekends after 5pm');
-                    if (avails.length > 0) {
-                        availStr = `Their availability: ${avails.join(', ')}`;
-                    }
+                container.innerHTML = data.matches.map(match => {
+                    const opponentName = match.opponent_name || 'Unknown';
+                    const opponentPhone = match.opponent_phone ? `<br>Phone: <a href="tel:${match.opponent_phone}">${match.opponent_phone}</a>` : '';
+                    const opponentEmail = match.opponent_email ? `<br>Email: <a href="mailto:${match.opponent_email}">${match.opponent_email}</a>` : '';
+                    const availStr = match.opponent_availability ? `Their availability: ${match.opponent_availability}` : '';
 
                     return `
                         <div class="card card-highlight">
@@ -1988,7 +1936,7 @@
                             <button class="btn" onclick='openScoreModal(${JSON.stringify({
                                 id: match.id,
                                 period_label: match.period_label,
-                                opponent: { id: opponent.id, name: opponentName }
+                                opponent: { id: match.opponent_id, name: opponentName }
                             })})'>Report Score</button>
                         </div>
                     `;
