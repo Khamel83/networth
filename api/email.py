@@ -404,6 +404,38 @@ def get_rejoin_confirmation_email_html(player_name, eligible_month):
     """
 
 
+def get_admin_alert_email_html(subject, message):
+    """Alert email sent to admins on system failures"""
+    return f"""
+    <!DOCTYPE html>
+    <html>
+    <head>{get_email_styles()}</head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>Admin Alert</h1>
+            </div>
+            <div class="content">
+                <p><strong>Subject:</strong> {subject}</p>
+
+                <p><strong>Message:</strong></p>
+                <p style="white-space: pre-wrap;">{message}</p>
+
+                <p style="margin-top: 30px;">Please log in to the admin dashboard to investigate.</p>
+
+                <p style="text-align: center; margin: 30px 0;">
+                    <a href="https://networthtennis.com/admin" class="button">Admin Dashboard</a>
+                </p>
+            </div>
+            <div class="footer">
+                <p>Net Worth Tennis - System Alert</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+
+
 # =============================================================================
 # API HANDLER
 # =============================================================================
@@ -681,6 +713,35 @@ class handler(BaseHTTPRequestHandler):
                     "sent": sent,
                     "errors": errors if errors else None
                 })
+
+            elif action == 'send_admin_alert':
+                # Send alert email to admins
+                subject = data.get('subject', 'Admin Alert')
+                message = data.get('message', '')
+
+                if not message:
+                    self._send_error(400, "Missing 'message' field")
+                    return
+
+                # Get admin emails
+                from api.supabase_http import table
+                admins = table('players').select('email').eq('is_admin', True).execute()
+
+                if not admins.data:
+                    self._send_success({"message": "No admins to notify"})
+                    return
+
+                admin_emails = [a['email'] for a in admins.data]
+                html = get_admin_alert_email_html(subject, message)
+                result = send_email(admin_emails, f"Net Worth Alert: {subject}", html)
+
+                if result['success']:
+                    self._send_success({
+                        "message": f"Alert sent to {len(admin_emails)} admins",
+                        "sent_to": admin_emails
+                    })
+                else:
+                    self._send_error(500, result.get('error'))
 
             else:
                 self._send_error(400, f"Unknown action: {action}")

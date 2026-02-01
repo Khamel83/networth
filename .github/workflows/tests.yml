@@ -1,0 +1,226 @@
+name: Automated Tests
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+  workflow_dispatch:
+
+jobs:
+  api-tests:
+    name: API Unit Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Cache pip packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest pytest-cov
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      - name: Set test environment variables
+        run: |
+          echo "SUPABASE_URL=https://test.supabase.co" >> $GITHUB_ENV
+          echo "SUPABASE_ANON_KEY=test-key" >> $GITHUB_ENV
+          echo "RESEND_API_KEY=test-key" >> $GITHUB_ENV
+          echo "SITE_URL=https://networthtennis.com" >> $GITHUB_ENV
+
+      - name: Run API tests
+        run: |
+          pytest tests/test_api.py -v --tb=short --cov=api --cov-report=term --cov-report=xml
+
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v4
+        if: always()
+        with:
+          file: ./coverage.xml
+          fail_ci_if_error: false
+          verbose: true
+
+  syntax-check:
+    name: Python Syntax Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Check Python syntax
+        run: |
+          python -m py_compile api/*.py
+          echo "All Python files have valid syntax"
+
+      - name: Check for common issues
+        run: |
+          python -m pip install flake8
+          # Stop the build if there are Python syntax errors or undefined names
+          flake8 api/ --count --select=E9,F63,F7,F82 --show-source --statistics
+          echo "No critical syntax errors found"
+
+  javascript-check:
+    name: JavaScript Syntax Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check JavaScript syntax
+        run: |
+          for file in public/js/*.js; do
+            if [ -f "$file" ]; then
+              node -c "$file" && echo "✓ $file"
+            fi
+          done
+          echo "All JavaScript files have valid syntax"
+
+  html-validation:
+    name: HTML Structure Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check all HTML files include report-issue script
+        run: |
+          missing=0
+          for file in public/*.html; do
+            if grep -q 'report-issue.js' "$file"; then
+              echo "✓ $file includes report-issue.js"
+            else
+              echo "✗ $file MISSING report-issue.js"
+              missing=$((missing + 1))
+            fi
+          done
+
+          if [ $missing -gt 0 ]; then
+            echo "::error::$missing HTML files missing report-issue.js script"
+            exit 1
+          fi
+
+      - name: Check for required script tags
+        run: |
+          # Check that report-issue.js exists
+          if [ -f "public/js/report-issue.js" ]; then
+            echo "✓ public/js/report-issue.js exists"
+          else
+            echo "::error::public/js/report-issue.js not found"
+            exit 1
+          fi
+
+      - name: Check password reset page exists
+        run: |
+          if [ -f "public/reset-password.html" ]; then
+            echo "✓ public/reset-password.html exists"
+
+            # Verify it contains password reset form elements
+            if grep -qi 'password' public/reset-password.html && \
+               grep -qi 'reset' public/reset-password.html; then
+              echo "✓ reset-password.html contains password reset form"
+            else
+              echo "::warning::reset-password.html may be missing password reset form"
+            fi
+          else
+            echo "::error::public/reset-password.html not found"
+            exit 1
+          fi
+
+      - name: Check auth.py has password reset actions
+        run: |
+          if grep -q 'reset_password' api/auth.py && \
+             grep -q 'request_password_reset' api/auth.py; then
+            echo "✓ api/auth.py has password reset actions"
+          else
+            echo "::error::api/auth.py missing password reset actions"
+            exit 1
+          fi
+
+  workflow-validation:
+    name: Workflow Syntax Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install act (for local workflow testing)
+        run: |
+          curl -s https://raw.githubusercontent.com/nektos/act/master/install.sh | bash
+          echo "act installed for local testing (optional)"
+
+      - name: Validate GitHub Actions workflow syntax
+        run: |
+          # Check that workflow files are valid YAML
+          for workflow in .github/workflows/*.yml; do
+            python -c "import yaml; yaml.safe_load(open('$workflow'))"
+            echo "✓ $workflow is valid YAML"
+          done
+
+      - name: Check workflow has gate-check job
+        run: |
+          if grep -q "gate-check:" .github/workflows/biweekly-emails.yml; then
+            echo "✓ gate-check job found in biweekly-emails.yml"
+          else
+            echo "::error::gate-check job not found in biweekly-emails.yml"
+            exit 1
+          fi
+
+      - name: Check workflow has admin failure notifications
+        run: |
+          if grep -q "send_admin_alert" .github/workflows/biweekly-emails.yml; then
+            echo "✓ Admin alert notifications found in workflow"
+          else
+            echo "::error::Admin alert notifications not found"
+            exit 1
+          fi
+
+  api-function-count:
+    name: API Function Count Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Count API functions
+        run: |
+          # Count actual serverless functions (excluding utility modules)
+          functions=$(ls api/*.py | grep -v -E "(supabase_http|migrate-passwords)" | wc -l)
+
+          echo "Current API functions: $functions"
+          echo "Vercel Hobby limit: 12"
+
+          if [ $functions -gt 12 ]; then
+            echo "::error::API function count ($functions) exceeds Vercel Hobby limit (12)"
+            exit 1
+          else
+            echo "✓ Within Vercel Hobby limit"
+          fi
+
+          # List all functions for visibility
+          echo ""
+          echo "API Functions:"
+          ls -1 api/*.py | grep -v -E "(supabase_http|migrate-passwords)"
