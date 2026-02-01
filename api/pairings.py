@@ -400,17 +400,29 @@ class handler(BaseHTTPRequestHandler):
         self.end_headers()
 
     def do_GET(self):
-        """Get current month's pairings"""
+        """Get pairings - current month or all pending matches"""
         try:
             from api.supabase_http import table
+            from urllib.parse import parse_qs, urlparse
+
+            # Parse query params
+            parsed = urlparse(self.path)
+            params = parse_qs(parsed.query)
+            include_all = params.get('include_all', ['false'])[0].lower() == 'true'
 
             current_month = datetime.now().strftime('%B %Y')
 
-            # Get match assignments (without complex joins for simplicity)
-            response = table('match_assignments')\
-                .select('*')\
-                .eq('period_label', current_month)\
-                .execute()
+            # Build query
+            query = table('match_assignments').select('*')
+
+            if include_all:
+                # Get ALL pending match assignments (not just current month)
+                query = query.not('status', 'completed')
+            else:
+                # Get only current month's pairings
+                query = query.eq('period_label', current_month)
+
+            response = query.execute()
 
             if response.data:
                 # Get player IDs to look up player details
@@ -436,14 +448,15 @@ class handler(BaseHTTPRequestHandler):
                 self._send_success({
                     'period': current_month,
                     'pairings': pairings_with_availability,
-                    'count': len(response.data)
+                    'count': len(response.data),
+                    'include_all': include_all
                 })
             else:
                 self._send_success({
                     'period': current_month,
                     'pairings': [],
                     'count': 0,
-                    'demo': True
+                    'include_all': include_all
                 })
 
         except Exception as e:

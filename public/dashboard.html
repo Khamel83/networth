@@ -1077,10 +1077,11 @@
                 </div>
             </section>
 
-            <!-- This Month's Match -->
+            <!-- Report Score -->
             <section class="section" id="outstanding-section">
                 <div class="section-card">
-                    <h2 class="section-title">This Month's Match</h2>
+                    <h2 class="section-title">Report Score</h2>
+                    <p class="score-section-help">Enter your match scores below. If you played a match but don't see it listed, contact us.</p>
                     <div id="outstanding-matches">
                         <p class="empty-state">Loading...</p>
                     </div>
@@ -1905,7 +1906,7 @@
             }
 
             try {
-                const response = await fetch('/api/pairings', {
+                const response = await fetch('/api/pairings?include_all=true', {
                     headers: { 'Authorization': `Bearer ${player.email}` }
                 });
                 const data = await response.json();
@@ -1913,7 +1914,7 @@
                 const container = document.getElementById('outstanding-matches');
 
                 if (!data.success || !data.pairings || data.pairings.length === 0) {
-                    container.innerHTML = '<p class="empty-state">No match assigned for this month</p>';
+                    container.innerHTML = '<p class="empty-state">No pending matches. Check back after pairings are announced on the 1st!</p>';
                     return;
                 }
 
@@ -2005,7 +2006,7 @@
             try {
                 const [historyRes, pairingsRes] = await Promise.all([
                     fetch('/api/matches', { headers: { 'Authorization': `Bearer ${player.email}` } }),
-                    fetch('/api/pairings', { headers: { 'Authorization': `Bearer ${player.email}` } })
+                    fetch('/api/pairings?include_all=true', { headers: { 'Authorization': `Bearer ${player.email}` } })
                 ]);
 
                 const historyData = await historyRes.json();
