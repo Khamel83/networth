@@ -16,7 +16,7 @@ East Side LA Women's Tennis - Monthly pairings, games-won ranking.
 ## Tech Stack
 
 - **Frontend**: Static HTML/CSS/JS on Vercel
-- **Backend**: Vercel Python serverless functions (11/12 used on Hobby plan)
+- **Backend**: Vercel Python serverless functions (12/12 on Hobby plan - at limit)
 - **Database**: Supabase (PostgreSQL)
 - **Auth**: Magic links + password login
 - **Email**: Resend API (noreply@networthtennis.com)
@@ -36,20 +36,26 @@ networth/
 │   ├── rules.html         # How it works
 │   ├── support.html       # FAQs
 │   └── privacy.html       # Privacy policy
-├── api/                    # Serverless functions (11/12 on Vercel Hobby)
+├── api/                    # Serverless functions (12/12 on Vercel Hobby - at limit)
 │   ├── admin.py           # Admin operations (approve/reject/pause/pairings)
 │   ├── auth.py            # Magic link + password auth
-│   ├── email.py           # Resend API + 7 email templates
+│   ├── email.py           # Resend API + 8 email templates (including admin alerts)
 │   ├── join.py            # Player registration
 │   ├── matches.py         # Match reporting
 │   ├── pairings.py        # Monthly matching algorithm (RMS-based)
 │   ├── players.py         # Player list
 │   ├── profile.py         # Player self-service
 │   ├── health.py          # Health check
-│   ├── migrate.py         # Admin migrations
+│   ├── migrate-passwords.py # Password migration utility
+│   ├── report_issue.py    # User bug reports (sends email to admins)
+│   ├── supabase_http.py   # Supabase REST API client (utility, not a function)
 │   └── upload.py          # Image uploads
 ├── .github/workflows/
-│   └── biweekly-emails.yml # Automated email schedule
+│   ├── biweekly-emails.yml   # Automated email schedule
+│   ├── daily-health-check.yml # Daily health check + alerts
+│   ├── tests.yml             # CI/CD tests
+│   ├── keep-alive.yml        # Prevent function cold starts
+│   └── backup.yml            # Database backup automation
 └── vercel.json            # Routing config
 ```
 
@@ -57,7 +63,7 @@ networth/
 
 Emails are sent via **Resend API** from `noreply@networthtennis.com`.
 
-### 7 Automated Emails
+### 8 Email Templates
 
 | Email | When | Description |
 |-------|------|-------------|
@@ -68,6 +74,7 @@ Emails are sent via **Resend API** from `noreply@networthtennis.com`.
 | Mid-Month Reminder | 15th of month | Don't forget to play your match |
 | Sit-Out Confirmation | Player pauses | You're sitting out this month |
 | Rejoin Confirmation | Player unpauses | Welcome back! |
+| Admin Alert | Health check fail / Bug report | System alerts to admins |
 
 ### Email Schedule (GitHub Actions)
 
