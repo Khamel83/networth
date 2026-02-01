@@ -1906,21 +1906,45 @@
             }
 
             try {
-                const response = await fetch('/api/pending-matches', {
-                    headers: { 'Authorization': `Bearer ${player.email}` }
-                });
-                const data = await response.json();
+                // Get current and previous month pairings to show all pending matches
+                const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+                const currentMonth = new Date().getMonth();
+                const currentYear = new Date().getFullYear();
+
+                // Fetch current month and previous month's pairings
+                const currentPeriod = `${months[currentMonth]} ${currentYear}`;
+                const prevMonthIndex = currentMonth === 0 ? 11 : currentMonth - 1;
+                const prevYear = currentMonth === 0 ? currentYear - 1 : currentYear;
+                const prevPeriod = `${months[prevMonthIndex]} ${prevYear}`;
+
+                const [currentRes, prevRes] = await Promise.all([
+                    fetch(`/api/admin?action=pairings&period=${encodeURIComponent(currentPeriod)}`, {
+                        headers: { 'Authorization': `Bearer ${player.email}` }
+                    }),
+                    fetch(`/api/admin?action=pairings&period=${encodeURIComponent(prevPeriod)}`, {
+                        headers: { 'Authorization': `Bearer ${player.email}` }
+                    })
+                ]);
+
+                const currentData = await currentRes.json();
+                const prevData = await prevRes.json();
 
                 const container = document.getElementById('outstanding-matches');
 
-                if (!data.success || !data.pairings || data.pairings.length === 0) {
+                // Combine all pending matches from both months
+                const allPairings = [
+                    ...(currentData.success ? currentData.pairings || [] : []),
+                    ...(prevData.success ? prevData.pairings || [] : [])
+                ];
+
+                if (allPairings.length === 0) {
                     container.innerHTML = '<p class="empty-state">No pending matches. Check back after pairings are announced on the 1st!</p>';
                     return;
                 }
 
-                const myMatches = data.pairings.filter(p => {
-                    const isPlayer1 = p.player1?.id === player.id || p.player1_id === player.id;
-                    const isPlayer2 = p.player2?.id === player.id || p.player2_id === player.id;
+                const myMatches = allPairings.filter(p => {
+                    const isPlayer1 = p.player1_id === player.id;
+                    const isPlayer2 = p.player2_id === player.id;
                     return (isPlayer1 || isPlayer2) && p.status !== 'completed';
                 });
 
@@ -1930,12 +1954,14 @@
                 }
 
                 container.innerHTML = myMatches.map(match => {
-                    const isPlayer1 = match.player1?.id === player.id || match.player1_id === player.id;
-                    const opponent = isPlayer1 ? match.player2 : match.player1;
+                    const isPlayer1 = match.player1_id === player.id;
+                    const opponent = isPlayer1 ?
+                        { id: match.player2_id, name: match.player2_name, email: match.player2_email, phone: match.player2_phone } :
+                        { id: match.player1_id, name: match.player1_name, email: match.player1_email, phone: match.player1_phone };
 
-                    const opponentName = opponent?.name || 'Unknown';
-                    const opponentPhone = opponent?.phone ? `<br>Phone: <a href="tel:${opponent.phone}">${opponent.phone}</a>` : '';
-                    const opponentEmail = opponent?.email ? `<br>Email: <a href="mailto:${opponent.email}">${opponent.email}</a>` : '';
+                    const opponentName = opponent.name || 'Unknown';
+                    const opponentPhone = opponent.phone ? `<br>Phone: <a href="tel:${opponent.phone}">${opponent.phone}</a>` : '';
+                    const opponentEmail = opponent.email ? `<br>Email: <a href="mailto:${opponent.email}">${opponent.email}</a>` : '';
 
                     // Build availability string from new fields
                     let availStr = '';
@@ -1952,7 +1978,7 @@
 
                     return `
                         <div class="card card-highlight">
-                            <p class="card-title">${match.period_label || data.period}</p>
+                            <p class="card-title">${match.period_label}</p>
                             <p class="opponent-name">${opponentName}</p>
                             <p class="opponent-details">
                                 ${availStr}
@@ -1961,8 +1987,8 @@
                             </p>
                             <button class="btn" onclick='openScoreModal(${JSON.stringify({
                                 id: match.id,
-                                period_label: match.period_label || data.period,
-                                opponent: { id: opponent?.id, name: opponentName }
+                                period_label: match.period_label,
+                                opponent: { id: opponent.id, name: opponentName }
                             })})'>Report Score</button>
                         </div>
                     `;
@@ -2004,13 +2030,32 @@
 
             // Fetch match history and assignments to populate scores
             try {
-                const [historyRes, pairingsRes] = await Promise.all([
-                    fetch('/api/matches', { headers: { 'Authorization': `Bearer ${player.email}` } }),
-                    fetch('/api/pending-matches', { headers: { 'Authorization': `Bearer ${player.email}` } })
+                const historyRes = await fetch('/api/matches', { headers: { 'Authorization': `Bearer ${player.email}` } });
+                const historyData = await historyRes.json();
+
+                // Fetch pending pairings from current and previous month
+                const currentPeriod = `${fullMonths[currentMonth]} ${currentYear}`;
+                const prevMonthIndex = currentMonth === 0 ? 11 : currentMonth - 1;
+                const prevYear = currentMonth === 0 ? currentYear - 1 : currentYear;
+                const prevPeriod = `${fullMonths[prevMonthIndex]} ${prevYear}`;
+
+                const [currentPairingsRes, prevPairingsRes] = await Promise.all([
+                    fetch(`/api/admin?action=pairings&period=${encodeURIComponent(currentPeriod)}`, {
+                        headers: { 'Authorization': `Bearer ${player.email}` }
+                    }),
+                    fetch(`/api/admin?action=pairings&period=${encodeURIComponent(prevPeriod)}`, {
+                        headers: { 'Authorization': `Bearer ${player.email}` }
+                    })
                 ]);
 
-                const historyData = await historyRes.json();
-                const pairingsData = await pairingsRes.json();
+                const currentPairings = await currentPairingsRes.json();
+                const prevPairings = await prevPairingsRes.json();
+
+                // Combine all pending pairings
+                const allPairings = [
+                    ...(currentPairings.success ? currentPairings.pairings || [] : []),
+                    ...(prevPairings.success ? prevPairings.pairings || [] : [])
+                ];
 
                 // Process completed matches
                 if (historyData.success && historyData.matches) {
@@ -2058,18 +2103,28 @@
                     });
                 }
 
-                // Mark current month with pending match
-                if (pairingsData.success && pairingsData.pairings) {
-                    pairingsData.pairings.forEach(pairing => {
-                        const isPlayer1 = pairing.player1?.id === player.id || pairing.player1_id === player.id;
-                        const isPlayer2 = pairing.player2?.id === player.id || pairing.player2_id === player.id;
+                // Mark months with pending matches
+                if (allPairings.length > 0) {
+                    allPairings.forEach(pairing => {
+                        const isPlayer1 = pairing.player1_id === player.id;
+                        const isPlayer2 = pairing.player2_id === player.id;
                         if (!isPlayer1 && !isPlayer2) return;
                         if (pairing.status === 'completed') return;
 
-                        const opponent = isPlayer1 ? pairing.player2 : pairing.player1;
-                        const box = document.getElementById(`month-box-${currentMonth}`);
-                        const scoreEl = document.getElementById(`month-score-${currentMonth}`);
-                        const opponentEl = document.getElementById(`month-opponent-${currentMonth}`);
+                        // Parse period_label to get month index
+                        const parts = pairing.period_label.split(' ');
+                        if (parts.length !== 2) return;
+                        const monthName = parts[0];
+                        const year = parseInt(parts[1]);
+                        if (year !== currentYear) return;
+
+                        const monthIdx = fullMonths.indexOf(monthName);
+                        if (monthIdx === -1) return;
+
+                        const opponentName = isPlayer1 ? pairing.player2_name : pairing.player1_name;
+                        const box = document.getElementById(`month-box-${monthIdx}`);
+                        const scoreEl = document.getElementById(`month-score-${monthIdx}`);
+                        const opponentEl = document.getElementById(`month-opponent-${monthIdx}`);
 
                         if (box && !box.classList.contains('completed')) {
                             box.classList.add('pending');
@@ -2079,8 +2134,8 @@
                                 document.getElementById('outstanding-section').scrollIntoView({ behavior: 'smooth' });
                             };
                             if (scoreEl) scoreEl.textContent = '?';
-                            if (opponentEl && opponent?.name) {
-                                opponentEl.textContent = `vs ${opponent.name.split(' ')[0]}`;
+                            if (opponentEl && opponentName) {
+                                opponentEl.textContent = `vs ${opponentName.split(' ')[0]}`;
                             }
                         }
                     });
