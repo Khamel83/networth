@@ -117,6 +117,8 @@ jobs:
         run: |
           MISSING=0
           for file in public/*.html; do
+            # Skip fallback.html (emergency page, button won't work during outages)
+            [ "$(basename "$file")" = "fallback.html" ] && continue
             if ! grep -q "report-issue.js" "$file"; then
               echo "✗ $file missing report-issue.js"
               MISSING=$((MISSING + 1))
