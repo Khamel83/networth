@@ -94,15 +94,11 @@ class handler(BaseHTTPRequestHandler):
 
         resend.api_key = api_key
 
-        # Get admin emails
-        from api.supabase_http import table
-        admins = table('players').select('email').eq('is_admin', True).execute()
-
-        if not admins.data:
-            self._send_error(500, "No admins configured")
+        # Get sysadmin email only (other league admins don't need technical bug reports)
+        admin_email = os.environ.get('ADMIN_EMAIL')
+        if not admin_email:
+            self._send_error(500, "ADMIN_EMAIL not configured")
             return
-
-        admin_emails = [a['email'] for a in admins.data]
 
         # Build email
         timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S UTC')
@@ -154,10 +150,10 @@ class handler(BaseHTTPRequestHandler):
         </html>
         """
 
-        # Send email to admins
+        # Send email to sysadmin
         params = {
             "from": "Net Worth Tennis <hello@networthtennis.com>",
-            "to": admin_emails,
+            "to": admin_email,
             "subject": f"Issue Report from {reporter_name or 'User'}",
             "html": html,
             "reply_to": reporter_email if reporter_email != 'Anonymous' else 'ashleybrooke.kaufman@gmail.com'
@@ -166,7 +162,7 @@ class handler(BaseHTTPRequestHandler):
         response = resend.Emails.send(params)
 
         self._send_success({
-            "message": "Issue report sent to admins",
+            "message": "Issue report sent to sysadmin",
             "id": response.get('id')
         })
 

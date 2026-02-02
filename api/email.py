@@ -715,7 +715,8 @@ class handler(BaseHTTPRequestHandler):
                 })
 
             elif action == 'send_admin_alert':
-                # Send alert email to admins
+                # Send alert email to sysadmin only (ADMIN_EMAIL env var)
+                # Other league admins (Ashley, Natalie) don't need technical alerts
                 subject = data.get('subject', 'Admin Alert')
                 message = data.get('message', '')
 
@@ -723,22 +724,18 @@ class handler(BaseHTTPRequestHandler):
                     self._send_error(400, "Missing 'message' field")
                     return
 
-                # Get admin emails
-                from api.supabase_http import table
-                admins = table('players').select('email').eq('is_admin', True).execute()
-
-                if not admins.data:
-                    self._send_success({"message": "No admins to notify"})
+                admin_email = os.environ.get('ADMIN_EMAIL')
+                if not admin_email:
+                    self._send_error(500, "ADMIN_EMAIL not configured")
                     return
 
-                admin_emails = [a['email'] for a in admins.data]
                 html = get_admin_alert_email_html(subject, message)
-                result = send_email(admin_emails, f"Net Worth Alert: {subject}", html)
+                result = send_email(admin_email, f"Net Worth Alert: {subject}", html)
 
                 if result['success']:
                     self._send_success({
-                        "message": f"Alert sent to {len(admin_emails)} admins",
-                        "sent_to": admin_emails
+                        "message": "Alert sent to sysadmin",
+                        "sent_to": admin_email
                     })
                 else:
                     self._send_error(500, result.get('error'))

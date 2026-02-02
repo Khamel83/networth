@@ -82,18 +82,18 @@ jobs:
       - name: Verify email templates compile
         run: |
           python3 << 'EOF'
+          import importlib.util
           import sys
-          sys.path.insert(0, 'api')
-          from email import (
-              get_welcome_email_html,
-              get_match_assignment_email_html,
-              get_admin_alert_email_html
-          )
+
+          # Load email.py as a module to avoid stdlib 'email' naming conflict
+          spec = importlib.util.spec_from_file_location("email_templates", "api/email.py")
+          email_module = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(email_module)
 
           # Test each template generates HTML
-          assert "Welcome" in get_welcome_email_html("Test", "player")
-          assert "Player One" in get_match_assignment_email_html("P1", "P2", "March 2025")
-          assert "Admin Alert" in get_admin_alert_email_html("Test", "Msg")
+          assert "Welcome" in email_module.get_welcome_email_html("Test", "player")
+          assert "P1" in email_module.get_match_assignment_email_html("P1", "P2", "March 2025")
+          assert "Admin Alert" in email_module.get_admin_alert_email_html("Test", "Msg")
           print("✓ All email templates generate valid HTML")
           EOF
 
