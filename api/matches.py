@@ -295,14 +295,26 @@ class handler(BaseHTTPRequestHandler):
             }).encode())
 
         except Exception as e:
-            self.send_response(500)
-            self.send_header('Content-Type', 'application/json')
-            self.send_header('Access-Control-Allow-Origin', '*')
-            self.end_headers()
-            self.wfile.write(json.dumps({
-                "success": False,
-                "error": str(e)
-            }).encode())
+            error_msg = str(e)
+            # Detect unique constraint violation (duplicate match for same players/period)
+            if 'idx_unique_match_per_period' in error_msg or '23505' in error_msg or 'duplicate' in error_msg.lower():
+                self.send_response(409)
+                self.send_header('Content-Type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    "success": False,
+                    "error": "A match between these players has already been recorded for this month."
+                }).encode())
+            else:
+                self.send_response(500)
+                self.send_header('Content-Type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    "success": False,
+                    "error": error_msg
+                }).encode())
 
     def _send_demo_response(self, data):
         """Send response when database not available (demo mode)"""

@@ -1283,7 +1283,7 @@
                     </p>
                 </div>
 
-                <button class="btn btn-primary" onclick="submitScore()">Submit Score</button>
+                <button class="btn btn-primary" id="submit-score-btn" onclick="submitScore()">Submit Score</button>
             </div>
         </div>
     </div>
@@ -2255,6 +2255,7 @@
         }
 
         async function submitScore() {
+            const submitBtn = document.getElementById('submit-score-btn');
             const set1Me = document.getElementById('set1-me').value;
             const set1Them = document.getElementById('set1-them').value;
             const set2Me = document.getElementById('set2-me').value;
@@ -2304,6 +2305,10 @@
                 return;
             }
 
+            // Prevent double-click
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Submitting...';
+
             try {
                 const response = await fetch('/api/matches', {
                     method: 'POST',
@@ -2327,6 +2332,9 @@
                 }
             } catch (err) {
                 showMessage(err.message, 'error');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Submit Score';
             }
         }
 
