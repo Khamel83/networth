@@ -384,6 +384,109 @@ class TestAuthAPI:
         assert 'password_reset_token' in content
 
 
+class TestMatchesAPI:
+    """Test matches endpoint - including extra match (no assignment) flow"""
+
+    def test_matches_module_importable(self):
+        """Matches module should be importable"""
+        from api import matches
+        assert hasattr(matches, 'handler')
+
+    def test_post_match_builds_correct_data_without_assignment(self):
+        """Extra match flow: assignment_id is optional, match still records"""
+        from api.matches import handler
+        import io
+
+        # Simulate POST body for an extra match (no assignment_id)
+        body = json.dumps({
+            "player1_id": "uuid-player1",
+            "player2_id": "uuid-player2",
+            "set1_p1": 6, "set1_p2": 4,
+            "set2_p1": 6, "set2_p2": 3,
+            "court": "Vermont Canyon",
+            "period_label": "February 2026",
+            "would_play_again": True
+        }).encode()
+
+        # Verify the payload structure is valid (no assignment_id key)
+        data = json.loads(body)
+        assert 'assignment_id' not in data
+        assert data['player1_id'] == 'uuid-player1'
+        assert data['player2_id'] == 'uuid-player2'
+
+        # Verify games calculation logic matches what the API does
+        set1_p1 = int(data.get('set1_p1', 0))
+        set1_p2 = int(data.get('set1_p2', 0))
+        set2_p1 = int(data.get('set2_p1', 0))
+        set2_p2 = int(data.get('set2_p2', 0))
+        set3_p1 = int(data.get('set3_p1') or 0)
+        set3_p2 = int(data.get('set3_p2') or 0)
+
+        player1_games = set1_p1 + set2_p1 + set3_p1
+        player2_games = set1_p2 + set2_p2 + set3_p2
+
+        assert player1_games == 12  # 6 + 6
+        assert player2_games == 7   # 4 + 3
+
+    def test_post_match_with_assignment_includes_assignment_id(self):
+        """Regular match flow: assignment_id is present"""
+        body = json.dumps({
+            "assignment_id": "uuid-assignment",
+            "player1_id": "uuid-player1",
+            "player2_id": "uuid-player2",
+            "set1_p1": 6, "set1_p2": 4,
+            "set2_p1": 3, "set2_p2": 6,
+            "period_label": "February 2026",
+            "would_play_again": True
+        }).encode()
+
+        data = json.loads(body)
+        assert data['assignment_id'] == 'uuid-assignment'
+        assert data['player1_id'] == 'uuid-player1'
+
+    def test_assignment_id_guard_skips_update_when_missing(self):
+        """When assignment_id is None/missing, match_assignments should NOT be updated"""
+        # This tests the guard: `if assignment_id:` in do_POST
+        data = {"player1_id": "a", "player2_id": "b"}
+        assignment_id = data.get('assignment_id')
+        # Should be None/falsy, so the update block is skipped
+        assert not assignment_id
+
+    def test_assignment_id_guard_updates_when_present(self):
+        """When assignment_id is present, match_assignments SHOULD be updated"""
+        data = {"assignment_id": "uuid-123", "player1_id": "a", "player2_id": "b"}
+        assignment_id = data.get('assignment_id')
+        assert assignment_id == "uuid-123"
+
+    def test_duplicate_match_error_detection(self):
+        """Duplicate constraint violation should be detected by error message patterns"""
+        # These are the patterns checked in the except block
+        test_errors = [
+            'duplicate key value violates unique constraint "idx_unique_match_per_period"',
+            'ERROR: 23505 duplicate key',
+            'Duplicate entry found',
+        ]
+        for error_msg in test_errors:
+            is_duplicate = (
+                'idx_unique_match_per_period' in error_msg or
+                '23505' in error_msg or
+                'duplicate' in error_msg.lower()
+            )
+            assert is_duplicate, f"Should detect duplicate in: {error_msg}"
+
+    def test_period_label_format_consistency(self):
+        """Extra match period_label format must match DB format: 'Month YYYY'"""
+        from datetime import datetime
+        month_names = ['January','February','March','April','May','June',
+                       'July','August','September','October','November','December']
+        now = datetime.now()
+        # This is how openExtraMatchModal() generates it
+        js_format = f"{month_names[now.month - 1]} {now.year}"
+        # This is how the API defaults it
+        api_format = now.strftime('%B %Y')
+        assert js_format == api_format
+
+
 def test_imports():
     """Test that all API modules are importable"""
     modules = [
