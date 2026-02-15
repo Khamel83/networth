@@ -1085,6 +1085,10 @@
                     <div id="outstanding-matches">
                         <p class="empty-state">Loading...</p>
                     </div>
+                    <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.15);">
+                        <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.75rem;">Played someone outside your official pairing? (e.g., filled in for another player)</p>
+                        <button class="btn btn-secondary" onclick="openExtraMatchModal()">Log Extra Match</button>
+                    </div>
                 </div>
             </section>
 
@@ -1217,9 +1221,16 @@
                 <button class="modal-close" onclick="closeScoreModal()">&times;</button>
             </div>
             <div class="modal-body">
-                <p style="margin-bottom: 1.5rem; color: var(--text-muted); font-size: 0.9rem;">
+                <p id="modal-opponent-display" style="margin-bottom: 1.5rem; color: var(--text-muted); font-size: 0.9rem;">
                     vs <strong id="modal-opponent-name" style="color: var(--text-white);"></strong>
                 </p>
+
+                <div id="opponent-picker-group" class="form-group" style="display: none; margin-bottom: 1.5rem;">
+                    <label for="opponent-select">Who did you play?</label>
+                    <select id="opponent-select" style="width: 100%; padding: 0.875rem; background: rgba(255,255,255,0.1); border: 1px solid var(--card-border); border-radius: 12px; color: var(--text-white); font-size: 1rem;">
+                        <option value="">Select opponent...</option>
+                    </select>
+                </div>
 
                 <div class="form-group">
                     <label>Set 1</label>
@@ -1272,7 +1283,7 @@
                     </p>
                 </div>
 
-                <button class="btn btn-primary" onclick="submitScore()">Submit Score</button>
+                <button class="btn btn-primary" id="submit-score-btn" onclick="submitScore()">Submit Score</button>
             </div>
         </div>
     </div>
@@ -2172,6 +2183,9 @@
         // Score Modal
         function openScoreModal(assignment) {
             currentAssignment = assignment;
+            // Show opponent name, hide picker (regular paired match)
+            document.getElementById('modal-opponent-display').style.display = '';
+            document.getElementById('opponent-picker-group').style.display = 'none';
             document.getElementById('modal-opponent-name').textContent = assignment.opponent.name;
             document.getElementById('score-modal').classList.remove('hidden');
             document.getElementById('score-modal').style.display = 'flex';
@@ -2187,9 +2201,61 @@
             document.getElementById('score-modal').classList.add('hidden');
             document.getElementById('score-modal').style.display = 'none';
             currentAssignment = null;
+            // Reset modal to default state
+            document.getElementById('modal-opponent-display').style.display = '';
+            document.getElementById('opponent-picker-group').style.display = 'none';
+        }
+
+        async function openExtraMatchModal() {
+            // Set up modal for extra match (no assignment)
+            const now = new Date();
+            const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+            currentAssignment = {
+                id: null,
+                period_label: `${monthNames[now.getMonth()]} ${now.getFullYear()}`,
+                opponent: { id: null, name: null }
+            };
+
+            // Hide the static opponent name, show the picker
+            document.getElementById('modal-opponent-display').style.display = 'none';
+            document.getElementById('opponent-picker-group').style.display = 'block';
+
+            // Populate opponent dropdown
+            const select = document.getElementById('opponent-select');
+            select.innerHTML = '<option value="">Select opponent...</option>';
+
+            try {
+                const res = await fetch('/api/players', {
+                    headers: { 'Authorization': `Bearer ${player.email}` }
+                });
+                const data = await res.json();
+                if (data.success && data.players) {
+                    data.players
+                        .filter(p => p.id !== player.id)
+                        .sort((a, b) => (a.name || '').localeCompare(b.name || ''))
+                        .forEach(p => {
+                            const opt = document.createElement('option');
+                            opt.value = p.id;
+                            opt.textContent = p.name;
+                            select.appendChild(opt);
+                        });
+                }
+            } catch (err) {
+                console.error('Failed to load players for picker:', err);
+            }
+
+            // Open modal
+            document.getElementById('score-modal').classList.remove('hidden');
+            document.getElementById('score-modal').style.display = 'flex';
+            ['set1-me', 'set1-them', 'set2-me', 'set2-them'].forEach(id => {
+                document.getElementById(id).value = '';
+            });
+            document.getElementById('court-select').value = '';
+            document.querySelector('input[name="would-play-again"][value="true"]').checked = true;
         }
 
         async function submitScore() {
+            const submitBtn = document.getElementById('submit-score-btn');
             const set1Me = document.getElementById('set1-me').value;
             const set1Them = document.getElementById('set1-them').value;
             const set2Me = document.getElementById('set2-me').value;
@@ -2206,10 +2272,19 @@
                 return;
             }
 
+            // For extra matches (no assignment), get opponent from dropdown
+            let opponentId = currentAssignment.opponent.id;
+            if (!currentAssignment.id) {
+                opponentId = document.getElementById('opponent-select').value;
+                if (!opponentId) {
+                    showMessage('Please select an opponent', 'error');
+                    return;
+                }
+            }
+
             const matchData = {
-                assignment_id: currentAssignment.id,
                 player1_id: player.id,
-                player2_id: currentAssignment.opponent.id,
+                player2_id: opponentId,
                 set1_p1: parseInt(set1Me),
                 set1_p2: parseInt(set1Them),
                 set2_p1: parseInt(set2Me),
@@ -2219,11 +2294,20 @@
                 would_play_again: wouldPlayAgain
             };
 
+            // Only include assignment_id if this is a regular paired match
+            if (currentAssignment.id) {
+                matchData.assignment_id = currentAssignment.id;
+            }
+
             if (isTestMode) {
                 showMessage('Score submitted (test mode)', 'success');
                 closeScoreModal();
                 return;
             }
+
+            // Prevent double-click
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Submitting...';
 
             try {
                 const response = await fetch('/api/matches', {
@@ -2248,6 +2332,9 @@
                 }
             } catch (err) {
                 showMessage(err.message, 'error');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Submit Score';
             }
         }
 
