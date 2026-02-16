@@ -1232,6 +1232,12 @@
                     </select>
                 </div>
 
+                <div id="month-picker-group" class="form-group" style="display: none; margin-bottom: 1.5rem;">
+                    <label for="month-select">When did you play?</label>
+                    <select id="month-select" style="width: 100%; padding: 0.875rem; background: rgba(255,255,255,0.1); border: 1px solid var(--card-border); border-radius: 12px; color: var(--text-white); font-size: 1rem;">
+                    </select>
+                </div>
+
                 <div class="form-group">
                     <label>Set 1</label>
                     <div class="score-row">
@@ -2204,21 +2210,39 @@
             // Reset modal to default state
             document.getElementById('modal-opponent-display').style.display = '';
             document.getElementById('opponent-picker-group').style.display = 'none';
+            document.getElementById('month-picker-group').style.display = 'none';
         }
 
         async function openExtraMatchModal() {
             // Set up modal for extra match (no assignment)
             const now = new Date();
             const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+            // Default to current month
+            const currentMonth = `${monthNames[now.getMonth()]} ${now.getFullYear()}`;
             currentAssignment = {
                 id: null,
-                period_label: `${monthNames[now.getMonth()]} ${now.getFullYear()}`,
+                period_label: currentMonth,
                 opponent: { id: null, name: null }
             };
 
-            // Hide the static opponent name, show the picker
+            // Hide the static opponent name, show the pickers
             document.getElementById('modal-opponent-display').style.display = 'none';
             document.getElementById('opponent-picker-group').style.display = 'block';
+            document.getElementById('month-picker-group').style.display = 'block';
+
+            // Populate month dropdown with current + past 6 months
+            const monthSelect = document.getElementById('month-select');
+            monthSelect.innerHTML = '';
+            for (let i = 0; i < 7; i++) {
+                const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                const label = `${monthNames[d.getMonth()]} ${d.getFullYear()}`;
+                const opt = document.createElement('option');
+                opt.value = label;
+                opt.textContent = label;
+                if (i === 0) opt.selected = true;
+                monthSelect.appendChild(opt);
+            }
 
             // Populate opponent dropdown
             const select = document.getElementById('opponent-select');
@@ -2272,14 +2296,17 @@
                 return;
             }
 
-            // For extra matches (no assignment), get opponent from dropdown
+            // For extra matches (no assignment), get opponent and month from dropdowns
             let opponentId = currentAssignment.opponent.id;
+            let periodLabel = currentAssignment.period_label;
             if (!currentAssignment.id) {
                 opponentId = document.getElementById('opponent-select').value;
                 if (!opponentId) {
                     showMessage('Please select an opponent', 'error');
                     return;
                 }
+                // Use selected month for extra matches
+                periodLabel = document.getElementById('month-select').value;
             }
 
             const matchData = {
@@ -2290,7 +2317,7 @@
                 set2_p1: parseInt(set2Me),
                 set2_p2: parseInt(set2Them),
                 court: court || null,
-                period_label: currentAssignment.period_label,
+                period_label: periodLabel,
                 would_play_again: wouldPlayAgain
             };
 

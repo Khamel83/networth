@@ -402,6 +402,9 @@ if (response.status === 401) {
 - **CI/CD tests** - Added `tests.yml` workflow for automated testing
 - **Admin alert emails** - New email template for system alerts (8 templates total)
 - **Documentation audit** - Updated CLAUDE.md to match actual codebase (12 functions at limit)
+- **Extra match month selector** - "Log Extra Match" now lets players select which month the match was played (current + past 6 months)
+- **Match history opponent names** - Fixed "VS. Unknown" by joining matches with players table in API
+- **Profile match history** - Player profiles now show recent match history with opponents and scores
 
 <!--
   ONE-SHOT Heartbeat Metadata

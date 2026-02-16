@@ -53,6 +53,52 @@ def get_next_month_label():
     return next_month.strftime('%B %Y')
 
 
+def get_player_matches(player_id):
+    """Get match history for a player"""
+    from api.supabase_http import table
+
+    try:
+        result = table('matches').select('''
+            *,
+            player1:players!matches_player1_id_fkey(id, name),
+            player2:players!matches_player2_id_fkey(id, name)
+        ''').or_(f'(player1_id.eq.{player_id},player2_id.eq.{player_id})')\
+         .order('created_at', desc=True)\
+         .limit(10)\
+         .execute()
+
+        matches = []
+        for m in result.data:
+            is_player1 = m['player1_id'] == player_id
+            opponent = m['player2'] if is_player1 else m['player1']
+
+            # Format score
+            if m.get('set1_p1') is not None:
+                if is_player1:
+                    score = f"{m['set1_p1']}-{m['set1_p2']}, {m['set2_p1']}-{m['set2_p2']}"
+                    if m.get('set3_p1') is not None:
+                        score += f", {m['set3_p1']}-{m['set3_p2']}"
+                else:
+                    score = f"{m['set1_p2']}-{m['set1_p1']}, {m['set2_p2']}-{m['set2_p1']}"
+                    if m.get('set3_p1') is not None:
+                        score += f", {m['set3_p2']}-{m['set3_p1']}"
+            else:
+                my_games = m['player1_games'] if is_player1 else m['player2_games']
+                their_games = m['player2_games'] if is_player1 else m['player1_games']
+                score = f"{my_games}-{their_games}"
+
+            matches.append({
+                'period_label': m.get('period_label', ''),
+                'opponent_name': opponent['name'] if opponent else 'Unknown',
+                'score': score
+            })
+
+        return matches
+    except Exception as e:
+        print(f"Error getting player matches: {e}")
+        return []
+
+
 def send_sitout_email(player_email, player_name, period_label):
     """Send sit-out confirmation email"""
     try:
@@ -353,6 +399,9 @@ class handler(BaseHTTPRequestHandler):
 
     def _format_public_profile(self, p):
         """Format player data for public profile view (members can see contact info)"""
+        player_id = p.get('id')
+        matches = get_player_matches(player_id) if player_id else []
+
         return {
             "id": p.get('id'),
             "name": p.get('name'),
@@ -381,6 +430,8 @@ class handler(BaseHTTPRequestHandler):
             "avail_weekend_early": p.get('avail_weekend_early', False),
             "avail_weekend_day": p.get('avail_weekend_day', False),
             "avail_weekend_late": p.get('avail_weekend_late', False),
+            # Match history
+            "matches": matches,
         }
 
     def _send_success(self, data):
