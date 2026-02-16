@@ -57,7 +57,12 @@ class handler(BaseHTTPRequestHandler):
                 return self._get_outstanding_matches()
 
             # Default: return match history (completed matches)
-            response = table('matches').select('*').execute()
+            # Join with players to get opponent names
+            response = table('matches').select('''
+                *,
+                player1:players!matches_player1_id_fkey(id, name),
+                player2:players!matches_player2_id_fkey(id, name)
+            ''').order('created_at', desc=True).execute()
             matches = response.data
             source = "supabase"
 
