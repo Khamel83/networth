@@ -30,7 +30,12 @@
    player1:players!player1_id(id, name)
    ```
 
-4. **Why FK Joins Fail:** The Supabase FK join requires the EXACT constraint name from the database. The constraint might be named differently than we expect, or might not exist.
+4. **Why FK Joins Fail (Mystery):** We tried BOTH documented syntaxes:
+   - Constraint name syntax: `!matches_player1_id_fkey` - FAILED
+   - Column name syntax: `!player1_id` - FAILED
+   - Per Supabase docs, column name syntax SHOULD work for disambiguating multiple FKs
+
+5. **Likely Cause:** Our custom `supabase_http.py` wrapper passes the select string as a URL param. PostgREST may handle this differently than the official Supabase client, or there may be URL encoding issues with complex select strings containing `!`, `:`, `(`, `)`.
 
 ### Database Schema (from supabase-final-setup.sql)
 
@@ -116,6 +121,35 @@ for m in matches_response.data:
 
 - [x] Identified root cause (FK join silently failing)
 - [x] First fix attempt (column name syntax) - FAILED
-- [x] Second fix approach (manual Python join) - IN PROGRESS
-- [ ] Commit and push
-- [ ] Verify on live site
+- [x] Second fix approach (manual Python join) - DONE
+- [x] Commit and push
+- [x] Verify on live site - **VERIFIED 2026-02-17**
+
+## Verification Result
+
+```
+player1: {'id': 'fbbed089-...', 'name': 'Natalie Coffen'}
+player2: {'id': '65ba51ac-...', 'name': 'Katie Morey'}
+Has player names: True
+```
+
+## Why Manual Join is the RIGHT Solution
+
+1. **Non-fragile:** Doesn't depend on PostgREST FK join syntax which is:
+   - Undocumented behavior in edge cases
+   - Sensitive to URL encoding
+   - Different between Supabase client and raw REST API
+
+2. **Explicit:** The code clearly shows what's happening - fetch matches, fetch players, join them
+
+3. **Performance:** For a small league (~30 players, ~10 matches/month), the performance difference is negligible
+
+4. **Debuggable:** If something goes wrong, you can see exactly where the data came from
+
+5. **Portable:** If we ever switch from Supabase to another database, this pattern works anywhere
+
+## Lessons Learned
+
+1. **Don't trust silent failures:** PostgREST FK joins return empty objects instead of errors when they fail
+2. **Verify on live data:** Local tests might pass but production might have different FK names
+3. **Explicit is better than magic:** Manual joins are clearer and more reliable than ORM-style FK resolution
