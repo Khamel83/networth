@@ -60,8 +60,8 @@ class handler(BaseHTTPRequestHandler):
             # Join with players to get opponent names
             response = table('matches').select('''
                 *,
-                player1:players!matches_player1_id_fkey(id, name),
-                player2:players!matches_player2_id_fkey(id, name)
+                player1:players!player1_id(id, name),
+                player2:players!player2_id(id, name)
             ''').order('created_at', desc=True).execute()
             matches = response.data
             source = "supabase"
