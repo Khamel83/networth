@@ -58,19 +58,32 @@ def get_player_matches(player_id):
     from api.supabase_http import table
 
     try:
-        result = table('matches').select('''
-            *,
-            player1:players!player1_id(id, name),
-            player2:players!player2_id(id, name)
-        ''').or_(f'(player1_id.eq.{player_id},player2_id.eq.{player_id})')\
-         .order('created_at', desc=True)\
-         .limit(10)\
-         .execute()
+        # Fetch matches and players separately, then join in Python
+        matches_response = table('matches').select('*')\
+            .or_(f'(player1_id.eq.{player_id},player2_id.eq.{player_id})')\
+            .order('created_at', desc=True)\
+            .limit(10)\
+            .execute()
+
+        # Get all unique player IDs from matches
+        player_ids = set()
+        for m in matches_response.data:
+            if m.get('player1_id'):
+                player_ids.add(m['player1_id'])
+            if m.get('player2_id'):
+                player_ids.add(m['player2_id'])
+
+        # Fetch player names
+        players_map = {}
+        if player_ids:
+            players_response = table('players').select('id, name').in_('id', list(player_ids)).execute()
+            players_map = {p['id']: p for p in players_response.data}
 
         matches = []
-        for m in result.data:
+        for m in matches_response.data:
             is_player1 = m['player1_id'] == player_id
-            opponent = m['player2'] if is_player1 else m['player1']
+            opponent_id = m['player2_id'] if is_player1 else m['player1_id']
+            opponent = players_map.get(opponent_id, {})
 
             # Format score
             if m.get('set1_p1') is not None:
@@ -89,7 +102,7 @@ def get_player_matches(player_id):
 
             matches.append({
                 'period_label': m.get('period_label', ''),
-                'opponent_name': opponent['name'] if opponent else 'Unknown',
+                'opponent_name': opponent.get('name', 'Unknown'),
                 'score': score
             })
 

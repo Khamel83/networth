@@ -57,13 +57,23 @@ class handler(BaseHTTPRequestHandler):
                 return self._get_outstanding_matches()
 
             # Default: return match history (completed matches)
-            # Join with players to get opponent names
-            response = table('matches').select('''
-                *,
-                player1:players!player1_id(id, name),
-                player2:players!player2_id(id, name)
-            ''').order('created_at', desc=True).execute()
-            matches = response.data
+            # Fetch matches and players separately, then join in Python
+            matches_response = table('matches').select('*').order('created_at', desc=True).execute()
+            players_response = table('players').select('id, name').execute()
+
+            # Build player lookup map
+            players_map = {p['id']: p for p in players_response.data}
+
+            # Enrich matches with player names
+            matches = []
+            for m in matches_response.data:
+                p1 = players_map.get(m['player1_id'], {})
+                p2 = players_map.get(m['player2_id'], {})
+                matches.append({
+                    **m,
+                    'player1': {'id': p1.get('id'), 'name': p1.get('name', 'Unknown')},
+                    'player2': {'id': p2.get('id'), 'name': p2.get('name', 'Unknown')}
+                })
             source = "supabase"
 
             self.send_response(200)
