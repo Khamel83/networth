@@ -6,6 +6,10 @@ from http.server import BaseHTTPRequestHandler
 import json
 import os
 
+# Initialize Sentry for error tracking
+from api.sentry_init import init_sentry
+init_sentry()
+
 
 # Real player data fallback - NET WORTH Tennis East Side LA (games-won system)
 SAMPLE_PLAYERS = [

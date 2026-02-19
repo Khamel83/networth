@@ -11,6 +11,10 @@ import hashlib
 import base64
 from datetime import datetime, timedelta, timezone
 
+# Initialize Sentry for error tracking
+from api.sentry_init import init_sentry
+init_sentry()
+
 
 def hash_password(password: str) -> str:
     """Hash password using PBKDF2-HMAC-SHA256"""

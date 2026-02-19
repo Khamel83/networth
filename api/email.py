@@ -8,6 +8,10 @@ import json
 import os
 from datetime import datetime
 
+# Initialize Sentry for error tracking
+from api.sentry_init import init_sentry
+init_sentry()
+
 # Email Configuration
 SENDER_NAME = 'Net Worth Tennis'
 SENDER_EMAIL = f'{SENDER_NAME} <hello@networthtennis.com>'

@@ -18,6 +18,10 @@ import os
 from datetime import datetime, date
 import random
 
+# Initialize Sentry for error tracking
+from api.sentry_init import init_sentry
+init_sentry()
+
 
 def calculate_rms(player_id, matches):
     """

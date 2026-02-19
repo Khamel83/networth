@@ -19,6 +19,10 @@ import uuid
 import httpx
 from datetime import datetime
 
+# Initialize Sentry for error tracking
+from api.sentry_init import init_sentry
+init_sentry()
+
 
 def get_player_by_email(email):
     """Get player from database by email (password-based auth)"""
