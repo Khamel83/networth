@@ -29,10 +29,12 @@ Players self-register via join page → immediately active → can log in right 
 - `api/admin.py` - Admin dashboard API (approve/reject/pause players, payment tracking)
 - `api/auth.py` - Magic link authentication via Supabase Auth
 - `api/profile.py` - Profile viewing and updates (includes auto-save for availability)
+- `api/supabase_http.py` - Custom Supabase REST client (lightweight alternative to SDK)
 - `api/system.py` - Health check and user bug reports (consolidated endpoint)
 - `.github/workflows/biweekly-emails.yml` - Scheduled email automation
 - `.github/workflows/daily-health-check.yml` - Daily health check with email alerts
 - `.github/workflows/tests.yml` - CI/CD test runner
+- `supabase-final-setup.sql` - Database schema, triggers, and functions
 
 ---
 
@@ -313,6 +315,43 @@ The API returns players ordered by `total_games DESC NULLS LAST`, so position IS
 **Fix:** Include all Players (active + paused) in availability emails, but filter by `membership_tier = 'player'` to exclude admins and Social Butterflies
 **Note:** Use `membership_tier = 'admin'` for non-playing admins (like Khamel) so they're excluded from automated emails
 
+### 10. Match History Not Showing on Profiles
+**Symptom:** Player profiles show "No matches yet" even though player has games/matches recorded
+**Cause:** The custom `SelectBuilder` class in `api/supabase_http.py` was missing the `.in_()` method, causing queries to fail silently
+**Fix:** Added `.in_()` method to `SelectBuilder` class:
+```python
+def in_(self, column: str, values: List[Any]) -> 'SelectBuilder':
+    """Filter by list of values (IN operator)"""
+    self.filters.append((column, 'in', values))
+    return self
+```
+**Lesson:** Always verify all methods used in queries exist in custom ORM wrappers before deploying.
+
+### 11. Admins Excluded from Rankings
+**Symptom:** Players with `is_admin = true` show NULL rank even though they have games won
+**Cause:** The `recalculate_rankings()` function filtered by `is_admin = false`, incorrectly assuming admins aren't players
+**Fix:** Removed the `is_admin = false` filter - admins who are also players should be ranked:
+```sql
+-- BEFORE (wrong)
+WHERE is_active = true AND is_admin = false
+
+-- AFTER (correct)
+WHERE is_active = true
+```
+**Note:** `is_admin` controls dashboard access, NOT whether someone is a ranked player.
+
+### 12. "#null" Displayed Instead of Rank
+**Symptom:** Profile page shows "#null" instead of a rank number
+**Cause:** JavaScript `null < 99` evaluates to `true`, so the condition passes and displays `#` + `null`
+**Fix:** Add null check before comparison:
+```javascript
+// BEFORE
+player.rank < 99 ? '#' + player.rank : '-'
+
+// AFTER
+player.rank && player.rank < 99 ? '#' + player.rank : '-'
+```
+
 ---
 
 ## Abstractable Patterns for Future Projects
@@ -405,6 +444,9 @@ if (response.status === 401) {
 - **Extra match month selector** - "Log Extra Match" now lets players select which month the match was played (current + past 6 months)
 - **Match history opponent names** - Fixed "VS. Unknown" by joining matches with players table in API
 - **Profile match history** - Player profiles now show recent match history with opponents and scores
+- **Fixed match history not showing** - Added `.in_()` method to `SelectBuilder` in `supabase_http.py` (was failing silently)
+- **Fixed admin ranking exclusion** - Updated `recalculate_rankings()` to include admins in rankings (admins can be players too)
+- **Fixed "#null" rank display** - Added null check in profile.html to show "-" instead of "#null"
 
 <!--
   ONE-SHOT Heartbeat Metadata
