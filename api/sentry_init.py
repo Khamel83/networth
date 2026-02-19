@@ -18,12 +18,9 @@ def init_sentry():
         sentry_sdk.init(
             dsn=dsn,
             send_default_pii=True,
-            traces_sample_rate=1.0,  # 100% for now to verify it's working
+            traces_sample_rate=0.1,  # 10% sampling to stay within free tier
         )
         _initialized = True
-
-        # Send a test message to confirm Sentry is working
-        sentry_sdk.capture_message("Sentry initialized - test message from Net Worth Tennis")
 
 # Auto-initialize when imported
 init_sentry()
