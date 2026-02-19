@@ -3,7 +3,6 @@ Sentry initialization for error tracking
 Import this at the top of any API file that needs error reporting
 """
 import os
-import sentry_sdk
 
 _initialized = False
 
@@ -14,13 +13,20 @@ def init_sentry():
         return
 
     dsn = os.environ.get('SENTRY_DSN')
-    if dsn:
+    if not dsn:
+        return
+
+    try:
+        import sentry_sdk
         sentry_sdk.init(
             dsn=dsn,
             send_default_pii=True,
             traces_sample_rate=0.1,  # 10% sampling to stay within free tier
         )
         _initialized = True
+    except ImportError:
+        # Sentry SDK not installed (e.g., in test environment)
+        pass
 
 # Auto-initialize when imported
 init_sentry()
