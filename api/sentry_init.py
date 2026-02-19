@@ -18,7 +18,7 @@ def init_sentry():
         sentry_sdk.init(
             dsn=dsn,
             send_default_pii=True,
-            traces_sample_rate=0.1,  # 10% of transactions for performance monitoring
+            traces_sample_rate=1.0,  # 100% for now to verify it's working
         )
         _initialized = True
 
