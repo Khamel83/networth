@@ -108,6 +108,11 @@ jobs:
         run: |
           missing=0
           for file in public/*.html; do
+            # Skip fallback.html - it's intentionally a no-JS fallback page
+            if [[ "$file" == *"fallback.html" ]]; then
+              echo "⊘ $file skipped (no-JS fallback)"
+              continue
+            fi
             if grep -q 'report-issue.js' "$file"; then
               echo "✓ $file includes report-issue.js"
             else
