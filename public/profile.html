@@ -634,7 +634,7 @@
             if (isSocial) {
                 document.querySelector('.stats-row').style.display = 'none';
             } else {
-                document.getElementById('stat-rank').textContent = player.rank < 99 ? '#' + player.rank : '-';
+                document.getElementById('stat-rank').textContent = player.rank && player.rank < 99 ? '#' + player.rank : '-';
                 document.getElementById('stat-games').textContent = player.total_games || 0;
                 document.getElementById('stat-matches').textContent = player.matches_played || 0;
             }
