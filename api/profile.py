@@ -17,6 +17,10 @@ import os
 from datetime import datetime, date, timedelta
 from urllib.parse import parse_qs, urlparse
 
+# Initialize Sentry for error tracking
+from api.sentry_init import init_sentry
+init_sentry()
+
 
 def get_player_by_email(email):
     """Get player from database by email (password-based auth)"""

@@ -13,6 +13,10 @@ import json
 import os
 from datetime import datetime, timezone
 
+# Initialize Sentry for error tracking
+from api.sentry_init import init_sentry
+init_sentry()
+
 
 # Sample matches using new schema (set scores, games won per player)
 SAMPLE_MATCHES = [

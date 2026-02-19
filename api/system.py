@@ -12,6 +12,10 @@ import json
 import os
 from datetime import datetime, timezone
 
+# Initialize Sentry for error tracking
+from api.sentry_init import init_sentry
+init_sentry()
+
 
 class handler(BaseHTTPRequestHandler):
     def do_OPTIONS(self):

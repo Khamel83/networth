@@ -1,0 +1,26 @@
+"""
+Sentry initialization for error tracking
+Import this at the top of any API file that needs error reporting
+"""
+import os
+import sentry_sdk
+
+_initialized = False
+
+def init_sentry():
+    """Initialize Sentry if DSN is configured"""
+    global _initialized
+    if _initialized:
+        return
+
+    dsn = os.environ.get('SENTRY_DSN')
+    if dsn:
+        sentry_sdk.init(
+            dsn=dsn,
+            send_default_pii=True,
+            traces_sample_rate=0.1,  # 10% of transactions for performance monitoring
+        )
+        _initialized = True
+
+# Auto-initialize when imported
+init_sentry()
