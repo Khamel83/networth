@@ -22,5 +22,8 @@ def init_sentry():
         )
         _initialized = True
 
+        # Send a test message to confirm Sentry is working
+        sentry_sdk.capture_message("Sentry initialized - test message from Net Worth Tennis")
+
 # Auto-initialize when imported
 init_sentry()
