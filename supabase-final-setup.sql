@@ -217,13 +217,14 @@ VALUES ('admin@yourleague.com', 'Admin', 'Admin', 99, 0, true, true);  -- CHANGE
 -- =============================================================
 
 -- Recalculate rankings based on total games
+-- Admins who are also players should still be ranked
 CREATE OR REPLACE FUNCTION recalculate_rankings()
 RETURNS void AS $$
 BEGIN
     WITH ranked AS (
         SELECT id, ROW_NUMBER() OVER (ORDER BY total_games DESC NULLS LAST, name ASC) as new_rank
         FROM players
-        WHERE is_active = true AND is_admin = false
+        WHERE is_active = true
     )
     UPDATE players p
     SET rank = r.new_rank
