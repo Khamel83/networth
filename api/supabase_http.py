@@ -108,6 +108,11 @@ class SelectBuilder:
         self.filters.append(('or', 'or', filter_str))
         return self
 
+    def in_(self, column: str, values: List[Any]) -> 'SelectBuilder':
+        """Filter by list of values (IN operator)"""
+        self.filters.append((column, 'in', values))
+        return self
+
     def execute(self) -> 'Result':
         """Execute the query"""
         url = _build_url(self.table_name)
@@ -123,6 +128,11 @@ class SelectBuilder:
                 params[f'{column}'] = f'eq.{value}'
             elif operator == 'neq':
                 params[f'{column}'] = f'neq.{value}'
+            elif operator == 'in':
+                # Supabase expects: column=in.(val1,val2,val3)
+                # Handle both strings and other types
+                formatted_values = ','.join(f'"{v}"' if isinstance(v, str) else str(v) for v in value)
+                params[f'{column}'] = f'in.({formatted_values})'
 
         # Add ordering
         if self.order_by:
