@@ -99,7 +99,7 @@ jobs:
 
       - name: Check API count not exceeded
         run: |
-          COUNT=$(ls api/*.py 2>/dev/null | grep -v -E "(__init__|supabase_http|reliability|sentry_init)" | wc -l)
+          COUNT=$(grep -rl "class handler" api/*.py 2>/dev/null | wc -l)
           echo "API functions: $COUNT / 12"
           if [ $COUNT -gt 12 ]; then
               echo "✗ Exceeds Vercel limit"
