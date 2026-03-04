@@ -189,6 +189,7 @@ jobs:
         run: |
           curl -sL -X POST "${{ secrets.SITE_URL }}/api/email" \
             -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             -d '{
               "action": "send_admin_alert",
               "subject": "🚨 Daily Health Check Failed",

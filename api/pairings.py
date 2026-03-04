@@ -20,6 +20,7 @@ import random
 
 # Initialize Sentry for error tracking
 from api.sentry_init import init_sentry
+from api.reliability import preflight, try_start_run, append_event, update_run
 init_sentry()
 
 
@@ -504,6 +505,9 @@ class handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         """Generate new pairings for current or specified month"""
+        self._run_id = None
+        self._run_action = 'generate_pairings'
+        self._run_period = None
         try:
             from api.supabase_http import table
 
@@ -521,6 +525,26 @@ class handler(BaseHTTPRequestHandler):
 
             period_label = data.get('period_label', datetime.now().strftime('%B %Y'))
             period_type = data.get('period_type', 'month')
+            self._run_period = period_label
+
+            run_id, lock_error = try_start_run('generate_pairings', period_label, {
+                'source': 'api/pairings',
+                'period_type': period_type,
+            })
+            self._run_id = run_id
+            if lock_error:
+                self._send_error(409, lock_error)
+                return
+
+            ok, preflight_details = preflight(
+                required_env=['SUPABASE_URL', 'SUPABASE_ANON_KEY', 'RESEND_API_KEY'],
+                check_db=True
+            )
+            if not ok:
+                append_event(self._run_id, 'preflight', 'error', 'Preflight failed', preflight_details)
+                self._send_error(500, f"Preflight failed: {preflight_details}")
+                return
+            append_event(self._run_id, 'preflight', 'info', 'Preflight passed', preflight_details)
 
             # 1. Get all active Players (exclude Social Butterflies and admin)
             admin_email = os.environ.get('ADMIN_EMAIL', 'khamel@khamel.com')
@@ -672,13 +696,41 @@ class handler(BaseHTTPRequestHandler):
                         emails_sent += 1
                     else:
                         email_errors.append(f"{p1['name']} & {p2['name']}: {result.get('error')}")
+                        # Contract: stop immediately on first delivery failure.
+                        break
             except Exception as e:
                 email_errors.append(f"Email system error: {str(e)}")
+
+            if email_errors:
+                append_event(self._run_id, 'email_delivery', 'error', 'Match email delivery failed', {
+                    'emails_sent': emails_sent,
+                    'pairings_created': len(assignments),
+                    'errors': email_errors,
+                })
+                self._send_error(500, f"Email delivery failed after {emails_sent}/{len(assignments)} sends: {email_errors[0]}")
+                return
+
+            if emails_sent != len(assignments):
+                append_event(self._run_id, 'postcheck', 'error', 'Postcheck failed: sent count mismatch', {
+                    'emails_sent': emails_sent,
+                    'pairings_created': len(assignments),
+                })
+                self._send_error(500, f"Postcheck failed: sent {emails_sent} emails for {len(assignments)} pairings")
+                return
 
             # 8. Update RMS scores for all players
             for player in players:
                 update_player_rms(player['id'], all_matches)
 
+            append_event(self._run_id, 'postcheck', 'info', 'Pairings run completed', {
+                'pairings_created': len(assignments),
+                'emails_sent': emails_sent,
+            })
+            update_run(self._run_id, 'succeeded', summary={
+                'period': period_label,
+                'pairings_created': len(assignments),
+                'emails_sent': emails_sent,
+            })
             self._send_success({
                 'period': period_label,
                 'pairings_created': len(assignments),
@@ -704,6 +756,7 @@ class handler(BaseHTTPRequestHandler):
             })
 
         except Exception as e:
+            append_event(self._run_id, 'exception', 'error', 'Unhandled exception', {'error': str(e)})
             self._send_error(500, str(e))
 
     def _send_success(self, data):
@@ -711,11 +764,30 @@ class handler(BaseHTTPRequestHandler):
         self.send_header('Content-Type', 'application/json')
         self.send_header('Access-Control-Allow-Origin', '*')
         self.end_headers()
-        self.wfile.write(json.dumps({"success": True, **data}).encode())
+        payload = {"success": True, **data}
+        run_id = getattr(self, '_run_id', None)
+        if run_id:
+            payload['run_id'] = run_id
+        self.wfile.write(json.dumps(payload).encode())
 
     def _send_error(self, status, message):
+        run_id = getattr(self, '_run_id', None)
+        if run_id:
+            append_event(run_id, 'error', 'error', message, {
+                'status': status,
+                'action': getattr(self, '_run_action', None),
+                'period': getattr(self, '_run_period', None),
+            })
+            update_run(run_id, 'failed_terminal', error={
+                'status': status,
+                'message': message,
+            })
+
         self.send_response(status)
         self.send_header('Content-Type', 'application/json')
         self.send_header('Access-Control-Allow-Origin', '*')
         self.end_headers()
-        self.wfile.write(json.dumps({"success": False, "error": message}).encode())
+        payload = {"success": False, "error": message}
+        if run_id:
+            payload['run_id'] = run_id
+        self.wfile.write(json.dumps(payload).encode())
