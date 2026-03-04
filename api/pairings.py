@@ -404,16 +404,19 @@ class handler(BaseHTTPRequestHandler):
         self.end_headers()
 
     def do_GET(self):
-        """Get current month's pairings"""
+        """Get pairings for a given period (defaults to current month)"""
         try:
             from api.supabase_http import table
+            from urllib.parse import urlparse, parse_qs
 
-            current_month = datetime.now().strftime('%B %Y')
+            parsed = urlparse(self.path)
+            params = parse_qs(parsed.query)
+            period = params.get('period', [datetime.now().strftime('%B %Y')])[0]
 
             # Get match assignments (without complex joins for simplicity)
             response = table('match_assignments')\
                 .select('*')\
-                .eq('period_label', current_month)\
+                .eq('period_label', period)\
                 .execute()
 
             if response.data:
@@ -438,16 +441,15 @@ class handler(BaseHTTPRequestHandler):
                     pairings_with_availability.append(p)
 
                 self._send_success({
-                    'period': current_month,
+                    'period': period,
                     'pairings': pairings_with_availability,
                     'count': len(response.data)
                 })
             else:
                 self._send_success({
-                    'period': current_month,
+                    'period': period,
                     'pairings': [],
-                    'count': 0,
-                    'demo': True
+                    'count': 0
                 })
 
         except Exception as e:
