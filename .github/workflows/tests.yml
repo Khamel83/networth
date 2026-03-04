@@ -193,6 +193,19 @@ jobs:
             exit 1
           fi
 
+      - name: Check day parsing uses non-padded format
+        run: |
+          if grep -q "date +%d" .github/workflows/biweekly-emails.yml; then
+            echo "::error::Found date +%d in biweekly-emails.yml (zero-padded day can break 1st-of-month logic)"
+            exit 1
+          fi
+          if grep -q "date +%-d" .github/workflows/biweekly-emails.yml; then
+            echo "✓ biweekly-emails.yml uses date +%-d (non-padded day)"
+          else
+            echo "::error::Expected date +%-d in biweekly-emails.yml"
+            exit 1
+          fi
+
       - name: Check workflow has admin failure notifications
         run: |
           if grep -q "send_admin_alert" .github/workflows/biweekly-emails.yml; then
