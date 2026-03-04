@@ -486,11 +486,13 @@ class handler(BaseHTTPRequestHandler):
             }
             if action in PROTECTED_ACTIONS:
                 cron_secret = os.environ.get('CRON_SECRET', '')
-                if cron_secret:
-                    auth = self.headers.get('Authorization', '').replace('Bearer ', '')
-                    if auth != cron_secret and '@' not in auth:
-                        self._send_error(401, 'Unauthorized')
-                        return
+                if not cron_secret:
+                    self._send_error(500, 'CRON_SECRET not configured')
+                    return
+                auth = self.headers.get('Authorization', '').replace('Bearer ', '')
+                if auth != cron_secret and '@' not in auth:
+                    self._send_error(401, 'Unauthorized')
+                    return
 
             RUN_TRACKED_ACTIONS = {
                 'send_availability_check',
