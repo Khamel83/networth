@@ -28,6 +28,7 @@ Daily safety net (`.github/workflows/daily-health-check.yml`):
 - Protected automation actions now require `CRON_SECRET`.
 - Scheduled actions fail closed on delivery/validation errors (no silent success).
 - Pairings generation has preflight checks, lock semantics, and strict postchecks.
+- Pairings generation now uses an exact fresh-matching solver (for league sizes up to 20) so avoidable repeat pairs are eliminated.
 - `reconcile_month` endpoint exists for safe month reconciliation (`POST /api/system`).
 - Reliability tracking tables:
   - `automation_runs`
@@ -74,6 +75,12 @@ GitHub Actions secrets:
 - `GET /api/email` -> email system status
 - `GET /api/pairings` -> current month pairings
 - `POST /api/system` with `{"action":"reconcile_month","dry_run":true}` (auth required)
+
+## Pairing Rules (Current)
+
+- Primary objective: no repeat pairings when a fresh full pairing is possible.
+- For league sizes <= 20, the solver uses exact matching to maximize fresh, RMS-appropriate pairs.
+- Repeats are only allowed as last resort when constraints make a fresh full pairing impossible.
 
 ## Local Dev
 

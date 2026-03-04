@@ -231,3 +231,9 @@ These must exist and be consistent:
 - GitHub Actions: `CRON_SECRET`, `SITE_URL=https://www.networthtennis.com`
 
 If secrets mismatch, scheduled jobs will fail by design.
+
+### Pairing repeat policy (operator expectation)
+
+- The monthly pairing engine prioritizes non-repeat pairings.
+- For this league size, it uses exact fresh matching, not random greedy pairing.
+- If repeat pairs appear, treat that as a bug and investigate immediately (do not assume expected behavior).
