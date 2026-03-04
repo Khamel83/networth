@@ -242,8 +242,8 @@ jobs:
 
       - name: Count API functions
         run: |
-          # Count actual serverless functions (excluding utility modules)
-          functions=$(ls api/*.py | grep -v -E "(__init__|supabase_http|reliability|sentry_init|migrate-passwords)" | wc -l)
+          # Count actual serverless functions (files with a Vercel handler class)
+          functions=$(grep -rl "class handler" api/*.py 2>/dev/null | wc -l)
 
           echo "Current API functions: $functions"
           echo "Vercel Hobby limit: 12"
@@ -258,4 +258,4 @@ jobs:
           # List all functions for visibility
           echo ""
           echo "API Functions:"
-          ls -1 api/*.py | grep -v -E "(__init__|supabase_http|reliability|sentry_init|migrate-passwords)"
+          grep -rl "class handler" api/*.py 2>/dev/null
