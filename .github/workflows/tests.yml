@@ -202,6 +202,23 @@ jobs:
             exit 1
           fi
 
+      - name: Check admin alert calls are authenticated
+        run: |
+          missing=0
+          for wf in .github/workflows/biweekly-emails.yml .github/workflows/daily-health-check.yml; do
+            if grep -q "send_admin_alert" "$wf"; then
+              if grep -q "Authorization: Bearer \${{ secrets.CRON_SECRET }}" "$wf"; then
+                echo "✓ $wf has CRON auth for admin alerts"
+              else
+                echo "::error::$wf has send_admin_alert without CRON auth header"
+                missing=$((missing + 1))
+              fi
+            fi
+          done
+          if [ $missing -gt 0 ]; then
+            exit 1
+          fi
+
   api-function-count:
     name: API Function Count Check
     runs-on: ubuntu-latest

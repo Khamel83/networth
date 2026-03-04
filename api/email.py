@@ -10,6 +10,7 @@ from datetime import datetime
 
 # Initialize Sentry for error tracking
 from api.sentry_init import init_sentry
+from api.reliability import preflight, try_start_run, append_event, update_run
 init_sentry()
 
 # Email Configuration
@@ -464,17 +465,24 @@ class handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         """Handle email sending requests"""
+        self._run_id = None
+        self._run_action = None
+        self._run_period = None
         try:
             content_length = int(self.headers.get('Content-Length', 0))
             body = self.rfile.read(content_length).decode('utf-8')
             data = json.loads(body) if body else {}
 
             action = data.get('action', 'send')
+            self._run_action = action
+            self._run_period = data.get('period_label', datetime.now().strftime('%B %Y'))
+            strict_mode = bool(data.get('strict', True))
 
             # Auth check for mass-send actions (GitHub Actions must pass CRON_SECRET)
             PROTECTED_ACTIONS = {
                 'send_availability_check', 'send_final_reminder',
-                'send_midmonth_reminders', 'send_admin_alert'
+                'send_midmonth_reminders', 'send_admin_alert',
+                'resend_match_emails'
             }
             if action in PROTECTED_ACTIONS:
                 cron_secret = os.environ.get('CRON_SECRET', '')
@@ -483,6 +491,28 @@ class handler(BaseHTTPRequestHandler):
                     if auth != cron_secret and '@' not in auth:
                         self._send_error(401, 'Unauthorized')
                         return
+
+            RUN_TRACKED_ACTIONS = {
+                'send_availability_check',
+                'send_final_reminder',
+                'send_midmonth_reminders',
+                'resend_match_emails',
+            }
+            if action in RUN_TRACKED_ACTIONS:
+                run_id, lock_error = try_start_run(action, self._run_period, {'source': 'api/email'})
+                self._run_id = run_id
+                if lock_error:
+                    self._send_error(409, lock_error)
+                    return
+                ok, preflight_details = preflight(
+                    required_env=['SUPABASE_URL', 'SUPABASE_ANON_KEY', 'RESEND_API_KEY'],
+                    check_db=True
+                )
+                if not ok:
+                    append_event(self._run_id, 'preflight', 'error', 'Preflight failed', preflight_details)
+                    self._send_error(500, f"Preflight failed: {preflight_details}")
+                    return
+                append_event(self._run_id, 'preflight', 'info', 'Preflight passed', preflight_details)
 
             if action == 'send':
                 # Direct email send
@@ -547,6 +577,9 @@ class handler(BaseHTTPRequestHandler):
                     else:
                         errors.append(f"{player['email']}: {result.get('error')}")
 
+                if errors and strict_mode:
+                    self._send_error(500, f"Delivery failures ({len(errors)}): {errors[0]}")
+                    return
                 self._send_success({
                     "message": f"Sent availability check to {sent} players",
                     "sent": sent,
@@ -582,6 +615,9 @@ class handler(BaseHTTPRequestHandler):
                     else:
                         errors.append(f"{player['email']}: {result.get('error')}")
 
+                if errors and strict_mode:
+                    self._send_error(500, f"Delivery failures ({len(errors)}): {errors[0]}")
+                    return
                 self._send_success({
                     "message": f"Sent final reminder to {sent} players",
                     "sent": sent,
@@ -676,6 +712,9 @@ class handler(BaseHTTPRequestHandler):
                         else:
                             errors.append(f"Match {match.get('id')}: {result.get('error')}")
 
+                if errors and strict_mode:
+                    self._send_error(500, f"Delivery failures ({len(errors)}): {errors[0]}")
+                    return
                 self._send_success({
                     "message": f"Sent mid-month reminders to {sent} match pairs",
                     "sent": sent,
@@ -740,6 +779,9 @@ class handler(BaseHTTPRequestHandler):
                     else:
                         errors.append(f"{p1['name']} & {p2['name']}: {result.get('error')}")
 
+                if errors and strict_mode:
+                    self._send_error(500, f"Delivery failures ({len(errors)}): {errors[0]}")
+                    return
                 self._send_success({
                     "message": f"Sent match emails to {sent} pairs",
                     "sent": sent,
@@ -779,15 +821,29 @@ class handler(BaseHTTPRequestHandler):
             self._send_error(500, str(e))
 
     def _send_success(self, data):
+        run_id = getattr(self, '_run_id', None)
+        if run_id:
+            append_event(run_id, 'complete', 'info', 'Email action completed', data if isinstance(data, dict) else {})
+            update_run(run_id, 'succeeded', summary=data if isinstance(data, dict) else {"result": str(data)})
         self.send_response(200)
         self.send_header('Content-Type', 'application/json')
         self.send_header('Access-Control-Allow-Origin', '*')
         self.end_headers()
-        self.wfile.write(json.dumps({"success": True, **data}).encode())
+        payload = {"success": True, **data}
+        if run_id:
+            payload['run_id'] = run_id
+        self.wfile.write(json.dumps(payload).encode())
 
     def _send_error(self, status, message):
+        run_id = getattr(self, '_run_id', None)
+        if run_id:
+            append_event(run_id, 'error', 'error', message, {"status": status, "action": getattr(self, '_run_action', None)})
+            update_run(run_id, 'failed_terminal', error={"status": status, "message": message})
         self.send_response(status)
         self.send_header('Content-Type', 'application/json')
         self.send_header('Access-Control-Allow-Origin', '*')
         self.end_headers()
-        self.wfile.write(json.dumps({"success": False, "error": message}).encode())
+        payload = {"success": False, "error": message}
+        if run_id:
+            payload['run_id'] = run_id
+        self.wfile.write(json.dumps(payload).encode())

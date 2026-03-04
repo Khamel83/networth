@@ -181,17 +181,6 @@ jobs:
     if: needs.gate-check.outputs.should_run == 'true' && needs.determine-action.outputs.action == 'generate_pairings'
     runs-on: ubuntu-latest
     steps:
-      - name: Notify admins of failure
-        if: failure()
-        run: |
-          curl -sL -X POST "${{ secrets.SITE_URL }}/api/email" \
-            -H "Content-Type: application/json" \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            -d '{
-              "action": "send_admin_alert",
-              "subject": "🚨 Net Worth: Pairing Generation Failed",
-              "message": "Pairing generation failed during scheduled run. Self-healing will attempt recovery at 12pm PT.\n\nWorkflow: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-            }'
       - name: Log action
         run: |
           echo "Running: GENERATE PAIRINGS (with retry logic)"
@@ -280,17 +269,6 @@ jobs:
     if: needs.gate-check.outputs.should_run == 'true' && needs.determine-action.outputs.action == 'health_check'
     runs-on: ubuntu-latest
     steps:
-      - name: Notify admins of failure
-        if: failure()
-        run: |
-          curl -sL -X POST "${{ secrets.SITE_URL }}/api/email" \
-            -H "Content-Type: application/json" \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            -d '{
-              "action": "send_admin_alert",
-              "subject": "🚨 Net Worth: Health Check Failed",
-              "message": "Self-healing failed to recover pairings. Manual intervention required.\n\nWorkflow: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-            }'
       - name: Log action
         run: |
           echo "Running: HEALTH CHECK (self-healing backup)"
@@ -360,3 +338,26 @@ jobs:
           else
             echo "::notice::Pairings already exist. No action needed."
           fi
+
+  notify-failure:
+    needs:
+      - gate-check
+      - determine-action
+      - monthly-availability
+      - final-availability
+      - generate-pairings
+      - mid-month-reminder
+      - health-check
+    if: failure()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send failure alert to admin
+        run: |
+          curl --fail-with-body -sL -X POST "${{ secrets.SITE_URL }}/api/email" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -d '{
+              "action": "send_admin_alert",
+              "subject": "🚨 Net Worth: Scheduled Automation Failed",
+              "message": "A scheduled monthly automation action failed.\n\nWorkflow: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            }'

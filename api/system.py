@@ -14,6 +14,7 @@ from datetime import datetime, timezone
 
 # Initialize Sentry for error tracking
 from api.sentry_init import init_sentry
+from api.reliability import preflight, try_start_run, append_event, update_run
 init_sentry()
 
 
@@ -62,15 +63,20 @@ class handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         """Handle POST requests - currently only report_issue"""
+        self._run_id = None
+        self._run_action = None
         try:
             content_length = int(self.headers.get('Content-Length', 0))
             body = self.rfile.read(content_length).decode('utf-8')
             data = json.loads(body) if body else {}
 
             action = data.get('action', 'report_issue')
+            self._run_action = action
 
             if action == 'report_issue':
                 self._handle_report_issue(data)
+            elif action == 'reconcile_month':
+                self._handle_reconcile_month(data)
             else:
                 self._send_error(400, f"Unknown action: {action}")
 
@@ -170,16 +176,150 @@ class handler(BaseHTTPRequestHandler):
             "id": response.get('id')
         })
 
+    def _handle_reconcile_month(self, data):
+        """Reconcile known data drift for a given month."""
+        from api.supabase_http import table
+
+        cron_secret = os.environ.get('CRON_SECRET', '')
+        if cron_secret:
+            auth = self.headers.get('Authorization', '').replace('Bearer ', '')
+            if auth != cron_secret and '@' not in auth:
+                self._send_error(401, "Unauthorized")
+                return
+
+        period_label = data.get('period_label', datetime.now().strftime('%B %Y'))
+        dry_run = bool(data.get('dry_run', False))
+
+        run_id, lock_error = try_start_run('reconcile_month', period_label, {
+            'source': 'api/system',
+            'dry_run': dry_run,
+        })
+        self._run_id = run_id
+        if lock_error:
+            self._send_error(409, lock_error)
+            return
+
+        ok, details = preflight(
+            required_env=['SUPABASE_URL', 'SUPABASE_ANON_KEY'],
+            check_db=True
+        )
+        if not ok:
+            append_event(run_id, 'preflight', 'error', 'Preflight failed', details)
+            self._send_error(500, f"Preflight failed: {details}")
+            return
+
+        append_event(run_id, 'preflight', 'info', 'Preflight passed', details)
+
+        repairs = []
+        issues = []
+
+        matches_result = table('matches').select('id, assignment_id, player1_id, player2_id, period_label').eq('period_label', period_label).execute()
+        if matches_result.error:
+            self._send_error(500, f"Failed to load matches: {matches_result.error}")
+            return
+
+        assignments_result = table('match_assignments').select('id, player1_id, player2_id, period_label, status, match_id').eq('period_label', period_label).execute()
+        if assignments_result.error:
+            self._send_error(500, f"Failed to load assignments: {assignments_result.error}")
+            return
+
+        assignments = assignments_result.data or []
+        assignment_by_id = {a.get('id'): a for a in assignments}
+        assignment_by_pair = {}
+        for a in assignments:
+            key = frozenset([a.get('player1_id'), a.get('player2_id')])
+            assignment_by_pair[key] = a
+
+        for m in matches_result.data or []:
+            assignment = None
+            assignment_id = m.get('assignment_id')
+            if assignment_id:
+                assignment = assignment_by_id.get(assignment_id)
+            if not assignment:
+                key = frozenset([m.get('player1_id'), m.get('player2_id')])
+                assignment = assignment_by_pair.get(key)
+
+            if not assignment:
+                issues.append({
+                    'match_id': m.get('id'),
+                    'issue': 'no_matching_assignment',
+                })
+                continue
+
+            needs_status = assignment.get('status') != 'completed'
+            needs_match = assignment.get('match_id') != m.get('id')
+            if not needs_status and not needs_match:
+                continue
+
+            update_payload = {}
+            if needs_status:
+                update_payload['status'] = 'completed'
+            if needs_match:
+                update_payload['match_id'] = m.get('id')
+
+            if not dry_run:
+                update_result = table('match_assignments').update(update_payload).eq('id', assignment.get('id')).execute()
+                if update_result.error:
+                    issues.append({
+                        'assignment_id': assignment.get('id'),
+                        'issue': f"update_failed: {update_result.error}",
+                    })
+                    continue
+
+            repairs.append({
+                'assignment_id': assignment.get('id'),
+                'match_id': m.get('id'),
+                'changes': update_payload,
+            })
+
+        status = 'succeeded' if not issues else 'failed_terminal'
+        summary = {
+            'period_label': period_label,
+            'dry_run': dry_run,
+            'repairs_applied': len(repairs),
+            'remaining_issues': len(issues),
+        }
+        if issues:
+            append_event(run_id, 'reconcile', 'warning', 'Reconcile completed with issues', {
+                'issues': issues[:20],
+                'repairs_preview': repairs[:20],
+            })
+        else:
+            append_event(run_id, 'reconcile', 'info', 'Reconcile completed cleanly', summary)
+
+        update_run(run_id, status, summary=summary, error={'issues': issues} if issues else None)
+        if issues:
+            self._send_error(500, f"Reconcile completed with {len(issues)} unresolved issue(s)")
+            return
+        self._send_success({
+            'period_label': period_label,
+            'dry_run': dry_run,
+            'repairs_applied': repairs,
+            'remaining_issues': issues,
+            'status': status,
+        })
+
     def _send_success(self, data):
         self.send_response(200)
         self.send_header('Content-Type', 'application/json')
         self.send_header('Access-Control-Allow-Origin', '*')
         self.end_headers()
-        self.wfile.write(json.dumps({"success": True, **data}).encode())
+        payload = {"success": True, **data}
+        run_id = getattr(self, '_run_id', None)
+        if run_id:
+            payload['run_id'] = run_id
+        self.wfile.write(json.dumps(payload).encode())
 
     def _send_error(self, status, message):
+        run_id = getattr(self, '_run_id', None)
+        if run_id:
+            append_event(run_id, 'error', 'error', message, {'status': status, 'action': getattr(self, '_run_action', None)})
+            update_run(run_id, 'failed_terminal', error={'status': status, 'message': message})
         self.send_response(status)
         self.send_header('Content-Type', 'application/json')
         self.send_header('Access-Control-Allow-Origin', '*')
         self.end_headers()
-        self.wfile.write(json.dumps({"success": False, "error": message}).encode())
+        payload = {"success": False, "error": message}
+        if run_id:
+            payload['run_id'] = run_id
+        self.wfile.write(json.dumps(payload).encode())
