@@ -95,6 +95,9 @@ class handler(BaseHTTPRequestHandler):
             if action == 'players':
                 # Get all players
                 result = table('players').select('*').order('rank').execute()
+                if result.error:
+                    self._send_error(500, f"Failed to fetch players: {result.error}")
+                    return
                 players = []
                 for p in result.data:
                     unavailable_until = p.get('unavailable_until')
@@ -145,9 +148,15 @@ class handler(BaseHTTPRequestHandler):
                     .select('*')\
                     .eq('period_label', period)\
                     .execute()
+                if result.error:
+                    self._send_error(500, f"Failed to fetch pairings: {result.error}")
+                    return
 
                 # Get all players to enrich pairings
                 players_result = table('players').select('id, name, email, phone').execute()
+                if players_result.error:
+                    self._send_error(500, f"Failed to fetch player details for pairings: {players_result.error}")
+                    return
                 players_map = {p['id']: p for p in players_result.data}
 
                 # Enrich pairings with player info
@@ -182,6 +191,9 @@ class handler(BaseHTTPRequestHandler):
                     return
 
                 result = table('players').select('*').eq('id', player_id).single().execute()
+                if result.error:
+                    self._send_error(500, f"Failed to fetch player: {result.error}")
+                    return
                 if not result.data:
                     self._send_error(404, "Player not found")
                     return
@@ -233,6 +245,9 @@ class handler(BaseHTTPRequestHandler):
 
             # Verify player exists
             player = table('players').select('id, name, email').eq('id', player_id).single().execute()
+            if player.error:
+                self._send_error(500, f"Failed to fetch player for verification: {player.error}")
+                return
             if not player.data:
                 self._send_error(404, "Player not found")
                 return
@@ -284,7 +299,10 @@ class handler(BaseHTTPRequestHandler):
 
             elif action == 'reject':
                 # Reject player signup - deactivate (RLS blocks deletes)
-                table('players').update({'is_active': False}).eq('id', player_id).execute()
+                reject_result = table('players').update({'is_active': False}).eq('id', player_id).execute()
+                if reject_result.error:
+                    self._send_error(500, f"Failed to reject player: {reject_result.error}")
+                    return
                 self._send_success({
                     'message': f"Player {player_data.get('name')} rejected",
                     'rejected': True
@@ -294,7 +312,10 @@ class handler(BaseHTTPRequestHandler):
             elif action == 'update_payment':
                 # Toggle payment status
                 has_paid = data.get('has_paid', False)
-                table('players').update({'has_paid': has_paid}).eq('id', player_id).execute()
+                payment_result = table('players').update({'has_paid': has_paid}).eq('id', player_id).execute()
+                if payment_result.error:
+                    self._send_error(500, f"Failed to update payment status: {payment_result.error}")
+                    return
                 self._send_success({
                     'message': f"Payment status updated for {player_data.get('name')}",
                     'has_paid': has_paid
@@ -307,7 +328,10 @@ class handler(BaseHTTPRequestHandler):
                 if total_games is None:
                     self._send_error(400, "total_games required")
                     return
-                table('players').update({'total_games': int(total_games)}).eq('id', player_id).execute()
+                games_result = table('players').update({'total_games': int(total_games)}).eq('id', player_id).execute()
+                if games_result.error:
+                    self._send_error(500, f"Failed to update games count: {games_result.error}")
+                    return
                 self._send_success({
                     'message': f"Games updated for {player_data.get('name')}",
                     'total_games': int(total_games)
@@ -319,10 +343,16 @@ class handler(BaseHTTPRequestHandler):
                 return
 
             if updates:
-                table('players').update(updates).eq('id', player_id).execute()
+                update_result = table('players').update(updates).eq('id', player_id).execute()
+                if update_result.error:
+                    self._send_error(500, f"Failed to apply player updates: {update_result.error}")
+                    return
 
             # Return updated player
             updated = table('players').select('*').eq('id', player_id).single().execute()
+            if updated.error:
+                self._send_error(500, f"Failed to fetch updated player: {updated.error}")
+                return
             updated_data = updated.data[0] if isinstance(updated.data, list) else updated.data
 
             self._send_success({

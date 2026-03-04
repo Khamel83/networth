@@ -172,13 +172,16 @@ jobs:
 
           # Only send email on last day of month (remind about pairings tomorrow)
           if [ "$DAY" = "$LAST_DAY" ]; then
-            curl -sL -X POST "${{ secrets.SITE_URL }}/api/email" \
+            HTTP_STATUS=$(curl -s -o /tmp/alert.json -w "%{http_code}" \
+              -X POST "${{ secrets.SITE_URL }}/api/email" \
               -H "Content-Type: application/json" \
+              -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
               -d '{
                 "action": "send_admin_alert",
                 "subject": "⚠️ Reminder: Pairings Tomorrow",
                 "message": "Daily health check passed. Pairings will generate tomorrow (1st of month). Make sure players have updated availability."
-              }'
+              }')
+            echo "Admin alert: HTTP $HTTP_STATUS: $(cat /tmp/alert.json)"
           fi
 
       - name: Send failure alert
