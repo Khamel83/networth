@@ -122,12 +122,18 @@ jobs:
 
       - name: Send monthly availability emails
         run: |
-          RESPONSE=$(curl -sL --post301 --post302 --post303 \
+          HTTP_STATUS=$(curl -s -o /tmp/response.json -w "%{http_code}" \
             -X POST "${{ secrets.SITE_URL }}/api/email" \
             -H "Content-Type: application/json" \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             -d '{"action": "send_availability_check"}')
-          echo "Response: $RESPONSE"
+          RESPONSE=$(cat /tmp/response.json)
+          echo "HTTP $HTTP_STATUS: $RESPONSE"
+
+          if [ "$HTTP_STATUS" -lt 200 ] || [ "$HTTP_STATUS" -ge 300 ]; then
+            echo "::error::HTTP $HTTP_STATUS: $RESPONSE"
+            exit 1
+          fi
 
           SENT=$(echo "$RESPONSE" | jq -r '.sent // 0')
           echo "::notice::Emails sent: $SENT"
@@ -149,12 +155,18 @@ jobs:
 
       - name: Send final availability emails
         run: |
-          RESPONSE=$(curl -sL --post301 --post302 --post303 \
+          HTTP_STATUS=$(curl -s -o /tmp/response.json -w "%{http_code}" \
             -X POST "${{ secrets.SITE_URL }}/api/email" \
             -H "Content-Type: application/json" \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             -d '{"action": "send_final_reminder"}')
-          echo "Response: $RESPONSE"
+          RESPONSE=$(cat /tmp/response.json)
+          echo "HTTP $HTTP_STATUS: $RESPONSE"
+
+          if [ "$HTTP_STATUS" -lt 200 ] || [ "$HTTP_STATUS" -ge 300 ]; then
+            echo "::error::HTTP $HTTP_STATUS: $RESPONSE"
+            exit 1
+          fi
 
           SENT=$(echo "$RESPONSE" | jq -r '.sent // 0')
           echo "::notice::Emails sent: $SENT"
@@ -205,22 +217,23 @@ jobs:
               sleep $WAIT_TIME
             fi
 
-            RESPONSE=$(curl -sL --post301 --post302 --post303 \
+            HTTP_STATUS=$(curl -s -o /tmp/response.json -w "%{http_code}" \
               -X POST "${{ secrets.SITE_URL }}/api/pairings" \
               -H "Content-Type: application/json" \
               -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
               -d '{}')
-            echo "Response: $RESPONSE"
+            RESPONSE=$(cat /tmp/response.json)
+            echo "HTTP $HTTP_STATUS: $RESPONSE"
 
             API_SUCCESS=$(echo "$RESPONSE" | jq -r '.success // false')
             PAIRINGS=$(echo "$RESPONSE" | jq -r '.pairings_created // 0')
             EMAILS=$(echo "$RESPONSE" | jq -r '.emails_sent // 0')
 
-            if [ "$API_SUCCESS" = "true" ] && [ "$PAIRINGS" -gt 0 ]; then
+            if [ "$HTTP_STATUS" -ge 200 ] && [ "$HTTP_STATUS" -lt 300 ] && [ "$API_SUCCESS" = "true" ] && [ "$PAIRINGS" -gt 0 ]; then
               SUCCESS=true
               echo "::notice::SUCCESS! Pairings created: $PAIRINGS, Emails sent: $EMAILS"
             else
-              echo "::warning::Attempt $RETRY_COUNT failed. API success: $API_SUCCESS, Pairings: $PAIRINGS"
+              echo "::warning::Attempt $RETRY_COUNT failed. HTTP: $HTTP_STATUS, API success: $API_SUCCESS, Pairings: $PAIRINGS"
             fi
           done
 
@@ -241,12 +254,18 @@ jobs:
 
       - name: Send mid-month reminder emails
         run: |
-          RESPONSE=$(curl -sL --post301 --post302 --post303 \
+          HTTP_STATUS=$(curl -s -o /tmp/response.json -w "%{http_code}" \
             -X POST "${{ secrets.SITE_URL }}/api/email" \
             -H "Content-Type: application/json" \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             -d '{"action": "send_midmonth_reminders"}')
-          echo "Response: $RESPONSE"
+          RESPONSE=$(cat /tmp/response.json)
+          echo "HTTP $HTTP_STATUS: $RESPONSE"
+
+          if [ "$HTTP_STATUS" -lt 200 ] || [ "$HTTP_STATUS" -ge 300 ]; then
+            echo "::error::HTTP $HTTP_STATUS: $RESPONSE"
+            exit 1
+          fi
 
           SENT=$(echo "$RESPONSE" | jq -r '.sent // 0')
           echo "::notice::Emails sent: $SENT"
@@ -284,7 +303,14 @@ jobs:
           PERIOD="$MONTH $YEAR"
 
           # Check if pairings exist for this month
-          CHECK_RESPONSE=$(curl -sL "${{ secrets.SITE_URL }}/api/pairings")
+          HTTP_STATUS=$(curl -s -o /tmp/check.json -w "%{http_code}" \
+            "${{ secrets.SITE_URL }}/api/pairings")
+          CHECK_RESPONSE=$(cat /tmp/check.json)
+          echo "Health check GET: HTTP $HTTP_STATUS"
+          if [ "$HTTP_STATUS" -lt 200 ] || [ "$HTTP_STATUS" -ge 300 ]; then
+            echo "::error::Failed to check pairings: HTTP $HTTP_STATUS: $CHECK_RESPONSE"
+            exit 1
+          fi
           EXISTING_COUNT=$(echo "$CHECK_RESPONSE" | jq -r '.count // 0')
 
           echo "::notice::Current pairings for $PERIOD: $EXISTING_COUNT"
@@ -307,21 +333,23 @@ jobs:
                 sleep $WAIT_TIME
               fi
 
-              RESPONSE=$(curl -sL --post301 --post302 --post303 \
+              HTTP_STATUS=$(curl -s -o /tmp/recovery.json -w "%{http_code}" \
                 -X POST "${{ secrets.SITE_URL }}/api/pairings" \
                 -H "Content-Type: application/json" \
                 -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
                 -d '{}')
+              RESPONSE=$(cat /tmp/recovery.json)
+              echo "HTTP $HTTP_STATUS: $RESPONSE"
 
               API_SUCCESS=$(echo "$RESPONSE" | jq -r '.success // false')
               PAIRINGS=$(echo "$RESPONSE" | jq -r '.pairings_created // 0')
               EMAILS=$(echo "$RESPONSE" | jq -r '.emails_sent // 0')
 
-              if [ "$API_SUCCESS" = "true" ] && [ "$PAIRINGS" -gt 0 ]; then
+              if [ "$HTTP_STATUS" -ge 200 ] && [ "$HTTP_STATUS" -lt 300 ] && [ "$API_SUCCESS" = "true" ] && [ "$PAIRINGS" -gt 0 ]; then
                 SUCCESS=true
                 echo "::notice::RECOVERY SUCCESSFUL! Pairings created: $PAIRINGS, Emails sent: $EMAILS"
               else
-                echo "::warning::Recovery attempt $RETRY_COUNT failed"
+                echo "::warning::Recovery attempt $RETRY_COUNT failed. HTTP: $HTTP_STATUS, API success: $API_SUCCESS"
               fi
             done
 

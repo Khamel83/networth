@@ -50,12 +50,16 @@ class handler(BaseHTTPRequestHandler):
             admin_email = os.environ.get('ADMIN_EMAIL', 'khamel@khamel.com')
             result = table('players').select('*').eq('is_active', True).neq('email', admin_email).order('total_games', desc=True, nulls='last').execute()
 
-            if result.data:
-                players = result.data
-                source = "supabase"
-            else:
-                players = SAMPLE_PLAYERS
-                source = "sample"
+            if result.error:
+                self.send_response(500)
+                self.send_header('Content-Type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    "success": False,
+                    "error": f"Failed to load players: {result.error}"
+                }).encode())
+                return
 
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
@@ -63,18 +67,16 @@ class handler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(json.dumps({
                 "success": True,
-                "players": players,
-                "source": source
+                "players": result.data,
+                "source": "supabase"
             }).encode())
 
         except Exception as e:
-            self.send_response(200)
+            self.send_response(500)
             self.send_header('Content-Type', 'application/json')
             self.send_header('Access-Control-Allow-Origin', '*')
             self.end_headers()
             self.wfile.write(json.dumps({
-                "success": True,
-                "players": SAMPLE_PLAYERS,
-                "source": "sample_fallback",
+                "success": False,
                 "error": str(e)
             }).encode())

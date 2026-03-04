@@ -210,25 +210,27 @@ class Result:
         self.response = response
         self.status_code = response.status_code
         self.error = None
+        self.data = []
+
+        # Check HTTP status first — non-2xx is always an error
+        if not (200 <= response.status_code < 300):
+            self.error = f"HTTP {response.status_code}: {response.text[:200]}"
+            return
+
+        # Empty body = success with no rows returned (e.g. INSERT returns 201 with no body)
+        if not response.text.strip():
+            return
+
         try:
             parsed = response.json()
-            # Check if this is an error response
             if isinstance(parsed, dict) and ('error' in parsed or 'message' in parsed or 'code' in parsed):
-                # This is an error response, not data
                 self.error = parsed.get('error') or parsed.get('message') or str(parsed)
-                self.data = []
             elif isinstance(parsed, list):
-                # Normal list of rows
                 self.data = parsed
             elif isinstance(parsed, dict):
-                # Single row returned as dict - wrap in list
                 self.data = [parsed]
-            elif not parsed:
-                self.data = []
-            else:
-                self.data = []
-        except:
-            self.data = []
+        except Exception as e:
+            self.error = f"JSON parse error: {str(e)}"
 
     def execute(self) -> 'Result':
         """Chain method - returns self"""

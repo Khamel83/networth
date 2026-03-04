@@ -120,10 +120,13 @@ class handler(BaseHTTPRequestHandler):
 
                 new_hash = hash_password(new_password)
 
-                table('players').update({
+                update_result = table('players').update({
                     'password_hash': new_hash,
                     'password_changed': True
                 }).eq('email', email).execute()
+                if update_result.error:
+                    self._send_error(500, f"Failed to update password: {update_result.error}")
+                    return
 
                 self._send_success({"message": "Password updated"})
                 return
@@ -148,10 +151,13 @@ class handler(BaseHTTPRequestHandler):
                 reset_token = secrets.token_urlsafe(32)
                 expires = datetime.now(timezone.utc) + timedelta(hours=1)
 
-                table('players').update({
+                reset_token_result = table('players').update({
                     'password_reset_token': reset_token,
                     'password_reset_expires': expires.isoformat()
                 }).eq('email', email).execute()
+                if reset_token_result.error:
+                    self._send_error(500, f"Failed to store reset token: {reset_token_result.error}")
+                    return
 
                 try:
                     from api.email import send_email
@@ -210,12 +216,15 @@ class handler(BaseHTTPRequestHandler):
 
                 new_hash = hash_password(new_password)
 
-                table('players').update({
+                reset_update_result = table('players').update({
                     'password_hash': new_hash,
                     'password_changed': True,
                     'password_reset_token': None,
                     'password_reset_expires': None
                 }).eq('id', player['id']).execute()
+                if reset_update_result.error:
+                    self._send_error(500, f"Failed to save new password: {reset_update_result.error}")
+                    return
 
                 self._send_success({"message": "Password reset successful"})
                 return

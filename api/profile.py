@@ -181,6 +181,9 @@ class handler(BaseHTTPRequestHandler):
             # If viewing another player's profile
             if profile_id:
                 result = table('players').select('*').eq('id', profile_id).single().execute()
+                if result.error:
+                    self._send_error(500, f"Failed to fetch player profile: {result.error}")
+                    return
                 if not result.data:
                     self._send_error(404, "Player not found")
                     return
@@ -239,6 +242,9 @@ class handler(BaseHTTPRequestHandler):
                 player_id = data.get('player_id')
                 if player_id:
                     result = table('players').select('*').eq('id', player_id).single().execute()
+                    if result.error:
+                        self._send_error(500, f"Failed to fetch player by ID: {result.error}")
+                        return
                     if result.data:
                         player = result.data[0] if isinstance(result.data, list) else result.data
 
@@ -353,10 +359,16 @@ class handler(BaseHTTPRequestHandler):
                 return
 
             if updates:
-                table('players').update(updates).eq('id', player_id).execute()
+                update_result = table('players').update(updates).eq('id', player_id).execute()
+                if update_result.error:
+                    self._send_error(500, f"Failed to update profile: {update_result.error}")
+                    return
 
             # Return updated profile
             updated_result = table('players').select('*').eq('id', player_id).single().execute()
+            if updated_result.error:
+                self._send_error(500, f"Failed to fetch updated profile: {updated_result.error}")
+                return
             updated = updated_result.data[0] if isinstance(updated_result.data, list) else updated_result.data
 
             self._send_success({

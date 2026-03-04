@@ -12,7 +12,13 @@ jobs:
     steps:
       - name: Ping Supabase
         run: |
-          curl -s "${{ secrets.SUPABASE_URL }}/rest/v1/players?select=count&limit=1" \
+          HTTP_STATUS=$(curl -s -o /tmp/ping.json -w "%{http_code}" \
+            "${{ secrets.SUPABASE_URL }}/rest/v1/players?select=count&limit=1" \
             -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
-            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}"
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}")
+          echo "Supabase ping: HTTP $HTTP_STATUS"
+          if [ "$HTTP_STATUS" -lt 200 ] || [ "$HTTP_STATUS" -ge 300 ]; then
+            echo "::error::Supabase ping failed: HTTP $HTTP_STATUS: $(cat /tmp/ping.json)"
+            exit 1
+          fi
           echo "Pinged Supabase to prevent pause"
