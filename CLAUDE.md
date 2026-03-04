@@ -496,3 +496,9 @@ if (response.status === 401) {
   oneshot:last-check: 2026-02-01
   oneshot:machine: instance-first
 -->
+
+<!--
+  ONE-SHOT Heartbeat Metadata
+  oneshot:last-check: 2026-03-03
+  oneshot:machine: instance-first
+-->
