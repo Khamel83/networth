@@ -143,18 +143,12 @@ match_feedback
 
 ## Authentication Patterns
 
-### Magic Link Flow
-1. User enters email → POST `/api/auth` with `action: 'magic_link'`
-2. API checks player exists in DB, sends magic link via Supabase Auth
-3. User clicks email link → redirected to `/dashboard#access_token=...`
-4. JS extracts token from hash, calls `/api/auth` with `action: 'verify'`
-5. API validates token, returns player data
-6. JS stores in localStorage: `networth_token`, `networth_player`
+### Password Auth Flow
+Players log in with email + password. Password reset via emailed link (`/reset-password?token=...`).
 
 ### Critical Lessons Learned:
 - **Email case sensitivity:** Always `.lower()` emails before storing/comparing
 - **No reload after auth:** Don't use `window.location.reload()` after setting localStorage - set variables directly and update UI
-- **Rate limiting:** Supabase limits OTP requests to 1 per 30 seconds - show friendly message
 - **Cold start timeouts:** Vercel functions need `maxDuration: 30` in vercel.json for Supabase calls
 
 ---
