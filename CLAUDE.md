@@ -246,7 +246,14 @@ api/join.py       api/matches.py    api/pairings.py
 api/players.py    api/profile.py    api/system.py
 api/upload.py
 ```
-Note: `api/supabase_http.py` is a utility module (no handler), doesn't count.
+Utility modules in `api/` (no handler, don't count toward limit):
+- `api/supabase_http.py` - Custom Supabase REST client
+- `api/reliability.py` - Automation preflight helpers
+- `api/sentry_init.py` - Sentry initialization
+- `api/__init__.py` - Package init
+
+CI check uses `grep -rl "class handler" api/*.py` — counts only files with a real Vercel handler. New utility modules added to `api/` will NOT trip the check unless they define `class handler`.
+
 Consolidated: `health.py` + `report_issue.py` → `system.py`; deleted `migrate-passwords.py`
 
 ---
@@ -366,6 +373,12 @@ WHERE is_active = true
 **Fix:** Always check HTTP status first. Set `self.error` on any exception. Guard every `.execute()` call with `if result.error: return self._send_error(...)`.
 **Rule:** Custom ORM wrappers must propagate errors explicitly. Never let a failed query look like an empty result.
 
+### 18. CI Function Count Broken by New Utility Modules in api/
+**Symptom:** Daily health check fails with "Exceeds Vercel limit" even though no new endpoints were added
+**Cause:** Old check used a manual exclusion list (`grep -v supabase_http`). Adding any new utility module to `api/` without updating the list trips the count.
+**Fix:** CI now uses `grep -rl "class handler" api/*.py` — counts only files that define a real Vercel handler. No exclusion list to maintain.
+**Rule:** Never revert to an exclusion-list approach for this check.
+
 ### 14. Shell Date Zero-Padding Breaks Month-1st Comparisons
 **Symptom:** Automated workflows silently no-op on the 1st of the month
 **Cause:** `date +%d` returns `"01"` (zero-padded). Comparing `"01" = "1"` is false in bash.
@@ -468,6 +481,7 @@ if (response.status === 401) {
 - **Admin tier exclusion** - Changed Khamel from 'player' to 'admin' tier; emails now filter by membership_tier to exclude non-playing admins
 
 ### March 2026
+- **Fixed CI function count check** - Replaced manual exclusion list with `grep -rl "class handler"` so new utility modules in `api/` never trip the Vercel limit check again
 - **Fixed silent automation failures** - `date +%d` returns zero-padded "01"; changed to `date +%-d` everywhere so 1st-of-month comparisons actually work
 - **Fixed anti-staleness never working** - `match_assignments` uses `assigned_at` not `created_at`; silent Supabase error made staleness check always return empty, so repeated pairings were never penalized
 - **Added CRON_SECRET auth** - All GitHub Actions curl POSTs now send `Authorization: Bearer $CRON_SECRET`; pairings.py and email.py validate it server-side
