@@ -59,12 +59,15 @@ class TestEmailAPI:
         }).encode()
 
         mock_handler.headers = Mock()
-        mock_handler.headers.get = Mock(return_value=str(len(body)))
+        mock_handler.headers.get = Mock(side_effect=lambda key, default=None: {
+            'Content-Length': str(len(body)),
+            'Authorization': 'Bearer test-cron-secret'
+        }.get(key, default))
         mock_handler.rfile = io.BytesIO(body)
 
         # send_email imports resend internally; patch send_email directly
         with patch('api.email.send_email', return_value={'success': True, 'id': 'test-id'}):
-            with patch.dict(os.environ, {'ADMIN_EMAIL': 'admin@test.com'}):
+            with patch.dict(os.environ, {'ADMIN_EMAIL': 'admin@test.com', 'CRON_SECRET': 'test-cron-secret'}):
                 mock_handler.do_POST()
 
                 # Verify success response

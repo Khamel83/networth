@@ -129,7 +129,14 @@ def update_run(run_id: Optional[str], status: str, summary: Optional[Dict[str, A
 
 def _is_missing_table_error(error: Any) -> bool:
     text = str(error or "")
-    return ("42P01" in text) or ("does not exist" in text.lower()) or ("relation" in text.lower() and "not found" in text.lower())
+    lowered = text.lower()
+    return (
+        ("42P01" in text) or
+        ("PGRST205" in text) or
+        ("does not exist" in lowered) or
+        ("could not find the table" in lowered) or
+        ("relation" in lowered and "not found" in lowered)
+    )
 
 
 def _env(name: str) -> Optional[str]:
