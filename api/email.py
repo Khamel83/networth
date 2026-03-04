@@ -525,6 +525,9 @@ class handler(BaseHTTPRequestHandler):
                 # Get all players with 'player' tier (excludes 'social_butterfly' and 'admin' tiers)
                 players = table('players').select('email, name').eq('membership_tier', 'player').execute()
 
+                if players.error:
+                    self._send_error(500, f"Failed to load players: {players.error}")
+                    return
                 if not players.data:
                     self._send_success({"message": "No active players to email", "sent": 0})
                     return
@@ -557,6 +560,9 @@ class handler(BaseHTTPRequestHandler):
                 # Players with 'player' tier only (excludes 'social_butterfly' and 'admin' tiers)
                 players = table('players').select('email, name').eq('membership_tier', 'player').execute()
 
+                if players.error:
+                    self._send_error(500, f"Failed to load players: {players.error}")
+                    return
                 if not players.data:
                     self._send_success({"message": "No players to email", "sent": 0})
                     return
@@ -589,6 +595,9 @@ class handler(BaseHTTPRequestHandler):
                 # Get paused players with 'player' tier only (excludes 'social_butterfly' and 'admin' tiers)
                 players = table('players').select('email, name').eq('is_active', False).eq('membership_tier', 'player').execute()
 
+                if players.error:
+                    self._send_error(500, f"Failed to load players: {players.error}")
+                    return
                 if not players.data:
                     self._send_success({"message": "No paused players to email", "sent": 0})
                     return
@@ -621,6 +630,9 @@ class handler(BaseHTTPRequestHandler):
                 month = datetime.now().strftime('%B %Y')
                 matches_result = table('match_assignments').select('*').eq('period_label', month).eq('status', 'pending').execute()
 
+                if matches_result.error:
+                    self._send_error(500, f"Failed to load match assignments: {matches_result.error}")
+                    return
                 if not matches_result.data:
                     self._send_success({"message": "No pending matches to remind", "sent": 0})
                     return
@@ -633,6 +645,9 @@ class handler(BaseHTTPRequestHandler):
 
                 # Get all relevant players
                 players_result = table('players').select('id, email, name').execute()
+                if players_result.error:
+                    self._send_error(500, f"Failed to load players: {players_result.error}")
+                    return
                 players_map = {pl['id']: pl for pl in players_result.data if pl['id'] in player_ids}
 
                 sent = 0
