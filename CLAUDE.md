@@ -340,6 +340,21 @@ WHERE is_active = true
 ```
 **Note:** `is_admin` controls dashboard access, NOT whether someone is a ranked player.
 
+### 13. Anti-Staleness Check Silently Disabled by Wrong Column Name
+**Symptom:** Players get paired with the same person month after month
+**Cause:** `match_assignments` uses `assigned_at` (not `created_at`). Querying `.order('created_at')` returns a Supabase error dict, which `Result` silently converts to `[]`. Empty list = empty staleness set = zero penalty on any repeated pair. The staleness system appeared to work but never did.
+**Fix:** Use `assigned_at` in the recent_matches query in `api/pairings.py`
+**Column names to remember:**
+- `match_assignments`: `assigned_at`, `responded_at` (NO `created_at`)
+- `matches`: `created_at` (standard Supabase default)
+**Rule:** When adding `.order()` on any table, verify the column name in Supabase first.
+
+### 14. Shell Date Zero-Padding Breaks Month-1st Comparisons
+**Symptom:** Automated workflows silently no-op on the 1st of the month
+**Cause:** `date +%d` returns `"01"` (zero-padded). Comparing `"01" = "1"` is false in bash.
+**Fix:** Always use `date +%-d` (GNU coreutils, Linux/GitHub Actions) to strip the zero.
+**Rule:** Any `date` output used in a bash comparison must use `%-d`, `%-m`, `%-H` etc.
+
 ### 12. "#null" Displayed Instead of Rank
 **Symptom:** Profile page shows "#null" instead of a rank number
 **Cause:** JavaScript `null < 99` evaluates to `true`, so the condition passes and displays `#` + `null`
@@ -434,6 +449,13 @@ if (response.status === 401) {
 - **Admin: update_games action** - New API action to manually correct player total_games values
 - **Fixed paused player email exclusion** - Availability emails now go to ALL Players (active + paused) so they know to reactivate
 - **Admin tier exclusion** - Changed Khamel from 'player' to 'admin' tier; emails now filter by membership_tier to exclude non-playing admins
+
+### March 2026
+- **Fixed silent automation failures** - `date +%d` returns zero-padded "01"; changed to `date +%-d` everywhere so 1st-of-month comparisons actually work
+- **Fixed anti-staleness never working** - `match_assignments` uses `assigned_at` not `created_at`; silent Supabase error made staleness check always return empty, so repeated pairings were never penalized
+- **Added CRON_SECRET auth** - All GitHub Actions curl POSTs now send `Authorization: Bearer $CRON_SECRET`; pairings.py and email.py validate it server-side
+- **Fixed CI/CD tests** - Added `api/__init__.py`, `tests/conftest.py`, fixed wrong mock patches; 28/28 tests now pass
+- **March pairings generated** - 14 pairings, 14 emails sent (3rd, manually triggered after fixing automation)
 
 ### February 2026
 - **Report Issue feature** - Users can report bugs from dashboard via `/api/report_issue` (sends admin alert email)
