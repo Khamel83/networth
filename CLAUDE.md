@@ -23,7 +23,7 @@ Players self-register via join page → immediately active → can log in right 
 - Check status: `GET /api/email` returns "ready" or "not_configured"
 
 ### Key files:
-- `api/pairings.py` - Matching algorithm (skill-based), sends match emails
+- `api/pairings.py` - Matching algorithm (exhaustion-first, RMS bands), sends match emails
 - `api/email.py` - Resend API sender + 8 email templates (including admin alerts)
 - `api/join.py` - Player registration (handles re-registration of inactive accounts)
 - `api/admin.py` - Admin dashboard API (approve/reject/pause players, payment tracking)
@@ -349,6 +349,24 @@ WHERE is_active = true
 - `matches`: `created_at` (standard Supabase default)
 **Rule:** When adding `.order()` on any table, verify the column name in Supabase first.
 
+### 15. Greedy Matching Can Drop Players in Cross-Band Pass
+**Symptom:** With 2+ players who've all played each other, some players silently disappear from skipped list
+**Cause:** Cross-band pass pops player1 from `unpaired`, tries all candidates, fails, adds player1 to `still_unpaired`. But remaining candidates (still in `unpaired` when loop exits because `len < 2`) get lost when `unpaired = still_unpaired`.
+**Fix:** `still_unpaired.extend(unpaired)` before `unpaired = still_unpaired` — collect stragglers.
+**Rule:** Any greedy while-loop that pops from a list must preserve all remaining items at the end.
+
+### 16. Penalty-Based Anti-Staleness Is Not a Hard Block
+**Symptom:** Same players repeatedly matched month after month despite "anti-staleness" code
+**Cause:** `score -= 50` still leaves score at 50 (positive). With 14 players in few bands, a penalized pair beats fresh cross-band pairs and gets chosen anyway.
+**Fix:** Exhaustion-first: treat all-time pairs as hard blocks in Pass 1. Only allow repeats in Pass 2 when all fresh options are truly exhausted.
+**Rule:** If you need "never repeat X", use a hard block (skip/continue), not a penalty.
+
+### 17. Silent Result Failures from Custom ORM
+**Symptom:** Queries return empty results with no error — algorithm runs on empty data, silent wrong behavior
+**Cause:** `supabase_http.py` Result class had bare `except:` that set `self.data = []` without setting `self.error`. Callers saw empty data and proceeded normally.
+**Fix:** Always check HTTP status first. Set `self.error` on any exception. Guard every `.execute()` call with `if result.error: return self._send_error(...)`.
+**Rule:** Custom ORM wrappers must propagate errors explicitly. Never let a failed query look like an empty result.
+
 ### 14. Shell Date Zero-Padding Breaks Month-1st Comparisons
 **Symptom:** Automated workflows silently no-op on the 1st of the month
 **Cause:** `date +%d` returns `"01"` (zero-padded). Comparing `"01" = "1"` is false in bash.
@@ -456,6 +474,15 @@ if (response.status === 401) {
 - **Added CRON_SECRET auth** - All GitHub Actions curl POSTs now send `Authorization: Bearer $CRON_SECRET`; pairings.py and email.py validate it server-side
 - **Fixed CI/CD tests** - Added `api/__init__.py`, `tests/conftest.py`, fixed wrong mock patches; 28/28 tests now pass
 - **March pairings generated** - 14 pairings, 14 emails sent (3rd, manually triggered after fixing automation)
+- **Reliability refactor (exhaustion-first matching)** - Complete overhaul after 3 repeat pairs in March:
+  - Algorithm: penalty-based anti-staleness → exhaustion-first two-pass (Pass 1: all-time hard block; Pass 2: forced repeat only when unavoidable)
+  - Full validation gate before any email: duplicate player check, avoidable repeat check, duplicate-run protection (409), DB insert + count verify
+  - `supabase_http.py`: Result class now checks HTTP status first; fixes bare except swallowing errors silently
+  - All API files: error guards after every `.execute()` call; HTTP 500 on errors (not 200 + fake data)
+  - GitHub Actions: all curl calls now capture `-w "%{http_code}"` and check HTTP status before jq
+  - `tests/test_pairings.py`: 34 new tests for algorithm (62 total passing)
+  - `migrations/01_security_fixes.sql`: run in Supabase Dashboard to fix 2 view ERRORs + 5 RLS warnings
+  - Bug found by tests: cross-band pass was silently dropping players when loop exited with <2 remaining (`still_unpaired.extend(unpaired)` fix)
 
 ### February 2026
 - **Report Issue feature** - Users can report bugs from dashboard via `/api/report_issue` (sends admin alert email)
