@@ -7,8 +7,8 @@ import json
 import sys
 from unittest.mock import Mock, MagicMock, patch
 
-# Add api directory to path for imports
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'api'))
+# Add project root to path for imports (so `from api.email import ...` works)
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 # Mock environment variables before imports
 os.environ.setdefault('SUPABASE_URL', 'https://test.supabase.co')
@@ -62,20 +62,13 @@ class TestEmailAPI:
         mock_handler.headers.get = Mock(return_value=str(len(body)))
         mock_handler.rfile = io.BytesIO(body)
 
-        # Mock supabase and resend
-        with patch('api.email.table') as mock_table, \
-             patch('api.email.resend') as mock_resend:
+        # send_email imports resend internally; patch send_email directly
+        with patch('api.email.send_email', return_value={'success': True, 'id': 'test-id'}):
+            with patch.dict(os.environ, {'ADMIN_EMAIL': 'admin@test.com'}):
+                mock_handler.do_POST()
 
-            # Mock admin response
-            mock_table.return_value.select.return_value.eq.return_value.execute.return_value.data = [
-                {'email': 'admin@test.com'}
-            ]
-            mock_resend.Emails.send.return_value = {'id': 'test-id'}
-
-            mock_handler.do_POST()
-
-            # Verify success response
-            mock_handler.send_response.assert_called_with(200)
+                # Verify success response
+                mock_handler.send_response.assert_called_with(200)
 
 
 class TestSystemAPI:
@@ -112,7 +105,7 @@ class TestSystemAPI:
         mock_handler.end_headers = Mock()
         mock_handler.wfile = Mock()
 
-        # Missing message
+        # Missing message - 400 returned before resend is ever imported
         body = json.dumps({
             'action': 'report_issue',
             'reporter_email': 'test@test.com',
@@ -123,11 +116,10 @@ class TestSystemAPI:
         mock_handler.headers.get = Mock(return_value=str(len(body)))
         mock_handler.rfile = io.BytesIO(body)
 
-        with patch('api.system.resend'):
-            mock_handler.do_POST()
+        mock_handler.do_POST()
 
-            # Should return 400 error
-            mock_handler.send_response.assert_called_with(400)
+        # Should return 400 error (missing message check happens before resend import)
+        mock_handler.send_response.assert_called_with(400)
 
     def test_report_issue_accepts_valid_report(self):
         """POST /api/system with report_issue should accept valid report"""
@@ -154,19 +146,13 @@ class TestSystemAPI:
         mock_handler.headers.get = Mock(return_value=str(len(body)))
         mock_handler.rfile = io.BytesIO(body)
 
-        with patch('api.system.table') as mock_table, \
-             patch('api.system.resend') as mock_resend:
+        # resend is imported inside the function; patch it at the module level it imports from
+        with patch('resend.Emails.send', return_value={'id': 'test-id'}):
+            with patch.dict(os.environ, {'ADMIN_EMAIL': 'admin@test.com'}):
+                mock_handler.do_POST()
 
-            mock_table.return_value.select.return_value.eq.return_value.execute.return_value.data = [
-                {'email': 'admin@test.com'}
-            ]
-            mock_resend.Emails.send.return_value = {'id': 'test-id'}
-            mock_resend.api_key = 'test-key'
-
-            mock_handler.do_POST()
-
-            # Should return 200 success
-            mock_handler.send_response.assert_called_with(200)
+                # Should return 200 success
+                mock_handler.send_response.assert_called_with(200)
 
 
 
