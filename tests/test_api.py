@@ -476,6 +476,99 @@ class TestMatchesAPI:
         assert js_format == api_format
 
 
+class TestPairingsAPI:
+    """Test pairings endpoint response safety and required coordination fields"""
+
+    def test_pairings_get_includes_contact_but_excludes_sensitive_fields(self):
+        """GET /api/pairings should expose coordination data but not sensitive columns."""
+        from api.pairings import handler
+        import io
+
+        class FakeResult:
+            def __init__(self, data=None, error=None):
+                self.data = data or []
+                self.error = error
+
+        class FakeQuery:
+            def __init__(self, table_name):
+                self.table_name = table_name
+
+            def select(self, _cols='*'):
+                return self
+
+            def eq(self, _col, _val):
+                return self
+
+            def execute(self):
+                if self.table_name == 'match_assignments':
+                    return FakeResult(data=[{
+                        'id': 'a1',
+                        'player1_id': 'p1',
+                        'player2_id': 'p2',
+                        'period_label': 'March 2026',
+                        'status': 'pending'
+                    }])
+                if self.table_name == 'players':
+                    return FakeResult(data=[
+                        {
+                            'id': 'p1',
+                            'name': 'Player One',
+                            'email': 'p1@test.com',
+                            'phone': '555-0001',
+                            'skill_level': '3.5',
+                            'rank': 1,
+                            'membership_tier': 'player',
+                            'avail_weekday_day': True,
+                            'password_hash': 'SHOULD_NOT_LEAK'
+                        },
+                        {
+                            'id': 'p2',
+                            'name': 'Player Two',
+                            'email': 'p2@test.com',
+                            'phone': '555-0002',
+                            'skill_level': '3.5',
+                            'rank': 2,
+                            'membership_tier': 'player',
+                            'avail_weekend_day': True,
+                            'password_hash': 'SHOULD_NOT_LEAK'
+                        }
+                    ])
+                return FakeResult()
+
+        def fake_table(name):
+            return FakeQuery(name)
+
+        mock_request = Mock()
+        mock_handler = handler(mock_request, None, None)
+        mock_handler.path = '/api/pairings?period=March%202026'
+        mock_handler.send_response = Mock()
+        mock_handler.send_header = Mock()
+        mock_handler.end_headers = Mock()
+        mock_handler.wfile = Mock()
+
+        with patch('api.supabase_http.table', side_effect=fake_table):
+            mock_handler.do_GET()
+
+        mock_handler.send_response.assert_called_with(200)
+        write_arg = mock_handler.wfile.write.call_args[0][0]
+        payload = json.loads(write_arg.decode())
+        assert payload['success'] is True
+        assert payload['count'] == 1
+
+        p1 = payload['pairings'][0]['player1']
+        p2 = payload['pairings'][0]['player2']
+
+        # Required coordination fields remain available
+        assert p1['email'] == 'p1@test.com'
+        assert p1['phone'] == '555-0001'
+        assert p2['email'] == 'p2@test.com'
+        assert p2['phone'] == '555-0002'
+
+        # Sensitive fields must not leak
+        assert 'password_hash' not in p1
+        assert 'password_hash' not in p2
+
+
 def test_imports():
     """Test that all API modules are importable"""
     modules = [
