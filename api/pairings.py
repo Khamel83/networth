@@ -496,9 +496,10 @@ class handler(BaseHTTPRequestHandler):
                 })
 
             # 3. Get recent match assignments (last 3 months for anti-staleness)
+            # NOTE: match_assignments uses 'assigned_at', not 'created_at'
             recent_resp = table('match_assignments')\
                 .select('player1_id, player2_id')\
-                .order('created_at', desc=True)\
+                .order('assigned_at', desc=True)\
                 .limit(200)\
                 .execute()
             recent_matches = recent_resp.data
