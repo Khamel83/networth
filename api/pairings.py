@@ -474,16 +474,39 @@ class handler(BaseHTTPRequestHandler):
                     player_ids.add(p.get('player1_id'))
                     player_ids.add(p.get('player2_id'))
 
-                # Get all relevant players
-                players_result = table('players').select('*').execute()
+                # Get only fields needed by admin/pairings view (avoid leaking sensitive columns)
+                players_result = table('players')\
+                    .select('id, name, email, phone, skill_level, rank, membership_tier, avail_weekday_early, avail_weekday_day, avail_weekday_late, avail_weekend_early, avail_weekend_day, avail_weekend_late, available_morning, available_afternoon, available_evening')\
+                    .execute()
                 players_map = {pl['id']: pl for pl in players_result.data if pl['id'] in player_ids}
+
+                def _public_pairing_player(player):
+                    """Return only safe fields required for pairing coordination."""
+                    return {
+                        'id': player.get('id'),
+                        'name': player.get('name'),
+                        'email': player.get('email'),
+                        'phone': player.get('phone'),
+                        'skill_level': player.get('skill_level'),
+                        'rank': player.get('rank'),
+                        'membership_tier': player.get('membership_tier', 'player'),
+                        'avail_weekday_early': player.get('avail_weekday_early', False),
+                        'avail_weekday_day': player.get('avail_weekday_day', False),
+                        'avail_weekday_late': player.get('avail_weekday_late', False),
+                        'avail_weekend_early': player.get('avail_weekend_early', False),
+                        'avail_weekend_day': player.get('avail_weekend_day', False),
+                        'avail_weekend_late': player.get('avail_weekend_late', False),
+                        'available_morning': player.get('available_morning', False),
+                        'available_afternoon': player.get('available_afternoon', False),
+                        'available_evening': player.get('available_evening', False),
+                    }
 
                 pairings_with_availability = []
                 for p in response.data:
                     p1 = players_map.get(p.get('player1_id'), {})
                     p2 = players_map.get(p.get('player2_id'), {})
-                    p['player1'] = p1
-                    p['player2'] = p2
+                    p['player1'] = _public_pairing_player(p1)
+                    p['player2'] = _public_pairing_player(p2)
                     p['player1_availability'] = get_availability_text(p1)
                     p['player2_availability'] = get_availability_text(p2)
                     pairings_with_availability.append(p)
