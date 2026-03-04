@@ -53,8 +53,8 @@ jobs:
             # Always allow manual triggers
             echo "should_run=true" >> $GITHUB_OUTPUT
           else
-            LAST_DAY=$(date -d "$(date +%Y-%m-01) +1 month -1 day" +%d)
-            TODAY=$(date +%d)
+            LAST_DAY=$(date -d "$(date +%Y-%m-01) +1 month -1 day" +%-d)
+            TODAY=$(date +%-d)
             if [ "$TODAY" = "$LAST_DAY" ] || [ "$TODAY" = "27" ] || [ "$TODAY" = "1" ] || [ "$TODAY" = "15" ]; then
               echo "should_run=true" >> $GITHUB_OUTPUT
             else
@@ -77,13 +77,13 @@ jobs:
             echo "action=${{ github.event.inputs.action }}" >> $GITHUB_OUTPUT
             echo "is_last_day=false" >> $GITHUB_OUTPUT
           else
-            DAY=$(date +%d)
+            DAY=$(date +%-d)
             HOUR=$(date +%H | sed 's/^0//')  # Remove leading zero
             MONTH=$(date +%m)
             YEAR=$(date +%Y)
 
             # Check if today is last day of month
-            LAST_DAY=$(date -d "$YEAR-$MONTH-01 +1 month -1 day" +%d)
+            LAST_DAY=$(date -d "$YEAR-$MONTH-01 +1 month -1 day" +%-d)
 
             if [ "$DAY" = "27" ]; then
               echo "action=monthly_availability" >> $GITHUB_OUTPUT
@@ -125,6 +125,7 @@ jobs:
           RESPONSE=$(curl -sL --post301 --post302 --post303 \
             -X POST "${{ secrets.SITE_URL }}/api/email" \
             -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             -d '{"action": "send_availability_check"}')
           echo "Response: $RESPONSE"
 
@@ -151,6 +152,7 @@ jobs:
           RESPONSE=$(curl -sL --post301 --post302 --post303 \
             -X POST "${{ secrets.SITE_URL }}/api/email" \
             -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             -d '{"action": "send_final_reminder"}')
           echo "Response: $RESPONSE"
 
@@ -171,7 +173,8 @@ jobs:
         if: failure()
         run: |
           curl -sL -X POST "${{ secrets.SITE_URL }}/api/email" \
-            -H "Content-Type: application-json" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             -d '{
               "action": "send_admin_alert",
               "subject": "🚨 Net Worth: Pairing Generation Failed",
@@ -205,6 +208,7 @@ jobs:
             RESPONSE=$(curl -sL --post301 --post302 --post303 \
               -X POST "${{ secrets.SITE_URL }}/api/pairings" \
               -H "Content-Type: application/json" \
+              -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
               -d '{}')
             echo "Response: $RESPONSE"
 
@@ -240,6 +244,7 @@ jobs:
           RESPONSE=$(curl -sL --post301 --post302 --post303 \
             -X POST "${{ secrets.SITE_URL }}/api/email" \
             -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             -d '{"action": "send_midmonth_reminders"}')
           echo "Response: $RESPONSE"
 
@@ -261,6 +266,7 @@ jobs:
         run: |
           curl -sL -X POST "${{ secrets.SITE_URL }}/api/email" \
             -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             -d '{
               "action": "send_admin_alert",
               "subject": "🚨 Net Worth: Health Check Failed",
@@ -273,8 +279,8 @@ jobs:
 
       - name: Check pairings and regenerate if missing
         run: |
-          MONTH=$(date -d "$YEAR-$MONTH-01" +%B)
           YEAR=$(date +%Y)
+          MONTH=$(date +%B)
           PERIOD="$MONTH $YEAR"
 
           # Check if pairings exist for this month
@@ -304,6 +310,7 @@ jobs:
               RESPONSE=$(curl -sL --post301 --post302 --post303 \
                 -X POST "${{ secrets.SITE_URL }}/api/pairings" \
                 -H "Content-Type: application/json" \
+                -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
                 -d '{}')
 
               API_SUCCESS=$(echo "$RESPONSE" | jq -r '.success // false')

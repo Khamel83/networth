@@ -462,6 +462,14 @@ class handler(BaseHTTPRequestHandler):
             body = self.rfile.read(content_length).decode('utf-8')
             data = json.loads(body) if body else {}
 
+            # Auth check: allow CRON_SECRET (GitHub Actions) or admin email (dashboard)
+            cron_secret = os.environ.get('CRON_SECRET', '')
+            if cron_secret:
+                auth = self.headers.get('Authorization', '').replace('Bearer ', '')
+                if auth != cron_secret and '@' not in auth:
+                    self._send_error(401, 'Unauthorized')
+                    return
+
             period_label = data.get('period_label', datetime.now().strftime('%B %Y'))
             period_type = data.get('period_type', 'month')
 
