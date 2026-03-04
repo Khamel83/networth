@@ -138,10 +138,10 @@ jobs:
 
       - name: Check what's coming up
         run: |
-          DAY=$(date +%d)
+          DAY=$(date +%-d)
           MONTH=$(date +%m)
           YEAR=$(date +%Y)
-          LAST_DAY=$(date -d "$YEAR-$MONTH-01 +1 month -1 day" +%d)
+          LAST_DAY=$(date -d "$YEAR-$MONTH-01 +1 month -1 day" +%-d)
 
           echo "=== UPCOMING EVENTS ==="
 
@@ -165,10 +165,10 @@ jobs:
       - name: Send reminder alert (last day of month only)
         if: success()
         run: |
-          DAY=$(date +%d)
+          DAY=$(date +%-d)
           MONTH=$(date +%m)
           YEAR=$(date +%Y)
-          LAST_DAY=$(date -d "$YEAR-$MONTH-01 +1 month -1 day" +%d)
+          LAST_DAY=$(date -d "$YEAR-$MONTH-01 +1 month -1 day" +%-d)
 
           # Only send email on last day of month (remind about pairings tomorrow)
           if [ "$DAY" = "$LAST_DAY" ]; then

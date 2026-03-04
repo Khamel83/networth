@@ -471,6 +471,19 @@ class handler(BaseHTTPRequestHandler):
 
             action = data.get('action', 'send')
 
+            # Auth check for mass-send actions (GitHub Actions must pass CRON_SECRET)
+            PROTECTED_ACTIONS = {
+                'send_availability_check', 'send_final_reminder',
+                'send_midmonth_reminders', 'send_admin_alert'
+            }
+            if action in PROTECTED_ACTIONS:
+                cron_secret = os.environ.get('CRON_SECRET', '')
+                if cron_secret:
+                    auth = self.headers.get('Authorization', '').replace('Bearer ', '')
+                    if auth != cron_secret and '@' not in auth:
+                        self._send_error(401, 'Unauthorized')
+                        return
+
             if action == 'send':
                 # Direct email send
                 to_email = data.get('to')
