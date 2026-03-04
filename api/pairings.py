@@ -16,7 +16,6 @@ from http.server import BaseHTTPRequestHandler
 import json
 import os
 from datetime import datetime, date
-import random
 
 # Initialize Sentry for error tracking
 from api.sentry_init import init_sentry
@@ -179,6 +178,122 @@ def is_admin_flex(player):
     return email in ['nmcoffen@gmail.com', 'ashleybrooke.kaufman@gmail.com']
 
 
+def _pair_score(player1, player2):
+    """Score pairing quality (higher is better)."""
+    score = 100
+
+    # Prefer similar RMS when available
+    if player1.get('rms') is not None and player2.get('rms') is not None:
+        rms_diff = abs(player1['rms'] - player2['rms'])
+        score += max(0, 20 - rms_diff * 3)
+
+    # Prefer same/adjacent bands
+    band_diff = abs(player1.get('band_order', 0) - player2.get('band_order', 0))
+    score += max(0, 30 - band_diff * 10)
+
+    return score
+
+
+def _find_best_fresh_pairs(players, blocked_set, all_time_pairs):
+    """
+    Exact fresh-pair solver for small leagues.
+
+    Finds a maximum-cardinality matching using only non-repeat, non-blocked edges.
+    Tiebreak: highest total score.
+
+    Returns:
+      (pair_idx_list, unpaired_idx_list) where pair_idx_list is [(i, j), ...]
+    """
+    n = len(players)
+    if n == 0:
+        return [], []
+
+    # Keep search bounded to avoid pathological explosion on very large leagues.
+    if n > 20:
+        return None, None
+
+    neighbors = [[] for _ in range(n)]
+    edge_score = {}
+    for i in range(n):
+        for j in range(i + 1, n):
+            p1 = players[i]
+            p2 = players[j]
+            if (p1['id'], p2['id']) in blocked_set:
+                continue
+            key = frozenset([p1['id'], p2['id']])
+            if key in all_time_pairs:
+                continue  # Fresh pass only
+            s = _pair_score(p1, p2)
+            neighbors[i].append(j)
+            neighbors[j].append(i)
+            edge_score[(i, j)] = s
+            edge_score[(j, i)] = s
+
+    from functools import lru_cache
+
+    @lru_cache(maxsize=None)
+    def solve(mask):
+        # Returns tuple: (pair_count, score_sum, pairs_tuple, unpaired_tuple)
+        if mask == 0:
+            return (0, 0, tuple(), tuple())
+
+        # Pick the unpaired player with the fewest available partners in mask
+        bits = [idx for idx in range(n) if mask & (1 << idx)]
+        best_i = None
+        best_degree = 10**9
+        for idx in bits:
+            deg = 0
+            for nb in neighbors[idx]:
+                if mask & (1 << nb):
+                    deg += 1
+            if deg < best_degree:
+                best_degree = deg
+                best_i = idx
+
+        i = best_i
+        best = None
+
+        # Option A: leave i unmatched
+        next_mask = mask & ~(1 << i)
+        a_cnt, a_score, a_pairs, a_unpaired = solve(next_mask)
+        best = (a_cnt, a_score, a_pairs, tuple(sorted((i,) + a_unpaired)))
+
+        # Option B: pair i with each eligible j
+        # Highest-score edges first to reduce search churn.
+        candidates = [j for j in neighbors[i] if mask & (1 << j)]
+        candidates.sort(key=lambda j: edge_score[(i, j)], reverse=True)
+
+        for j in candidates:
+            pair_mask = mask & ~(1 << i) & ~(1 << j)
+            c_cnt, c_score, c_pairs, c_unpaired = solve(pair_mask)
+            c_cnt += 1
+            c_score += edge_score[(i, j)]
+            c_pairs = tuple(sorted(((min(i, j), max(i, j)),) + c_pairs))
+            candidate = (c_cnt, c_score, c_pairs, c_unpaired)
+
+            # Max pairs first, then score.
+            if (candidate[0] > best[0]) or (candidate[0] == best[0] and candidate[1] > best[1]):
+                best = candidate
+
+        return best
+
+    full_mask = (1 << n) - 1
+    pair_count, _score, pairs, unpaired = solve(full_mask)
+
+    # Safety: ensure no duplicates in output
+    used = set()
+    pair_idx_list = []
+    for i, j in pairs:
+        if i in used or j in used:
+            continue
+        used.add(i)
+        used.add(j)
+        pair_idx_list.append((i, j))
+
+    unpaired_idx = [idx for idx in range(n) if idx not in used]
+    return pair_idx_list, unpaired_idx
+
+
 def generate_pairings(players, blocked_pairs, all_assignments, all_matches):
     """
     Generate optimal pairings using exhaustion-first matching.
@@ -263,130 +378,60 @@ def generate_pairings(players, blocked_pairs, all_assignments, all_matches):
     else:
         skipped = []
 
-    # Group players by band
-    bands = {}
-    for player in available_players:
-        band = player['band']
-        if band not in bands:
-            bands[band] = []
-        bands[band].append(player)
-
-    # Shuffle within each band for randomness
-    for band_players in bands.values():
-        random.shuffle(band_players)
-
     pairings = []
     unpaired = []
     forced_repeats = set()
 
-    def _try_pair(player1, candidates, allow_repeats=False):
-        """Find the best match for player1 from candidates list.
-        Pass 1 (allow_repeats=False): skip any previously-paired player.
-        Pass 2 (allow_repeats=True): allow repeats, prefer oldest pairing.
-        Returns (best_idx, is_repeat) or (None, False).
-        """
-        best_match_idx = None
-        best_score = -999
+    # Pass 1: exact fresh matching for small/medium leagues.
+    # If a no-repeat full pairing exists, this finds it.
+    # Fallback to deterministic greedy if league size is larger than solver bound.
+    available_players.sort(key=lambda p: (p.get('rank', 999), str(p.get('id'))))
+    exact_pairs, exact_unpaired = _find_best_fresh_pairs(available_players, blocked_set, all_time_pairs)
 
-        for i, player2 in enumerate(candidates):
-            # Always respect hard blocks
-            if (player1['id'], player2['id']) in blocked_set:
-                continue
+    if exact_pairs is not None:
+        for i, j in exact_pairs:
+            p1 = available_players[i]
+            p2 = available_players[j]
+            pairings.append({
+                'player1': p1,
+                'player2': p2,
+                'player1_availability': get_availability_text(p1),
+                'player2_availability': get_availability_text(p2),
+                'score': _pair_score(p1, p2),
+                'band': p1['band'] if p1['band'] == p2['band'] else f"cross-band ({p1['band']} + {p2['band']})"
+            })
+        unpaired = [available_players[idx] for idx in exact_unpaired]
+    else:
+        # Deterministic fallback (large league): greedy fresh first.
+        working = list(available_players)
+        while len(working) >= 2:
+            player1 = working.pop(0)
+            best_idx = None
+            best_score = -999
+            for i, player2 in enumerate(working):
+                if (player1['id'], player2['id']) in blocked_set:
+                    continue
+                pair_key = frozenset([player1['id'], player2['id']])
+                if pair_key in all_time_pairs:
+                    continue
+                score = _pair_score(player1, player2)
+                if score > best_score:
+                    best_score = score
+                    best_idx = i
 
-            pair_key = frozenset([player1['id'], player2['id']])
-            is_previous = pair_key in all_time_pairs
-
-            if not allow_repeats and is_previous:
-                continue  # Pass 1: skip all previous pairs entirely
-
-            # Score: same-band base
-            score = 100
-
-            # RMS similarity bonus
-            if player1['rms'] is not None and player2['rms'] is not None:
-                rms_diff = abs(player1['rms'] - player2['rms'])
-                score += max(0, 20 - rms_diff * 3)
-
-            # Pass 2 only: prefer the pair that played longest ago
-            # all_time_pairs stores the most recent period — earlier in alphabet = older
-            # e.g. "January 2026" < "March 2026" alphabetically but not chronologically
-            # We just need relative ordering; since period_label is "Month YYYY",
-            # sort by year then month index
-            if allow_repeats and is_previous:
-                score -= 500  # Massive penalty — repeat is last resort
-
-            if score > best_score:
-                best_score = score
-                best_match_idx = i
-
-        return best_match_idx
-
-    # Process bands in order: new players first, then developing, competitive, strong, dominant
-    band_order_list = ['new', 'developing', 'competitive', 'strong', 'dominant']
-
-    for band_name in band_order_list:
-        if band_name not in bands:
-            continue
-
-        band_players = bands[band_name]
-
-        while len(band_players) >= 2:
-            player1 = band_players.pop(0)
-
-            # Pass 1: fresh pairing only
-            idx = _try_pair(player1, band_players, allow_repeats=False)
-
-            if idx is not None:
-                player2 = band_players.pop(idx)
+            if best_idx is not None:
+                player2 = working.pop(best_idx)
                 pairings.append({
                     'player1': player1,
                     'player2': player2,
                     'player1_availability': get_availability_text(player1),
                     'player2_availability': get_availability_text(player2),
-                    'score': 100,
-                    'band': band_name
+                    'score': best_score,
+                    'band': player1['band'] if player1['band'] == player2['band'] else f"cross-band ({player1['band']} + {player2['band']})"
                 })
             else:
                 unpaired.append(player1)
-
-        unpaired.extend(band_players)
-
-    # Cross-band pass 1: try to pair remaining players fresh across bands
-    still_unpaired = []
-    while len(unpaired) >= 2:
-        player1 = unpaired.pop(0)
-
-        best_idx = None
-        best_score = -999
-        for i, player2 in enumerate(unpaired):
-            if (player1['id'], player2['id']) in blocked_set:
-                continue
-            pair_key = frozenset([player1['id'], player2['id']])
-            if pair_key in all_time_pairs:
-                continue  # Pass 1: skip previous pairs
-            score = 50
-            band_diff = abs(player1['band_order'] - player2['band_order'])
-            score += max(0, 30 - band_diff * 10)
-            if score > best_score:
-                best_score = score
-                best_idx = i
-
-        if best_idx is not None:
-            player2 = unpaired.pop(best_idx)
-            pairings.append({
-                'player1': player1,
-                'player2': player2,
-                'player1_availability': get_availability_text(player1),
-                'player2_availability': get_availability_text(player2),
-                'score': best_score,
-                'band': f"cross-band ({player1['band']} + {player2['band']})"
-            })
-        else:
-            still_unpaired.append(player1)
-
-    # Don't lose players that were still in unpaired when loop exited (len < 2)
-    still_unpaired.extend(unpaired)
-    unpaired = still_unpaired
+        unpaired.extend(working)
 
     # Pass 2: allow repeats for anyone still unpaired (exhausted all fresh options)
     while len(unpaired) >= 2:
@@ -397,9 +442,7 @@ def generate_pairings(players, blocked_pairs, all_assignments, all_matches):
         for i, player2 in enumerate(unpaired):
             if (player1['id'], player2['id']) in blocked_set:
                 continue
-            score = 50
-            band_diff = abs(player1['band_order'] - player2['band_order'])
-            score += max(0, 30 - band_diff * 10)
+            score = _pair_score(player1, player2)
             pair_key = frozenset([player1['id'], player2['id']])
             if pair_key in all_time_pairs:
                 score -= 500  # Huge penalty but not impossible
@@ -576,6 +619,7 @@ class handler(BaseHTTPRequestHandler):
                 .eq('is_active', True)\
                 .neq('membership_tier', 'social_butterfly')\
                 .neq('email', admin_email)\
+                .order('rank', nulls='last')\
                 .execute()
             if players_resp.error:
                 self._send_error(500, f"Failed to load players: {players_resp.error}")
