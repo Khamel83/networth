@@ -1,131 +1,82 @@
 # NET WORTH Tennis Ladder
 
-East Side LA Women's Tennis - Monthly pairings, games-won ranking.
+East Side LA women's tennis ladder with monthly pairings, automated reminders, and games-won ranking.
 
-## Live Site
+## Live
 
-**[networthtennis.com](https://networthtennis.com)**
+- `https://www.networthtennis.com` (canonical)
+- `https://networthtennis.com` redirects to `www`
 
-## How It Works
+## Autopilot Model
 
-1. **Monthly Pairings** - On the 1st, players get paired by skill level (RMS algorithm)
-2. **Play 2 Sets** - Coordinate via email, play at any approved court
-3. **Report Score** - Log results on dashboard, games won count toward ranking
-4. **Climb the Ladder** - Rankings based on total games won, not match wins
+This system is designed to run without monthly manual intervention.
+
+Automated schedule (`.github/workflows/biweekly-emails.yml`):
+- 27th @ 9am PT: availability reminder
+- Last day @ 9am PT: final reminder
+- 1st @ 9am PT: generate pairings + send match emails
+- 1st @ 12pm PT: health-check/self-heal backup
+- 15th @ 9am PT: mid-month pending-match reminder
+
+Daily safety net (`.github/workflows/daily-health-check.yml`):
+- endpoint checks
+- template compile check
+- failure alert path
+
+## Reliability Hardening (March 2026)
+
+- Protected automation actions now require `CRON_SECRET`.
+- Scheduled actions fail closed on delivery/validation errors (no silent success).
+- Pairings generation has preflight checks, lock semantics, and strict postchecks.
+- `reconcile_month` endpoint exists for safe month reconciliation (`POST /api/system`).
+- Reliability tracking tables:
+  - `automation_runs`
+  - `automation_events`
+  - `email_delivery_log`
+
+Migration:
+- `migrations/02_reliability_automation.sql`
 
 ## Tech Stack
 
-- **Frontend**: Static HTML/CSS/JS on Vercel
-- **Backend**: Vercel Python serverless functions (12/12 on Hobby plan - at limit)
-- **Database**: Supabase (PostgreSQL)
-- **Auth**: Magic links + password login
-- **Email**: Resend API (noreply@networthtennis.com)
+- Frontend: static HTML/CSS/JS on Vercel
+- Backend: Python serverless functions on Vercel
+- Database: Supabase (PostgreSQL)
+- Auth: password-based login + reset token flow
+- Email: Resend (`hello@networthtennis.com`)
 
-## Project Structure
+## Current API Layout
 
-```
-networth/
-├── public/                 # Static site
-│   ├── index.html         # Homepage + ladder
-│   ├── login.html         # Magic link / password login
-│   ├── join.html          # Player registration
-│   ├── dashboard.html     # Player dashboard
-│   ├── admin.html         # Admin dashboard
-│   ├── profile.html       # Individual player profile
-│   ├── profiles.html      # Players directory
-│   ├── rules.html         # How it works
-│   ├── support.html       # FAQs
-│   └── privacy.html       # Privacy policy
-├── api/                    # Serverless functions (12/12 on Vercel Hobby - at limit)
-│   ├── admin.py           # Admin operations (approve/reject/pause/pairings)
-│   ├── auth.py            # Magic link + password auth
-│   ├── email.py           # Resend API + 8 email templates (including admin alerts)
-│   ├── join.py            # Player registration
-│   ├── matches.py         # Match reporting
-│   ├── pairings.py        # Monthly matching algorithm (RMS-based)
-│   ├── players.py         # Player list
-│   ├── profile.py         # Player self-service
-│   ├── health.py          # Health check
-│   ├── migrate-passwords.py # Password migration utility
-│   ├── report_issue.py    # User bug reports (sends email to admins)
-│   ├── supabase_http.py   # Supabase REST API client (utility, not a function)
-│   └── upload.py          # Image uploads
-├── .github/workflows/
-│   ├── biweekly-emails.yml   # Automated email schedule
-│   ├── daily-health-check.yml # Daily health check + alerts
-│   ├── tests.yml             # CI/CD tests
-│   ├── keep-alive.yml        # Prevent function cold starts
-│   └── backup.yml            # Database backup automation
-└── vercel.json            # Routing config
-```
+`api/admin.py`, `api/auth.py`, `api/email.py`, `api/join.py`, `api/matches.py`, `api/pairings.py`, `api/players.py`, `api/profile.py`, `api/system.py`, `api/upload.py`
 
-## Email System
+Utility modules:
+- `api/supabase_http.py`
+- `api/reliability.py`
+- `api/sentry_init.py`
 
-Emails are sent via **Resend API** from `noreply@networthtennis.com`.
+## Required Configuration
 
-### 8 Email Templates
+Vercel env vars:
+- `SUPABASE_URL`
+- `SUPABASE_ANON_KEY`
+- `RESEND_API_KEY`
+- `ADMIN_EMAIL`
+- `CRON_SECRET`
+- `SITE_URL` = `https://www.networthtennis.com`
 
-| Email | When | Description |
-|-------|------|-------------|
-| Welcome | On signup | Thanks for joining |
-| Match Assignment | 1st of month | You're paired with {player} |
-| Availability Check | 27th of month | Update your status for next month |
-| Final Reminder | Last day of month | Last call before pairings |
-| Mid-Month Reminder | 15th of month | Don't forget to play your match |
-| Sit-Out Confirmation | Player pauses | You're sitting out this month |
-| Rejoin Confirmation | Player unpauses | Welcome back! |
-| Admin Alert | Health check fail / Bug report | System alerts to admins |
+GitHub Actions secrets:
+- `SITE_URL` = `https://www.networthtennis.com`
+- `CRON_SECRET` (must exactly match Vercel)
 
-### Email Schedule (GitHub Actions)
+## Operational Endpoints
 
-Runs automatically:
-- **27th**: Availability check to all active players
-- **Last day**: Final availability reminder
-- **1st**: Generate pairings + send match emails
-- **15th**: Mid-month reminder for pending matches
+- `GET /api/system` -> service/database health
+- `GET /api/email` -> email system status
+- `GET /api/pairings` -> current month pairings
+- `POST /api/system` with `{"action":"reconcile_month","dry_run":true}` (auth required)
 
-## Environment Variables
-
-### Vercel Dashboard
-
-| Variable | Description |
-|----------|-------------|
-| `SUPABASE_URL` | Supabase project URL |
-| `SUPABASE_ANON_KEY` | Supabase anon key |
-| `RESEND_API_KEY` | Resend API key |
-| `SITE_URL` | `https://networthtennis.com` |
-| `ADMIN_EMAIL` | Admin email for notifications |
-
-### GitHub Secrets
-
-| Variable | Description |
-|----------|-------------|
-| `SITE_URL` | `https://networthtennis.com` |
-
-## Database (Supabase)
-
-Key tables:
-- `players` - Name, email, skill, total_games, rank, availability, is_active
-- `matches` - Scores, who played, when
-- `match_assignments` - Monthly pairings
-- `match_feedback` - "Would play again" for silent blocking
-
-## Matching Algorithm (RMS)
-
-Players are matched based on Rolling Match Score (RMS):
-- RMS = Average total games won in last 3 matches
-- Performance bands: developing, competitive, strong, dominant
-- New players paired together when possible
-- Anti-staleness: avoids same matchup within 3 months
-- Admin flex: Ashley/Natalie rotate sitting out if odd count
-
-## Local Development
+## Local Dev
 
 ```bash
-python serve.py
-# Open http://localhost:3000
+python3 serve.py
 ```
-
-## License
-
-MIT

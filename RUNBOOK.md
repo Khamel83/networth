@@ -4,7 +4,7 @@ This document covers routine operations and what to do when things go wrong. Des
 
 ---
 
-## What Runs Automatically
+## What Runs Automatically (Autopilot)
 
 These processes run without any human intervention:
 
@@ -13,6 +13,7 @@ These processes run without any human intervention:
 | 27th of month, 9am PT | Availability check emails sent | GitHub Actions |
 | Last day of month, 9am PT | Final reminder emails sent | GitHub Actions |
 | 1st of month, 9am PT | Pairings generated + match emails sent | GitHub Actions |
+| 1st of month, 12pm PT | Health-check/self-heal backup | GitHub Actions |
 | 15th of month, 9am PT | Mid-month reminder emails sent | GitHub Actions |
 | On player signup | Welcome email sent | Automatic |
 | On match score submitted | Rankings recalculated | Automatic |
@@ -21,7 +22,7 @@ These processes run without any human intervention:
 
 ## Admin Dashboard Operations
 
-**Location:** `https://networthtennis.com/admin.html`
+**Location:** `https://www.networthtennis.com/admin`
 
 ### Approve New Players
 
@@ -51,9 +52,9 @@ These processes run without any human intervention:
 
 ---
 
-## Manual Email Triggers
+## Manual Triggers (Use Only If Needed)
 
-If automated emails don't send, you can trigger them manually:
+If automation ever fails, trigger workflows manually from GitHub Actions.
 
 ### Via GitHub Actions (Recommended)
 
@@ -68,13 +69,11 @@ If automated emails don't send, you can trigger them manually:
    - `mid_month_reminder` - Send mid-month reminder
 6. Click **Run workflow**
 
-### Via Direct API (Advanced)
-
+### Read-only API checks (safe, no emails sent)
 ```bash
-# Check email system status
-curl https://networthtennis.com/api/email
-
-# Should return: {"status": "ready"}
+curl https://www.networthtennis.com/api/system
+curl https://www.networthtennis.com/api/email
+curl https://www.networthtennis.com/api/pairings
 ```
 
 ---
@@ -91,11 +90,9 @@ curl https://networthtennis.com/api/email
 
 **Set a calendar reminder** for 30 days before expiration.
 
-### Review Gmail App Password
-
-**When:** Annually or if someone with access leaves
-
-**How:** See [GMAIL_SETUP.md](./GMAIL_SETUP.md) for password rotation instructions.
+### Review Resend API Key Access
+**When:** Annually or when team access changes
+**How:** Rotate `RESEND_API_KEY` in Vercel and confirm `GET /api/email` is still `ready`
 
 ---
 
@@ -105,19 +102,13 @@ curl https://networthtennis.com/api/email
 
 **Check 1: Is the email system configured?**
 ```
-Visit: https://networthtennis.com/api/email
+Visit: https://www.networthtennis.com/api/email
 Expected: {"status": "ready"}
 ```
 
-If it says "not_configured", the Gmail password is missing:
+If it says "not_configured", `RESEND_API_KEY` is missing in Vercel.
 1. Go to Vercel dashboard > Your project > Settings > Environment Variables
-2. Check that `SMTP_PASSWORD` exists and has a value
-3. If missing, see [GMAIL_SETUP.md](./GMAIL_SETUP.md)
-
-**Check 2: Is Gmail blocking?**
-- Gmail may block if you hit daily limits (~100 emails)
-- Check the sender's Gmail inbox for bounce notifications
-- Wait 24 hours if you hit limits
+2. Check that `RESEND_API_KEY` exists and has a value
 
 **Check 3: Are GitHub Actions running?**
 1. Go to GitHub repo > Actions tab
@@ -149,20 +140,15 @@ If it says "not_configured", the Gmail password is missing:
 
 **Check database is working:**
 ```
-Visit: https://networthtennis.com/api/system
+Visit: https://www.networthtennis.com/api/system
 Expected: {"status": "healthy"}
 ```
 
 ### Players Can't Log In
 
-**Magic link not arriving:**
-- Check spam/junk folder
-- Verify their email is correct in database
-- Supabase dashboard > Authentication > Users > check status
-
-**Session expired:**
-- Have them request a new magic link
-- Sessions last 7 days by default
+- Verify the player email exists in `players`
+- Ask player to use password reset flow (`/reset-password`)
+- Confirm password reset email delivery via Resend dashboard if needed
 
 ---
 
@@ -172,7 +158,7 @@ Expected: {"status": "healthy"}
 |-------|----------------|
 | Website down | Developer (Khamel) |
 | Database issues | Developer |
-| Gmail password issues | Account owner (Ashley) |
+| Resend key/access issues | Account owner (Ashley) |
 | Domain renewal | Account owner |
 | Player disputes | League admins (Ashley/Natalie) |
 
@@ -186,8 +172,9 @@ These are set in Vercel and should NOT be changed unless necessary:
 |----------|---------|---------------|
 | `SUPABASE_URL` | Database connection | Supabase > Settings > API |
 | `SUPABASE_ANON_KEY` | Database auth | Supabase > Settings > API |
-| `SMTP_PASSWORD` | Email sending | Gmail app password |
-| `SITE_URL` | Link generation | Your domain |
+| `RESEND_API_KEY` | Email sending | Resend dashboard |
+| `SITE_URL` | Link generation | `https://www.networthtennis.com` |
+| `CRON_SECRET` | Protect scheduled endpoints | Must match GitHub + Vercel |
 
 ---
 
@@ -212,10 +199,35 @@ Your code is stored in GitHub. As long as you don't delete the repository, your 
 
 The current setup supports:
 - Up to ~100 players comfortably
-- ~100 emails per day (Gmail limit)
+- Resend free-tier limits depend on plan
 - Unlimited website traffic (Vercel handles scaling)
 
 If you grow beyond 100 players:
-- Consider upgrading to a dedicated email service (SendGrid, Mailgun)
+- Consider higher Resend plan for larger volume
 - Consider Supabase Pro plan for more database capacity
 - Contact a developer for assistance
+
+---
+
+## Reliability-Specific Recovery
+
+### Reconcile month state (safe repair path)
+Use when you suspect assignment status drift or month consistency issues.
+
+Authenticated POST:
+```bash
+curl -X POST https://www.networthtennis.com/api/system \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <CRON_SECRET>" \
+  -d '{"action":"reconcile_month","dry_run":true}'
+```
+
+Then run with `dry_run:false` only if dry run looks correct.
+
+### Critical Secrets Checklist
+
+These must exist and be consistent:
+- Vercel: `CRON_SECRET`, `SITE_URL=https://www.networthtennis.com`
+- GitHub Actions: `CRON_SECRET`, `SITE_URL=https://www.networthtennis.com`
+
+If secrets mismatch, scheduled jobs will fail by design.

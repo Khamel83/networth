@@ -4,7 +4,7 @@
 
 Women's tennis ladder for East Side LA. Monthly pairings, games-won ranking system.
 
-**Live**: networthtennis.com
+**Live**: www.networthtennis.com
 **Stack**: Vercel (static + Python functions) + Supabase + Resend
 
 ---
@@ -27,7 +27,7 @@ Players self-register via join page → immediately active → can log in right 
 - `api/email.py` - Resend API sender + 8 email templates (including admin alerts)
 - `api/join.py` - Player registration (handles re-registration of inactive accounts)
 - `api/admin.py` - Admin dashboard API (approve/reject/pause players, payment tracking)
-- `api/auth.py` - Magic link authentication via Supabase Auth
+- `api/auth.py` - Password-based authentication + reset token flow
 - `api/profile.py` - Profile viewing and updates (includes auto-save for availability)
 - `api/supabase_http.py` - Custom Supabase REST client (lightweight alternative to SDK)
 - `api/system.py` - Health check and user bug reports (consolidated endpoint)
@@ -69,11 +69,10 @@ User visits site
     → Resend API sends emails (via api/email.py)
 
 Authentication Flow
-    → User enters email on /login
-    → API sends magic link via Supabase Auth
-    → User clicks link → redirected to /dashboard with token in URL hash
-    → JS extracts token, verifies with API, stores in localStorage
-    → Subsequent requests use Bearer token
+    → User logs in with email + password on /login
+    → API verifies password hash from players table
+    → Frontend stores local session token + player object in localStorage
+    → Subsequent requests pass `Authorization: Bearer {email}`
 
 Automated Emails (GitHub Actions)
     → 27th of month: Availability check (Players only, not Social Butterflies)
@@ -209,12 +208,18 @@ checkbox.addEventListener('change', async () => {
 | `SUPABASE_URL` | Supabase project URL |
 | `SUPABASE_ANON_KEY` | Supabase anon key |
 | `RESEND_API_KEY` | Resend API key (replaced SMTP_PASSWORD) |
-| `SITE_URL` | `https://networthtennis.com` |
+| `SITE_URL` | `https://www.networthtennis.com` |
 | `ADMIN_EMAIL` | Admin notification email |
 | `CRON_SECRET` | Secret for GitHub Actions auth |
 
 ### GitHub Repo Secrets:
 - `SITE_URL`, `CRON_SECRET`
+
+### Critical Reliability Notes (March 2026)
+- Protected automation actions require `CRON_SECRET` and fail closed if it is missing.
+- Canonical domain is `https://www.networthtennis.com`; non-www redirects to www.
+- Reliability migration `migrations/02_reliability_automation.sql` must be applied in Supabase.
+- New reconcile endpoint: `POST /api/system` with `action: reconcile_month`.
 
 ---
 
@@ -253,13 +258,13 @@ Consolidated: `health.py` + `report_issue.py` → `system.py`; deleted `migrate-
 - `profile.html` = Individual player profile (single player view)
 - **Always verify which file you're editing before making changes**
 
-### 2. Magic Link Redirect Loops
-**Symptom:** User clicks magic link, ends up back at login
+### 2. Auth Redirect Loops
+**Symptom:** User logs in and gets bounced back to login
 **Cause:** `window.location.reload()` before localStorage write completes
 **Fix:** Set variables directly, update UI without reload
 
 ### 3. "Failed to Fetch" on Login
-**Symptom:** Network error when requesting magic link
+**Symptom:** Network error while posting login/reset request
 **Causes:**
 - Vercel cold start timeout (default 10s, Supabase needs more)
 - User clicking multiple times triggers rate limit
@@ -429,7 +434,7 @@ if (response.status === 401) {
 
 ## Do Not
 
-- Store passwords (we use magic links)
+- Store plain-text passwords
 - Add complex features without asking (keep it simple for the players)
 - Change the ranking formula (games won, period)
 - Add new API endpoints without checking count first (12 max)
@@ -437,7 +442,7 @@ if (response.status === 401) {
 - Use `window.location.reload()` after setting localStorage
 - Return different key formats for the same data in different endpoints
 - Catch exceptions without logging or returning error messages
-- Assume Gmail SMTP will deliver emails reliably
+- Assume external email delivery can never fail
 
 ---
 
@@ -445,7 +450,7 @@ if (response.status === 401) {
 
 ### January 2026
 - Password reset flow: Players can request reset via email link (/reset-password?token=...)
-- Fixed magic link redirect loop (removed reload, set variables directly)
+- Fixed auth redirect loop (removed reload, set variables directly)
 - Added email and phone display on player profile pages
 - Fixed availability key mismatch between API response formats
 - Added auto-save for availability checkboxes with visual feedback
