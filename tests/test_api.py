@@ -569,6 +569,100 @@ class TestPairingsAPI:
         assert 'password_hash' not in p2
 
 
+class TestEmailReliability:
+    """Test email reliability improvements"""
+
+    def test_send_email_retries_on_429(self):
+        """send_email should retry once automatically on RateLimitError"""
+        import resend
+        from api.email import send_email
+
+        rate_limit_err = resend.exceptions.RateLimitError("rate limited", "rate_limit", 429)
+        call_count = 0
+
+        def mock_send(params):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                raise rate_limit_err
+            return {'id': 'retry-success-id'}
+
+        with patch('resend.Emails.send', side_effect=mock_send):
+            with patch('api.email._time') as mock_time:
+                result = send_email('player@test.com', 'Subject', '<p>Hello</p>')
+
+        assert result['success'] is True
+        assert result['id'] == 'retry-success-id'
+        assert call_count == 2  # First attempt failed, second succeeded
+        mock_time.sleep.assert_called_once_with(1)
+
+    def test_send_email_does_not_retry_twice(self):
+        """send_email should only retry once — second 429 returns failure"""
+        import resend
+        from api.email import send_email
+
+        rate_limit_err = resend.exceptions.RateLimitError("rate limited", "rate_limit", 429)
+        with patch('resend.Emails.send', side_effect=rate_limit_err):
+            with patch('api.email._time'):
+                result = send_email('player@test.com', 'Subject', '<p>Hello</p>')
+
+        assert result['success'] is False
+        assert 'Rate limit' in result['error']
+
+    def test_bulk_send_partial_failure_includes_sent_count(self):
+        """Error response for bulk send should always include sent count in extra field"""
+        with open('api/email.py', 'r') as f:
+            content = f.read()
+
+        # All bulk send error paths must use extra={"sent": sent, ...} pattern
+        assert 'extra={"sent": sent' in content or "extra={'sent': sent" in content or \
+               'extra={"sent": sent, "failed"' in content, \
+            "_send_error calls for bulk sends must include extra with sent count"
+
+    def test_midmonth_reminder_skips_already_sent_pairs(self):
+        """Midmonth reminder should only send to pairs with reminder_sent_at = null"""
+        from api.email import handler
+        import io
+
+        # Verify the query uses is_('reminder_sent_at', 'null')
+        # This is a structural test — we verify the filter exists in the code
+        with open('api/email.py', 'r') as f:
+            content = f.read()
+
+        assert "is_('reminder_sent_at', 'null')" in content, \
+            "Midmonth reminder must filter by reminder_sent_at IS NULL"
+
+    def test_email_log_written_on_midmonth_success(self):
+        """email_log row should be inserted after each successful midmonth reminder"""
+        # Verify email_log insert is in the send_midmonth_reminders code
+        with open('api/email.py', 'r') as f:
+            content = f.read()
+
+        assert "'action': 'send_midmonth_reminders'" in content, \
+            "email_log insert with action=send_midmonth_reminders must exist"
+        assert "email_log" in content, \
+            "email_log table must be referenced in email.py"
+
+    def test_pairings_continue_on_email_failure(self):
+        """All pairings should be attempted even if one email fails"""
+        import re
+        # Verify there's no standalone `break` statement in the email send loop
+        with open('api/pairings.py', 'r') as f:
+            content = f.read()
+
+        # Find the email sending section
+        email_section_start = content.find('# 7. Send match assignment emails')
+        email_section_end = content.find('# 8. Update RMS scores')
+        email_section = content[email_section_start:email_section_end]
+
+        # Look for a standalone break statement (not 'break' in a comment/string)
+        standalone_breaks = re.findall(r'^\s+break\s*$', email_section, re.MULTILINE)
+        assert len(standalone_breaks) == 0, \
+            "Email send loop must not have a 'break' statement — all pairings must be attempted"
+        assert 'Continue to attempt all remaining pairings' in email_section, \
+            "Email send loop should have comment explaining no-break behavior"
+
+
 def test_imports():
     """Test that all API modules are importable"""
     modules = [

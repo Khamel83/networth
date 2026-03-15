@@ -77,6 +77,8 @@ class handler(BaseHTTPRequestHandler):
                 self._handle_report_issue(data)
             elif action == 'reconcile_month':
                 self._handle_reconcile_month(data)
+            elif action == 'check_email_connectivity':
+                self._handle_check_email_connectivity()
             else:
                 self._send_error(400, f"Unknown action: {action}")
 
@@ -300,6 +302,24 @@ class handler(BaseHTTPRequestHandler):
             'remaining_issues': issues,
             'status': status,
         })
+
+    def _handle_check_email_connectivity(self):
+        """Validate Resend API key by making a read-only API call"""
+        import resend
+
+        api_key = os.environ.get('RESEND_API_KEY')
+        if not api_key:
+            self._send_error(500, "RESEND_API_KEY not configured")
+            return
+
+        resend.api_key = api_key
+        try:
+            resend.ApiKeys.list()
+            self._send_success({"email_service": "connected", "provider": "resend"})
+        except resend.exceptions.AuthenticationError as e:
+            self._send_error(500, f"Resend authentication failed: {str(e)}")
+        except Exception as e:
+            self._send_error(500, f"Resend connectivity check failed: {str(e)}")
 
     def _send_success(self, data):
         self.send_response(200)

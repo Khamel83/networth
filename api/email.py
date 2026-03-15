@@ -6,6 +6,7 @@ Uses Supabase REST API (no Python supabase client).
 from http.server import BaseHTTPRequestHandler
 import json
 import os
+import time as _time
 from datetime import datetime
 
 # Initialize Sentry for error tracking
@@ -31,7 +32,7 @@ def _normalize_reply_to(reply_to):
     return value or None
 
 
-def send_email(to_email, subject, html_content, reply_to=None):
+def send_email(to_email, subject, html_content, reply_to=None, _retry=True):
     """
     Send email via Resend API
 
@@ -40,6 +41,7 @@ def send_email(to_email, subject, html_content, reply_to=None):
         subject: Email subject
         html_content: HTML email body
         reply_to: Optional reply-to address (defaults to Ashley's email)
+        _retry: Internal flag — retries once on 429 rate limit
 
     Returns:
         dict with success status
@@ -79,6 +81,11 @@ def send_email(to_email, subject, html_content, reply_to=None):
 
         return {'success': True, 'sent_to': recipients, 'id': response.get('id')}
 
+    except resend.exceptions.RateLimitError as e:
+        if _retry:
+            _time.sleep(1)
+            return send_email(to_email, subject, html_content, reply_to, _retry=False)
+        return {'success': False, 'error': f'Rate limit: {str(e)}'}
     except Exception as e:
         return {'success': False, 'error': str(e)}
 
@@ -568,6 +575,7 @@ class handler(BaseHTTPRequestHandler):
                 html = get_availability_check_email_html()
                 sent = 0
                 errors = []
+                period = datetime.now().strftime('%B %Y')
 
                 for i, player in enumerate(players.data):
                     # Rate limit: Resend allows 2 req/sec
@@ -576,11 +584,18 @@ class handler(BaseHTTPRequestHandler):
                     result = send_email(player['email'], "Quick check: are you playing next month?", html)
                     if result['success']:
                         sent += 1
+                        table('email_log').insert({
+                            'action': 'send_availability_check',
+                            'to_emails': [player['email']],
+                            'period_label': period,
+                            'resend_email_id': result.get('id'),
+                        }).execute()
                     else:
                         errors.append(f"{player['email']}: {result.get('error')}")
 
                 if errors and strict_mode:
-                    self._send_error(500, f"Delivery failures ({len(errors)}): {errors[0]}")
+                    self._send_error(500, f"Sent {sent}, failed {len(errors)}: {errors[0]}",
+                                     extra={"sent": sent, "failed": len(errors), "errors": errors})
                     return
                 self._send_success({
                     "message": f"Sent availability check to {sent} players",
@@ -606,6 +621,7 @@ class handler(BaseHTTPRequestHandler):
                 html = get_final_reminder_email_html()
                 sent = 0
                 errors = []
+                period = datetime.now().strftime('%B %Y')
 
                 for i, player in enumerate(players.data):
                     # Rate limit: Resend allows 2 req/sec
@@ -614,11 +630,18 @@ class handler(BaseHTTPRequestHandler):
                     result = send_email(player['email'], "Last call: update your playing status", html)
                     if result['success']:
                         sent += 1
+                        table('email_log').insert({
+                            'action': 'send_final_reminder',
+                            'to_emails': [player['email']],
+                            'period_label': period,
+                            'resend_email_id': result.get('id'),
+                        }).execute()
                     else:
                         errors.append(f"{player['email']}: {result.get('error')}")
 
                 if errors and strict_mode:
-                    self._send_error(500, f"Delivery failures ({len(errors)}): {errors[0]}")
+                    self._send_error(500, f"Sent {sent}, failed {len(errors)}: {errors[0]}",
+                                     extra={"sent": sent, "failed": len(errors), "errors": errors})
                     return
                 self._send_success({
                     "message": f"Sent final reminder to {sent} players",
@@ -721,11 +744,20 @@ class handler(BaseHTTPRequestHandler):
                                 'reminder_sent_at': datetime.now(timezone.utc).isoformat(),
                                 'reminder_email_id': result.get('id'),
                             }).eq('id', match.get('id')).execute()
+                            # Write to universal email log
+                            table('email_log').insert({
+                                'action': 'send_midmonth_reminders',
+                                'to_emails': [p1['email'], p2['email']],
+                                'period_label': month,
+                                'match_id': match.get('id'),
+                                'resend_email_id': result.get('id'),
+                            }).execute()
                         else:
                             errors.append(f"Match {match.get('id')}: {result.get('error')}")
 
                 if errors and strict_mode:
-                    self._send_error(500, f"Delivery failures ({len(errors)}): {errors[0]}")
+                    self._send_error(500, f"Sent {sent}, failed {len(errors)}: {errors[0]}",
+                                     extra={"sent": sent, "failed": len(errors), "errors": errors})
                     return
                 self._send_success({
                     "message": f"Sent mid-month reminders to {sent} match pairs",
@@ -788,11 +820,23 @@ class handler(BaseHTTPRequestHandler):
                     result = send_email([p1['email'], p2['email']], subject, html, reply_to=p1['email'])
                     if result.get('success'):
                         sent += 1
+                        # Update match_email_id and write to universal email log
+                        table('match_assignments').update({
+                            'match_email_id': result.get('id'),
+                        }).eq('id', match.get('id')).execute()
+                        table('email_log').insert({
+                            'action': 'resend_match_emails',
+                            'to_emails': [p1['email'], p2['email']],
+                            'period_label': month,
+                            'match_id': match.get('id'),
+                            'resend_email_id': result.get('id'),
+                        }).execute()
                     else:
                         errors.append(f"{p1['name']} & {p2['name']}: {result.get('error')}")
 
                 if errors and strict_mode:
-                    self._send_error(500, f"Delivery failures ({len(errors)}): {errors[0]}")
+                    self._send_error(500, f"Sent {sent}, failed {len(errors)}: {errors[0]}",
+                                     extra={"sent": sent, "failed": len(errors), "errors": errors})
                     return
                 self._send_success({
                     "message": f"Sent match emails to {sent} pairs",
@@ -846,7 +890,7 @@ class handler(BaseHTTPRequestHandler):
             payload['run_id'] = run_id
         self.wfile.write(json.dumps(payload).encode())
 
-    def _send_error(self, status, message):
+    def _send_error(self, status, message, extra=None):
         run_id = getattr(self, '_run_id', None)
         if run_id:
             append_event(run_id, 'error', 'error', message, {"status": status, "action": getattr(self, '_run_action', None)})
@@ -856,6 +900,8 @@ class handler(BaseHTTPRequestHandler):
         self.send_header('Access-Control-Allow-Origin', '*')
         self.end_headers()
         payload = {"success": False, "error": message}
+        if extra:
+            payload.update(extra)
         if run_id:
             payload['run_id'] = run_id
         self.wfile.write(json.dumps(payload).encode())

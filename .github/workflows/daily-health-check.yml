@@ -136,6 +136,19 @@ jobs:
           grep -q "reset_password" api/auth.py && echo "✓ auth.py has reset_password"
           grep -q "request_password_reset" api/auth.py && echo "✓ auth.py has request_password_reset"
 
+      - name: Check Resend email connectivity
+        run: |
+          HTTP_STATUS=$(curl -s -o /tmp/email_conn.json -w "%{http_code}" \
+            -X POST "${{ secrets.SITE_URL }}/api/system" \
+            -H "Content-Type: application/json" \
+            -d '{"action": "check_email_connectivity"}')
+          echo "Email connectivity: HTTP $HTTP_STATUS: $(cat /tmp/email_conn.json)"
+          if [ "$HTTP_STATUS" != "200" ]; then
+            echo "✗ Resend API key invalid or service unreachable"
+            exit 1
+          fi
+          echo "✓ Resend email connectivity verified"
+
       - name: Check what's coming up
         run: |
           DAY=$(date +%-d)
