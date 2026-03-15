@@ -723,11 +723,16 @@ class handler(BaseHTTPRequestHandler):
                 return
 
             # Step 6e: Verify insert by re-querying
-            confirm_resp = table('match_assignments').select('id').eq('period_label', period_label).execute()
+            confirm_resp = table('match_assignments').select('id, player1_id, player2_id').eq('period_label', period_label).execute()
             if confirm_resp.error or len(confirm_resp.data) != len(assignments):
                 self._send_error(500,
                     f"Insert verification failed: expected {len(assignments)}, found {len(confirm_resp.data) if not confirm_resp.error else confirm_resp.error}")
                 return
+            # Build lookup map for email tracking: frozenset of player IDs -> assignment ID
+            assignment_id_map = {
+                frozenset([a['player1_id'], a['player2_id']]): a['id']
+                for a in confirm_resp.data
+            }
 
             # 7. Send match assignment emails — only reached after all validation passes
             emails_sent = 0
@@ -761,10 +766,22 @@ class handler(BaseHTTPRequestHandler):
                     )
                     if result.get('success'):
                         emails_sent += 1
+                        # Track email ID in match_assignments and universal email_log
+                        assignment_id = assignment_id_map.get(frozenset([p1['id'], p2['id']]))
+                        if assignment_id:
+                            table('match_assignments').update({
+                                'match_email_id': result.get('id'),
+                            }).eq('id', assignment_id).execute()
+                            table('email_log').insert({
+                                'action': 'generate_pairings',
+                                'to_emails': [p1['email'], p2['email']],
+                                'period_label': period_label,
+                                'match_id': assignment_id,
+                                'resend_email_id': result.get('id'),
+                            }).execute()
                     else:
                         email_errors.append(f"{p1['name']} & {p2['name']}: {result.get('error')}")
-                        # Contract: stop immediately on first delivery failure.
-                        break
+                        # Continue to attempt all remaining pairings (no break)
             except Exception as e:
                 email_errors.append(f"Email system error: {str(e)}")
 
@@ -774,7 +791,8 @@ class handler(BaseHTTPRequestHandler):
                     'pairings_created': len(assignments),
                     'errors': email_errors,
                 })
-                self._send_error(500, f"Email delivery failed after {emails_sent}/{len(assignments)} sends: {email_errors[0]}")
+                self._send_error(500, f"Email delivery failed: {emails_sent}/{len(assignments)} sent: {email_errors[0]}",
+                                 extra={"sent": emails_sent, "failed": len(email_errors), "errors": email_errors})
                 return
 
             if emails_sent != len(assignments):
@@ -837,7 +855,7 @@ class handler(BaseHTTPRequestHandler):
             payload['run_id'] = run_id
         self.wfile.write(json.dumps(payload).encode())
 
-    def _send_error(self, status, message):
+    def _send_error(self, status, message, extra=None):
         run_id = getattr(self, '_run_id', None)
         if run_id:
             append_event(run_id, 'error', 'error', message, {
@@ -855,6 +873,8 @@ class handler(BaseHTTPRequestHandler):
         self.send_header('Access-Control-Allow-Origin', '*')
         self.end_headers()
         payload = {"success": False, "error": message}
+        if extra:
+            payload.update(extra)
         if run_id:
             payload['run_id'] = run_id
         self.wfile.write(json.dumps(payload).encode())
