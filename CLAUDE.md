@@ -21,6 +21,7 @@ Players self-register via join page → immediately active → can log in right 
 ### To test emails:
 - Emails only send if `RESEND_API_KEY` is set in Vercel
 - Check status: `GET /api/email` returns "ready" or "not_configured"
+- Check Resend API key is valid: `POST /api/system` with `action: check_email_connectivity`
 
 ### Key files:
 - `api/pairings.py` - Matching algorithm (exact fresh matching + RMS bands), sends match emails
@@ -30,7 +31,7 @@ Players self-register via join page → immediately active → can log in right 
 - `api/auth.py` - Password-based authentication + reset token flow
 - `api/profile.py` - Profile viewing and updates (includes auto-save for availability)
 - `api/supabase_http.py` - Custom Supabase REST client (lightweight alternative to SDK)
-- `api/system.py` - Health check and user bug reports (consolidated endpoint)
+- `api/system.py` - Health check, bug reports, and email connectivity check
 - `.github/workflows/biweekly-emails.yml` - Scheduled email automation
 - `.github/workflows/daily-health-check.yml` - Daily health check with email alerts
 - `.github/workflows/tests.yml` - CI/CD test runner
@@ -92,9 +93,15 @@ Automated Emails (GitHub Actions)
 
 ### Why Resend over Gmail SMTP:
 - Emails don't go to spam (verified domain)
-- No rate limiting issues
 - Better deliverability tracking
 - Free tier: 3,000 emails/month (we use ~100)
+
+### Rate Limits & Reliability:
+- Resend allows **2 requests/second** on free tier — 0.6s sleep between bulk sends
+- `send_email()` auto-retries once on `RateLimitError` (429) with 1s sleep
+- All bulk send error responses include `sent` + `failed` counts even on partial failure
+- Every successful bulk send writes a row to the `email_log` table
+- Resend API key validity is checked daily via `check_email_connectivity` (catches stale keys before pairing day)
 
 ### 8 Email Templates (in api/email.py)
 
@@ -133,9 +140,16 @@ matches
 match_assignments
   - player1_id, player2_id, period_label
   - status (pending/accepted/completed)
+  - reminder_sent_at, reminder_email_id (idempotency: skip pairs already reminded)
+  - match_email_id (Resend ID of the original match assignment email)
 
 match_feedback
   - would_play_again (for silent blocking)
+
+email_log
+  - action, to_emails[], period_label, match_id, resend_email_id, sent_at
+  - Universal audit log: every bulk send writes a row
+  - Query: SELECT * FROM email_log WHERE action='generate_pairings' AND period_label='April 2026'
 ```
 
 ---
@@ -385,6 +399,22 @@ WHERE is_active = true
 **Fix:** Always use `date +%-d` (GNU coreutils, Linux/GitHub Actions) to strip the zero.
 **Rule:** Any `date` output used in a bash comparison must use `%-d`, `%-m`, `%-H` etc.
 
+### 19. Resend 429 Takes Down All Remaining Emails
+**Symptom:** Mid-month reminder run sends 5 emails then stops; GitHub Actions reports `sent=0` (hides the 5 that succeeded)
+**Cause:** (a) No retry on `RateLimitError`; (b) `break` in pairing email loop stops all remaining sends on first failure; (c) error response didn't include `sent` count
+**Fix:**
+- `send_email()` catches `resend.exceptions.RateLimitError` and retries once after 1s
+- Removed `break` from pairings.py email loop — all pairs attempted even if one fails
+- All bulk send `_send_error` calls include `extra={"sent": N, "failed": M}` so counts always appear in response
+- `email_log` table records every successful send for post-incident auditing
+**Rule:** Never `break` out of a bulk email loop on failure. Always collect errors and continue.
+
+### 20. CI Auth Check Always Failing (Silent)
+**Symptom:** `Automated Tests` workflow shows failure on "Check admin alert calls are authenticated" on every single commit
+**Cause:** `grep -q "Authorization: Bearer ${{ secrets.CRON_SECRET }}" "$wf"` — GitHub Actions substitutes the actual secret value at runtime, so grep looks for the real secret string, not the template expression. They never match.
+**Fix:** `grep -q "Authorization: Bearer" "$wf"` — just check the header exists, not its value
+**Rule:** Never grep for `${{ secrets.X }}` in CI — the runtime value is substituted, not the template literal.
+
 ### 12. "#null" Displayed Instead of Rank
 **Symptom:** Profile page shows "#null" instead of a rank number
 **Cause:** JavaScript `null < 99` evaluates to `true`, so the condition passes and displays `#` + `null`
@@ -496,6 +526,16 @@ if (response.status === 401) {
   - `tests/test_pairings.py`: algorithm coverage + stress checks (suite currently 63 passing)
   - `migrations/01_security_fixes.sql`: run in Supabase Dashboard to fix 2 view ERRORs + 5 RLS warnings
   - Bug found by tests: cross-band pass was silently dropping players when loop exited with <2 remaining (`still_unpaired.extend(unpaired)` fix)
+- **Email reliability overhaul** - After 429 rate-limit incident dropped 9 of 14 mid-month reminders:
+  - `send_email()` retries once on `RateLimitError` (429) with 1s sleep before giving up
+  - Removed `break` from pairings.py email loop — all pairings attempted even if one fails
+  - All bulk send error responses include `{"sent": N, "failed": M, "errors": [...]}` so counts are always visible
+  - `email_log` table: every successful bulk send writes a row (action, to_emails, period_label, match_id, resend_email_id)
+  - `match_assignments.match_email_id`: stores Resend ID of the original match email for traceability
+  - `match_assignments.reminder_sent_at/reminder_email_id`: idempotency for mid-month reminders (re-runs skip already-sent pairs)
+  - `POST /api/system` with `action: check_email_connectivity` — validates Resend API key daily (catches stale keys before pairing day)
+  - Fixed CI auth check: grep for secret template literal was always failing (every commit since March 4); simplified to `grep -q "Authorization: Bearer"`
+  - 69/69 tests passing
 
 ### February 2026
 - **Report Issue feature** - Users can report bugs from dashboard via `/api/report_issue` (sends admin alert email)
