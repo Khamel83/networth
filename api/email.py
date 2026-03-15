@@ -664,9 +664,9 @@ class handler(BaseHTTPRequestHandler):
             elif action == 'send_midmonth_reminders':
                 from api.supabase_http import table
 
-                # Get current month's pending matches
+                # Get current month's pending matches that haven't been reminded yet
                 month = datetime.now().strftime('%B %Y')
-                matches_result = table('match_assignments').select('*').eq('period_label', month).eq('status', 'pending').execute()
+                matches_result = table('match_assignments').select('*').eq('period_label', month).eq('status', 'pending').is_('reminder_sent_at', 'null').execute()
 
                 if matches_result.error:
                     self._send_error(500, f"Failed to load match assignments: {matches_result.error}")
@@ -715,6 +715,12 @@ class handler(BaseHTTPRequestHandler):
                         )
                         if result['success']:
                             sent += 1
+                            # Record that this pair was reminded so re-runs skip them
+                            from datetime import timezone
+                            table('match_assignments').update({
+                                'reminder_sent_at': datetime.now(timezone.utc).isoformat(),
+                                'reminder_email_id': result.get('id'),
+                            }).eq('id', match.get('id')).execute()
                         else:
                             errors.append(f"Match {match.get('id')}: {result.get('error')}")
 
