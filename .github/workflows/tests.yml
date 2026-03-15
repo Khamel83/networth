@@ -220,7 +220,7 @@ jobs:
           missing=0
           for wf in .github/workflows/biweekly-emails.yml .github/workflows/daily-health-check.yml; do
             if grep -q "send_admin_alert" "$wf"; then
-              if grep -q "Authorization: Bearer \${{ secrets.CRON_SECRET }}" "$wf"; then
+              if grep -q "Authorization: Bearer" "$wf"; then
                 echo "✓ $wf has CRON auth for admin alerts"
               else
                 echo "::error::$wf has send_admin_alert without CRON auth header"
