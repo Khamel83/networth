@@ -688,10 +688,14 @@ class handler(BaseHTTPRequestHandler):
                     return
                 players_map = {pl['id']: pl for pl in players_result.data if pl['id'] in player_ids}
 
+                import time
                 sent = 0
                 errors = []
 
-                for match in matches_result.data:
+                for i, match in enumerate(matches_result.data):
+                    # Rate limit: Resend allows 2 req/sec
+                    if i > 0:
+                        time.sleep(0.6)
                     p1 = players_map.get(match.get('player1_id'), {})
                     p2 = players_map.get(match.get('player2_id'), {})
 
