@@ -113,6 +113,11 @@ class SelectBuilder:
         self.filters.append((column, 'in', values))
         return self
 
+    def is_(self, column: str, value: str) -> 'SelectBuilder':
+        """Filter by IS NULL or IS NOT NULL. value should be 'null' or 'not.null'"""
+        self.filters.append((column, 'is', value))
+        return self
+
     def execute(self) -> 'Result':
         """Execute the query"""
         url = _build_url(self.table_name)
@@ -133,6 +138,8 @@ class SelectBuilder:
                 # Handle both strings and other types
                 formatted_values = ','.join(f'"{v}"' if isinstance(v, str) else str(v) for v in value)
                 params[f'{column}'] = f'in.({formatted_values})'
+            elif operator == 'is':
+                params[f'{column}'] = f'is.{value}'
 
         # Add ordering
         if self.order_by:
