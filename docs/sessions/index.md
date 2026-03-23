@@ -2,18 +2,16 @@
 
 | File | Date | Title | Topics |
 |------|------|-------|--------|
+| [20260316_233112_ashley_wants_to_boot_Noopur_from_the_league_entire.md.age](20260316_233112_ashley_wants_to_boot_Noopur_from_the_league_entire.md.age) | 2026-03-16 23:31:12 | ashley wants to boot Noopur from the league entire... |  |
+| [20260315_123712_Implement_the_following_plan_.md.age](20260315_123712_Implement_the_following_plan_.md.age) | 2026-03-15 12:37:12 | Implement the following plan: | add, age, api, auth, bug, ci/cd, fix, go, implement, migration, python, remove, test, update |
+| [20260315_121319_what_the_fuck__how_did_we_manage_to_screw_up_the_n.md.age](20260315_121319_what_the_fuck__how_did_we_manage_to_screw_up_the_n.md.age) | 2026-03-15 12:13:19 | what the fuck, how did we manage to screw up the n... | add, age, api, database, fix, go, python, rust |
+| [20260315_104758_what_the_fuck__how_did_we_manage_to_screw_up_the_n.md.age](20260315_104758_what_the_fuck__how_did_we_manage_to_screw_up_the_n.md.age) | 2026-03-15 10:47:58 | what the fuck, how did we manage to screw up the n... | age, fix, go |
+| [20260304_105115_were_failing_tests__why__look_at_the_daily_health_.md.age](20260304_105115_were_failing_tests__why__look_at_the_daily_health_.md.age) | 2026-03-04 10:51:15 | were failing tests! why, look at the daily health ... | age, api, deploy, go, python, test, update |
 | [20260303_214820__command-name__exit__command-name_.md.age](20260303_214820__command-name__exit__command-name_.md.age) | 2026-03-03 21:48:20 | <command-name>/exit</command-name> | age |
-| File | Date | Title | Topics |
 | [20260303_214708_Implement_the_following_plan_.md.age](20260303_214708_Implement_the_following_plan_.md.age) | 2026-03-03 21:47:08 | Implement the following plan: | add, age, api, auth, backend, bug, build, ci/cd, config, database, deploy, feature, fix, go, implement, migration, oci, postgres, python, refactor, remove, rust, session, setup, test, update |
-| File | Date | Title | Topics |
 | [20260303_203151_Implement_the_following_plan_.md.age](20260303_203151_Implement_the_following_plan_.md.age) | 2026-03-03 20:31:51 | Implement the following plan: | add, age, api, auth, backend, bug, build, ci/cd, config, database, deploy, feature, fix, go, implement, oci, postgres, python, refactor, remove, rust, session, setup, test, update |
-| File | Date | Title | Topics |
 | [20260303_193938_1__I_don_t_think_matches_went_out_3_1_-_Natalie_re.md.age](20260303_193938_1__I_don_t_think_matches_went_out_3_1_-_Natalie_re.md.age) | 2026-03-03 19:39:38 | 1) I don't think matches went out 3/1 - Natalie re... | go, update |
-| File | Date | Title | Topics |
 | [20260218_192311_Yay_I_can_see_that_I_played_Katie__It_still_shows_.md.age](20260218_192311_Yay_I_can_see_that_I_played_Katie__It_still_shows_.md.age) | 2026-02-18 19:23:11 | Yay I can see that I played Katie! It still shows ... | add, age, api, auth, backend, build, ci/cd, database, deploy, feature, fix, go, javascript, python, rust, test, update |
-| File | Date | Title | Topics |
 | [20260217_215434_Natalie_Coffen.md.age](20260217_215434_Natalie_Coffen.md.age) | 2026-02-17 21:54:34 | Natalie Coffen | add, age, api, bug, database, deploy, fix, go, implement, javascript, postgres, python, rust, session, setup, test, update |
-| File | Date | Title | Topics |
 | [20260216_120844_Implement_the_following_plan_.md.age](20260216_120844_Implement_the_following_plan_.md.age) | 2026-02-16 12:08:44 | Implement the following plan: | add, age, api, feature, fix, frontend, go, implement, javascript, python, update |
-| File | Date | Title | Topics |
 | [20260216_115252_Ashley_Kaufman.md.age](20260216_115252_Ashley_Kaufman.md.age) | 2026-02-16 11:52:52 | Ashley Kaufman | add, age, bug, fix, go |
