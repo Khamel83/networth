@@ -120,6 +120,36 @@ jobs:
           echo "Running: MONTHLY AVAILABILITY REMINDER (27th)"
           echo "Sending reminder to all players to update their availability for next month"
 
+      - name: Verify CRON_SECRET auth works
+        id: verify-auth
+        run: |
+          echo "Testing CRON_SECRET auth before sending emails..."
+          # Use an invalid action to test auth without side effects
+          # 400 = auth passed (action is invalid)
+          # 401 = auth failed (CRON_SECRET mismatch)
+          # 500 = CRON_SECRET not configured in Vercel
+          TEST_STATUS=$(curl -s -o /tmp/auth_test.json -w "%{http_code}" \
+            -X POST "${{ secrets.SITE_URL }}/api/email" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -d '{"action":"test_auth_check"}')
+          echo "Auth test HTTP status: $TEST_STATUS"
+          cat /tmp/auth_test.json
+          if [ "$TEST_STATUS" = "401" ]; then
+            echo "::error::CRON_SECRET auth failed (401). CRON_SECRET in GitHub Actions does not match Vercel."
+            echo "::error::To fix: Copy CRON_SECRET from GitHub Settings > Secrets and variables > Actions"
+            echo "::error::Then paste it into Vercel > Settings > Environment Variables and redeploy."
+            exit 1
+          elif [ "$TEST_STATUS" = "500" ]; then
+            echo "::error::CRON_SECRET not configured in Vercel (500)."
+            echo "::error::To fix: Add CRON_SECRET to Vercel > Settings > Environment Variables and redeploy."
+            exit 1
+          elif [ "$TEST_STATUS" != "400" ] && [ "$TEST_STATUS" != "200" ]; then
+            echo "::error::Unexpected auth test response: HTTP $TEST_STATUS"
+            exit 1
+          fi
+          echo "✓ CRON_SECRET auth verified"
+
       - name: Send monthly availability emails
         run: |
           HTTP_STATUS=$(curl -s -o /tmp/response.json -w "%{http_code}" \
@@ -152,6 +182,28 @@ jobs:
         run: |
           echo "Running: FINAL AVAILABILITY REMINDER (Last day of month)"
           echo "Sending final reminder to update playing status before pairings are created"
+
+      - name: Verify CRON_SECRET auth works
+        id: verify-auth
+        run: |
+          echo "Testing CRON_SECRET auth before sending emails..."
+          TEST_STATUS=$(curl -s -o /tmp/auth_test.json -w "%{http_code}" \
+            -X POST "${{ secrets.SITE_URL }}/api/email" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -d '{"action":"test_auth_check"}')
+          echo "Auth test HTTP status: $TEST_STATUS"
+          if [ "$TEST_STATUS" = "401" ]; then
+            echo "::error::CRON_SECRET auth failed (401). Verify secrets match between GitHub and Vercel."
+            exit 1
+          elif [ "$TEST_STATUS" = "500" ]; then
+            echo "::error::CRON_SECRET not configured in Vercel (500)."
+            exit 1
+          elif [ "$TEST_STATUS" != "400" ] && [ "$TEST_STATUS" != "200" ]; then
+            echo "::error::Unexpected auth test response: HTTP $TEST_STATUS"
+            exit 1
+          fi
+          echo "✓ CRON_SECRET auth verified"
 
       - name: Send final availability emails
         run: |
@@ -188,6 +240,25 @@ jobs:
           echo "  1. Generate new pairings for this month"
           echo "  2. Send match assignment emails to all paired players"
           echo "  3. Retry up to 3 times if it fails"
+
+      - name: Verify CRON_SECRET auth works
+        id: verify-auth
+        run: |
+          echo "Testing CRON_SECRET auth before generating pairings..."
+          TEST_STATUS=$(curl -s -o /tmp/auth_test.json -w "%{http_code}" \
+            -X POST "${{ secrets.SITE_URL }}/api/pairings" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -d '{}')
+          echo "Auth test HTTP status: $TEST_STATUS"
+          if [ "$TEST_STATUS" = "401" ]; then
+            echo "::error::CRON_SECRET auth failed (401). Verify secrets match between GitHub and Vercel."
+            exit 1
+          elif [ "$TEST_STATUS" = "500" ]; then
+            echo "::error::CRON_SECRET not configured in Vercel (500)."
+            exit 1
+          fi
+          echo "✓ CRON_SECRET auth verified"
 
       - name: Generate pairings and send emails (with retry)
         run: |
@@ -240,6 +311,28 @@ jobs:
         run: |
           echo "Running: MID-MONTH MATCH REMINDER (15th)"
           echo "Sending friendly reminder to players who haven't played their match yet"
+
+      - name: Verify CRON_SECRET auth works
+        id: verify-auth
+        run: |
+          echo "Testing CRON_SECRET auth before sending reminders..."
+          TEST_STATUS=$(curl -s -o /tmp/auth_test.json -w "%{http_code}" \
+            -X POST "${{ secrets.SITE_URL }}/api/email" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -d '{"action":"test_auth_check"}')
+          echo "Auth test HTTP status: $TEST_STATUS"
+          if [ "$TEST_STATUS" = "401" ]; then
+            echo "::error::CRON_SECRET auth failed (401). Verify secrets match between GitHub and Vercel."
+            exit 1
+          elif [ "$TEST_STATUS" = "500" ]; then
+            echo "::error::CRON_SECRET not configured in Vercel (500)."
+            exit 1
+          elif [ "$TEST_STATUS" != "400" ] && [ "$TEST_STATUS" != "200" ]; then
+            echo "::error::Unexpected auth test response: HTTP $TEST_STATUS"
+            exit 1
+          fi
+          echo "✓ CRON_SECRET auth verified"
 
       - name: Send mid-month reminder emails
         run: |
