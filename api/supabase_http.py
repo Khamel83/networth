@@ -14,11 +14,15 @@ _SUPABASE_KEY = None
 
 
 def _get_supabase_config() -> tuple:
-    """Get Supabase URL and key from environment"""
+    """Get Supabase URL and key from environment.
+    Prefers service role key (server-side only) over anon key."""
     global _SUPABASE_URL, _SUPABASE_KEY
     if not _SUPABASE_URL:
         _SUPABASE_URL = os.environ.get('SUPABASE_URL')
-        _SUPABASE_KEY = os.environ.get('SUPABASE_ANON_KEY')
+        _SUPABASE_KEY = (
+            os.environ.get('SUPABASE_SERVICE_ROLE_KEY') or
+            os.environ.get('SUPABASE_ANON_KEY')
+        )
     return _SUPABASE_URL, _SUPABASE_KEY
 
 

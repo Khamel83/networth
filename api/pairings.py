@@ -567,7 +567,8 @@ class handler(BaseHTTPRequestHandler):
                 })
 
         except Exception as e:
-            self._send_error(500, str(e))
+            print(f"Pairings GET error: {e}")
+            self._send_error(500, "An unexpected error occurred")
 
     def do_POST(self):
         """Generate new pairings for current or specified month"""
@@ -581,11 +582,11 @@ class handler(BaseHTTPRequestHandler):
             body = self.rfile.read(content_length).decode('utf-8')
             data = json.loads(body) if body else {}
 
-            # Auth check: allow CRON_SECRET (GitHub Actions) or admin email (dashboard)
+            # Auth check: CRON_SECRET required (GitHub Actions or admin dashboard)
             cron_secret = os.environ.get('CRON_SECRET', '')
             if cron_secret:
                 auth = self.headers.get('Authorization', '').replace('Bearer ', '')
-                if auth != cron_secret and '@' not in auth:
+                if auth != cron_secret:
                     self._send_error(401, 'Unauthorized')
                     return
 
@@ -841,8 +842,9 @@ class handler(BaseHTTPRequestHandler):
             })
 
         except Exception as e:
+            print(f"Pairings POST error: {e}")
             append_event(self._run_id, 'exception', 'error', 'Unhandled exception', {'error': str(e)})
-            self._send_error(500, str(e))
+            self._send_error(500, "An unexpected error occurred")
 
     def _send_success(self, data):
         self.send_response(200)

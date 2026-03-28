@@ -567,31 +567,13 @@
             state.style.display = 'block';
         }
 
-        function syncAuth() {
-            const storedPlayer = JSON.parse(localStorage.getItem('networth_player') || '{}');
-            const storedToken = localStorage.getItem('networth_token') || '';
-            let email = storedPlayer.email || '';
-            if (!email && storedToken.includes('@')) {
-                email = storedToken;
-            }
-            if (email) {
-                if (storedToken !== email) {
-                    localStorage.setItem('networth_token', email);
-                }
-                if (!storedPlayer.email) {
-                    storedPlayer.email = email;
-                    localStorage.setItem('networth_player', JSON.stringify(storedPlayer));
-                }
-            }
-            return email;
-        }
-
-        function getAuthEmail() {
-            return syncAuth();
+        function getAuthToken() {
+            return localStorage.getItem('networth_token') || '';
         }
 
         function isLoggedIn() {
-            return !!getAuthEmail();
+            const player = JSON.parse(localStorage.getItem('networth_player') || '{}');
+            return !!(player.email && getAuthToken());
         }
 
         function updateNav() {
@@ -729,10 +711,9 @@
             }
 
             try {
-                const authEmail = getAuthEmail();
                 const response = await fetch(`/api/profile?id=${playerId}`, {
                     headers: {
-                        'Authorization': `Bearer ${authEmail}`
+                        'Authorization': `Bearer ${getAuthToken()}`
                     }
                 });
 

@@ -284,12 +284,12 @@
 
                 if (data.success) {
                     const player = data.player || {};
-                    const authEmail = (player.email || email || '').toLowerCase();
-                    if (authEmail) {
-                        localStorage.setItem('networth_token', authEmail);
-                        if (!player.email) {
-                            player.email = authEmail;
-                        }
+                    const sessionToken = data.token || '';
+                    if (!player.email) {
+                        player.email = email;
+                    }
+                    if (sessionToken) {
+                        localStorage.setItem('networth_token', sessionToken);
                     } else {
                         localStorage.removeItem('networth_token');
                     }

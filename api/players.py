@@ -47,8 +47,15 @@ class handler(BaseHTTPRequestHandler):
 
             # Filter out admin from player lists
             # Order by total_games descending with NULLS LAST (so 0-game players rank at bottom)
+            # Explicit column list — never return password_hash or reset tokens
+            SAFE_COLUMNS = (
+                'id,name,email,phone,skill_level,rank,total_games,matches_played,'
+                'trend,membership_tier,avatar_url,rms_band,is_admin,'
+                'avail_weekday_early,avail_weekday_day,avail_weekday_late,'
+                'avail_weekend_early,avail_weekend_day,avail_weekend_late,is_active'
+            )
             admin_email = os.environ.get('ADMIN_EMAIL', 'khamel@khamel.com')
-            result = table('players').select('*').eq('is_active', True).neq('email', admin_email).order('total_games', desc=True, nulls='last').execute()
+            result = table('players').select(SAFE_COLUMNS).eq('is_active', True).neq('email', admin_email).order('total_games', desc=True, nulls='last').execute()
 
             if result.error:
                 self.send_response(500)
@@ -72,11 +79,12 @@ class handler(BaseHTTPRequestHandler):
             }).encode())
 
         except Exception as e:
+            print(f"Players error: {e}")
             self.send_response(500)
             self.send_header('Content-Type', 'application/json')
             self.send_header('Access-Control-Allow-Origin', '*')
             self.end_headers()
             self.wfile.write(json.dumps({
                 "success": False,
-                "error": str(e)
+                "error": "An unexpected error occurred"
             }).encode())

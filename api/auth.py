@@ -35,6 +35,44 @@ def verify_password(password: str, stored_hash: str) -> bool:
         return False
 
 
+def verify_session(token: str):
+    """
+    Validate a session token. Returns player email if valid and not expired, else None.
+    Used by all endpoints that require authentication.
+    """
+    if not token or not token.strip():
+        return None
+    try:
+        from api.supabase_http import table
+        result = (
+            table('session_tokens')
+            .select('player_email,expires_at')
+            .eq('token', token.strip())
+            .execute()
+        )
+        if result.error or not result.data:
+            return None
+        row = result.data[0] if isinstance(result.data, list) else result.data
+        expires = row.get('expires_at', '')
+        if expires:
+            try:
+                exp_dt = datetime.fromisoformat(expires.replace('Z', '+00:00'))
+                if datetime.now(timezone.utc) > exp_dt:
+                    return None
+            except Exception:
+                pass
+        return row.get('player_email')
+    except Exception as e:
+        print(f"verify_session error: {e}")
+        return None
+
+
+def _safe_player(player: dict) -> dict:
+    """Strip sensitive fields before returning player data to client."""
+    sensitive = ('password_hash', 'password_reset_token', 'password_reset_expires')
+    return {k: v for k, v in player.items() if k not in sensitive}
+
+
 class handler(BaseHTTPRequestHandler):
     def do_OPTIONS(self):
         self.send_response(200)
@@ -82,9 +120,16 @@ class handler(BaseHTTPRequestHandler):
                 if verify_password(password, stored_hash):
                     session_token = secrets.token_urlsafe(32)
 
+                    # Store token server-side
+                    table('session_tokens').insert({
+                        'token': session_token,
+                        'player_id': player['id'],
+                        'player_email': email,
+                    }).execute()
+
                     self._send_success({
                         "authenticated": True,
-                        "player": player,
+                        "player": _safe_player(player),
                         "token": session_token,
                         "password_changed": player.get('password_changed', False)
                     })
@@ -125,7 +170,7 @@ class handler(BaseHTTPRequestHandler):
                     'password_changed': True
                 }).eq('email', email).execute()
                 if update_result.error:
-                    self._send_error(500, f"Failed to update password: {update_result.error}")
+                    self._send_error(500, "Failed to update password")
                     return
 
                 self._send_success({"message": "Password updated"})
@@ -156,7 +201,7 @@ class handler(BaseHTTPRequestHandler):
                     'password_reset_expires': expires.isoformat()
                 }).eq('email', email).execute()
                 if reset_token_result.error:
-                    self._send_error(500, f"Failed to store reset token: {reset_token_result.error}")
+                    self._send_error(500, "Failed to initiate password reset")
                     return
 
                 try:
@@ -180,11 +225,11 @@ class handler(BaseHTTPRequestHandler):
                     if result.get('success'):
                         self._send_success({"message": "Password reset email sent"})
                     else:
-                        self._send_error(500, f"Failed to send reset email: {result.get('error', 'Unknown error')}")
+                        self._send_error(500, "Failed to send reset email")
                     return
                 except Exception as e:
                     print(f"Reset email error: {e}")
-                    self._send_error(500, f"Failed to send reset email: {str(e)}")
+                    self._send_error(500, "Failed to send reset email")
                     return
 
             elif action == 'reset_password':
@@ -223,13 +268,20 @@ class handler(BaseHTTPRequestHandler):
                     'password_reset_expires': None
                 }).eq('id', player['id']).execute()
                 if reset_update_result.error:
-                    self._send_error(500, f"Failed to save new password: {reset_update_result.error}")
+                    self._send_error(500, "Failed to save new password")
                     return
 
                 self._send_success({"message": "Password reset successful"})
                 return
 
             elif action == 'logout':
+                # Invalidate session token if provided
+                token = self.headers.get('Authorization', '').replace('Bearer ', '').strip()
+                if token:
+                    try:
+                        table('session_tokens').delete().eq('token', token).execute()
+                    except Exception:
+                        pass
                 self._send_success({"message": "Logged out"})
                 return
 
@@ -238,7 +290,7 @@ class handler(BaseHTTPRequestHandler):
 
         except Exception as e:
             print(f"Auth error: {e}")
-            self._send_error(500, str(e))
+            self._send_error(500, "An unexpected error occurred")
 
     def _send_success(self, data):
         self.send_response(200)

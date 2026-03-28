@@ -269,31 +269,10 @@
     </header>
 
     <script>
-        function syncAuth() {
-            const storedPlayer = JSON.parse(localStorage.getItem('networth_player') || '{}');
-            const storedToken = localStorage.getItem('networth_token') || '';
-            let email = storedPlayer.email || '';
-            if (!email && storedToken.includes('@')) {
-                email = storedToken;
-            }
-            if (email) {
-                if (storedToken !== email) {
-                    localStorage.setItem('networth_token', email);
-                }
-                if (!storedPlayer.email) {
-                    storedPlayer.email = email;
-                    localStorage.setItem('networth_player', JSON.stringify(storedPlayer));
-                }
-            }
-            return email;
-        }
-
-        function getAuthEmail() {
-            return syncAuth();
-        }
-
         function isLoggedIn() {
-            return !!getAuthEmail();
+            const player = JSON.parse(localStorage.getItem('networth_player') || '{}');
+            const token = localStorage.getItem('networth_token') || '';
+            return !!(player.email && token);
         }
 
         function updateAuthNav() {
