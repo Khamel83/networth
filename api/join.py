@@ -133,10 +133,12 @@ class handler(BaseHTTPRequestHandler):
                     self._send_error(500, "Failed to create account. Please try again.")
 
             except Exception as e:
-                self._send_error(500, f"Unable to create account: {str(e)}")
+                print(f"Join account creation error: {e}")
+                self._send_error(500, "Unable to create account. Please try again.")
 
         except Exception as e:
-            self._send_error(500, str(e))
+            print(f"Join error: {e}")
+            self._send_error(500, "An unexpected error occurred")
 
     def _send_success(self, data):
         self.send_response(200)

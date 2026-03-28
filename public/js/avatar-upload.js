@@ -16,10 +16,10 @@
 /**
  * Process and upload avatar image using Canvas API
  * @param {File} file - The image file from file input
- * @param {Object} playerData - Player data object with email
+ * @param {string} sessionToken - Session token for authentication
  * @returns {Promise<string>} - Returns the avatar URL
  */
-export async function processAndUploadAvatar(file, playerData) {
+export async function processAndUploadAvatar(file, sessionToken) {
     // Validate file type
     if (!file.type.match(/image\/(jpeg|jpg|png|webp)/)) {
         throw new Error('Please upload a JPEG, PNG, or WebP image');
@@ -67,7 +67,7 @@ export async function processAndUploadAvatar(file, playerData) {
     const response = await fetch('/api/upload', {
         method: 'POST',
         headers: {
-            'Authorization': `Bearer ${playerData.email}`
+            'Authorization': `Bearer ${sessionToken}`
         },
         body: formData
     });

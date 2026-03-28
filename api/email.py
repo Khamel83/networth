@@ -497,7 +497,7 @@ class handler(BaseHTTPRequestHandler):
                     self._send_error(500, 'CRON_SECRET not configured')
                     return
                 auth = self.headers.get('Authorization', '').replace('Bearer ', '')
-                if auth != cron_secret and '@' not in auth:
+                if auth != cron_secret:
                     self._send_error(401, 'Unauthorized')
                     return
 
@@ -874,7 +874,8 @@ class handler(BaseHTTPRequestHandler):
                 self._send_error(400, f"Unknown action: {action}")
 
         except Exception as e:
-            self._send_error(500, str(e))
+            print(f"Email error: {e}")
+            self._send_error(500, "An unexpected error occurred")
 
     def _send_success(self, data):
         run_id = getattr(self, '_run_id', None)

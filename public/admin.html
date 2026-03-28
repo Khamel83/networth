@@ -951,30 +951,11 @@
     </div>
 
     <script>
-        function syncAuth() {
-            const storedPlayer = JSON.parse(localStorage.getItem('networth_player') || '{}');
-            const storedToken = localStorage.getItem('networth_token') || '';
-            let email = storedPlayer.email || '';
-            if (!email && storedToken.includes('@')) {
-                email = storedToken;
-            }
-            if (email) {
-                if (storedToken !== email) {
-                    localStorage.setItem('networth_token', email);
-                }
-                if (!storedPlayer.email) {
-                    storedPlayer.email = email;
-                    localStorage.setItem('networth_player', JSON.stringify(storedPlayer));
-                }
-            }
-            return email;
-        }
-
         // Auth check
         const player = JSON.parse(localStorage.getItem('networth_player') || '{}');
-        const authEmail = syncAuth();
+        const authToken = localStorage.getItem('networth_token') || '';
 
-        if (!authEmail) {
+        if (!authToken || !player.email) {
             window.location.href = '/login';
         }
 
@@ -986,7 +967,7 @@
         async function loadPlayers() {
             try {
                 const response = await fetch('/api/admin?action=players', {
-                    headers: { 'Authorization': `Bearer ${authEmail}` }
+                    headers: { 'Authorization': `Bearer ${authToken}` }
                 });
 
                 // Handle auth errors
@@ -1064,7 +1045,7 @@
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${authEmail}`
+                        'Authorization': `Bearer ${authToken}`
                     },
                     body: JSON.stringify({
                         action: 'approve',
@@ -1095,7 +1076,7 @@
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${authEmail}`
+                        'Authorization': `Bearer ${authToken}`
                     },
                     body: JSON.stringify({
                         action: 'reject',
@@ -1240,7 +1221,7 @@
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${authEmail}`
+                        'Authorization': `Bearer ${authToken}`
                     },
                     body: JSON.stringify({
                         action: 'update',
@@ -1276,7 +1257,7 @@
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${authEmail}`
+                        'Authorization': `Bearer ${authToken}`
                     },
                     body: JSON.stringify({
                         action,
@@ -1307,7 +1288,7 @@
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${authEmail}`
+                        'Authorization': `Bearer ${authToken}`
                     },
                     body: JSON.stringify({
                         action,
@@ -1377,7 +1358,7 @@
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${authEmail}`
+                        'Authorization': `Bearer ${authToken}`
                     },
                     body: JSON.stringify({})
                 });
@@ -1413,7 +1394,7 @@
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${authEmail}`
+                        'Authorization': `Bearer ${authToken}`
                     },
                     body: JSON.stringify({
                         action: 'update_payment',
@@ -1438,7 +1419,7 @@
         async function loadPairings() {
             try {
                 const response = await fetch('/api/admin?action=pairings', {
-                    headers: { 'Authorization': `Bearer ${authEmail}` }
+                    headers: { 'Authorization': `Bearer ${authToken}` }
                 });
                 const data = await response.json();
 

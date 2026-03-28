@@ -154,28 +154,11 @@ class handler(BaseHTTPRequestHandler):
             query_params = parse_qs(parsed_url.query)
             profile_id = query_params.get('id', [None])[0]
 
-            # Get email from Authorization header (password-based auth)
-            # Format: "Bearer {email}" or custom header
-            auth_header = self.headers.get('Authorization', '')
-            email = None
-
-            if auth_header.startswith('Bearer '):
-                token_or_email = auth_header.replace('Bearer ', '')
-                # In password-based auth, we might receive email directly or use token
-                # For simplicity, check if it looks like an email
-                if '@' in token_or_email:
-                    email = token_or_email.lower()
-                else:
-                    # Token-based: would need token lookup, for now require email
-                    self._send_error(401, "Please provide your email in Authorization header")
-                    return
-
-            # Also check for custom header with email
+            from api.auth import verify_session
+            token = self.headers.get('Authorization', '').replace('Bearer ', '').strip()
+            email = verify_session(token)
             if not email:
-                email = self.headers.get('X-Player-Email', '').lower()
-
-            if not email:
-                self._send_error(401, "Authentication required")
+                self._send_error(401, "Invalid or expired session")
                 return
 
             # If viewing another player's profile
@@ -201,30 +184,19 @@ class handler(BaseHTTPRequestHandler):
             self._send_success({"profile": self._format_own_profile(player)})
 
         except Exception as e:
-            self._send_error(500, str(e))
+            print(f"Profile GET error: {e}")
+            self._send_error(500, "An unexpected error occurred")
 
     def do_POST(self):
         """Update player profile settings"""
         try:
             from api.supabase_http import table
+            from api.auth import verify_session
 
-            # Get email from Authorization header
-            auth_header = self.headers.get('Authorization', '')
-            email = None
-
-            if auth_header.startswith('Bearer '):
-                token_or_email = auth_header.replace('Bearer ', '')
-                if '@' in token_or_email:
-                    email = token_or_email.lower()
-                else:
-                    self._send_error(401, "Please provide your email in Authorization header")
-                    return
-
+            token = self.headers.get('Authorization', '').replace('Bearer ', '').strip()
+            email = verify_session(token)
             if not email:
-                email = self.headers.get('X-Player-Email', '').lower()
-
-            if not email:
-                self._send_error(401, "Authentication required")
+                self._send_error(401, "Invalid or expired session")
                 return
 
             # Parse request body
@@ -377,7 +349,8 @@ class handler(BaseHTTPRequestHandler):
             })
 
         except Exception as e:
-            self._send_error(500, str(e))
+            print(f"Profile POST error: {e}")
+            self._send_error(500, "An unexpected error occurred")
 
     def _format_own_profile(self, p):
         """Format player data for own profile view (full access)"""

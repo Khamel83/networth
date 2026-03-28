@@ -181,23 +181,11 @@ class handler(BaseHTTPRequestHandler):
         try:
             from api.supabase_http import table
 
-            # Get email from Authorization header
-            auth_header = self.headers.get('Authorization', '')
-            email = None
-
-            if auth_header.startswith('Bearer '):
-                token_or_email = auth_header.replace('Bearer ', '')
-                if '@' in token_or_email:
-                    email = token_or_email.lower()
-                else:
-                    self._send_error(401, "Please provide your email in Authorization header")
-                    return
-
+            from api.auth import verify_session
+            token = self.headers.get('Authorization', '').replace('Bearer ', '').strip()
+            email = verify_session(token)
             if not email:
-                email = self.headers.get('X-Player-Email', '').lower()
-
-            if not email:
-                self._send_error(401, "Authentication required")
+                self._send_error(401, "Invalid or expired session")
                 return
 
             # Get player record
@@ -279,34 +267,24 @@ class handler(BaseHTTPRequestHandler):
                 })
 
             except Exception as e:
-                self._send_error(500, f"Storage upload failed: {str(e)}")
+                print(f"Storage upload failed: {e}")
+                self._send_error(500, "Storage upload failed. Please try again.")
                 return
 
         except Exception as e:
-            self._send_error(500, str(e))
+            print(f"Upload POST error: {e}")
+            self._send_error(500, "An unexpected error occurred")
 
     def do_DELETE(self):
         """Remove avatar photo"""
         try:
             from api.supabase_http import table
 
-            # Get email from Authorization header
-            auth_header = self.headers.get('Authorization', '')
-            email = None
-
-            if auth_header.startswith('Bearer '):
-                token_or_email = auth_header.replace('Bearer ', '')
-                if '@' in token_or_email:
-                    email = token_or_email.lower()
-                else:
-                    self._send_error(401, "Please provide your email in Authorization header")
-                    return
-
+            from api.auth import verify_session
+            token = self.headers.get('Authorization', '').replace('Bearer ', '').strip()
+            email = verify_session(token)
             if not email:
-                email = self.headers.get('X-Player-Email', '').lower()
-
-            if not email:
-                self._send_error(401, "Authentication required")
+                self._send_error(401, "Invalid or expired session")
                 return
 
             # Get player record
@@ -336,7 +314,8 @@ class handler(BaseHTTPRequestHandler):
             })
 
         except Exception as e:
-            self._send_error(500, str(e))
+            print(f"Upload DELETE error: {e}")
+            self._send_error(500, "An unexpected error occurred")
 
     def _send_success(self, data):
         self.send_response(200)

@@ -67,25 +67,25 @@ class handler(BaseHTTPRequestHandler):
         """Get admin data: players list, pairings, or single player"""
         try:
             from api.supabase_http import table
+            from api.auth import verify_session
 
-            # Get email from Authorization header
-            auth_header = self.headers.get('Authorization', '')
-            email = None
-
-            if auth_header.startswith('Bearer '):
-                token_or_email = auth_header.replace('Bearer ', '')
-                if '@' in token_or_email:
-                    email = token_or_email.lower()
-                else:
-                    self._send_error(401, "Please provide your email in Authorization header")
-                    return
-
+            token = self.headers.get('Authorization', '').replace('Bearer ', '').strip()
+            email = verify_session(token)
             if not email:
-                email = self.headers.get('X-Player-Email', '').lower()
+                self._send_error(401, "Invalid or expired session")
+                return
 
             if not verify_admin(email):
                 self._send_error(403, "Admin access required")
                 return
+
+            # Explicit column list — never return password fields
+            ADMIN_COLUMNS = (
+                'id,name,email,phone,skill_level,rank,total_games,matches_played,'
+                'trend,is_active,is_admin,membership_tier,has_paid,avatar_url,'
+                'unavailable_until,avail_weekday_early,avail_weekday_day,avail_weekday_late,'
+                'avail_weekend_early,avail_weekend_day,avail_weekend_late,rms_score,rms_band'
+            )
 
             # Parse query params
             parsed = urlparse(self.path)
@@ -93,8 +93,7 @@ class handler(BaseHTTPRequestHandler):
             action = params.get('action', ['players'])[0]
 
             if action == 'players':
-                # Get all players
-                result = table('players').select('*').order('rank').execute()
+                result = table('players').select(ADMIN_COLUMNS).order('rank').execute()
                 if result.error:
                     self._send_error(500, f"Failed to fetch players: {result.error}")
                     return
@@ -190,7 +189,7 @@ class handler(BaseHTTPRequestHandler):
                     self._send_error(400, "Player ID required")
                     return
 
-                result = table('players').select('*').eq('id', player_id).single().execute()
+                result = table('players').select(ADMIN_COLUMNS).eq('id', player_id).single().execute()
                 if result.error:
                     self._send_error(500, f"Failed to fetch player: {result.error}")
                     return
@@ -205,27 +204,20 @@ class handler(BaseHTTPRequestHandler):
                 self._send_error(400, f"Unknown action: {action}")
 
         except Exception as e:
-            self._send_error(500, str(e))
+            print(f"Admin error: {e}")
+            self._send_error(500, "An unexpected error occurred")
 
     def do_POST(self):
         """Admin actions: update player, pause/activate, etc."""
         try:
             from api.supabase_http import table
 
-            # Get email from Authorization header
-            auth_header = self.headers.get('Authorization', '')
-            email = None
-
-            if auth_header.startswith('Bearer '):
-                token_or_email = auth_header.replace('Bearer ', '')
-                if '@' in token_or_email:
-                    email = token_or_email.lower()
-                else:
-                    self._send_error(401, "Please provide your email in Authorization header")
-                    return
-
+            from api.auth import verify_session
+            token = self.headers.get('Authorization', '').replace('Bearer ', '').strip()
+            email = verify_session(token)
             if not email:
-                email = self.headers.get('X-Player-Email', '').lower()
+                self._send_error(401, "Invalid or expired session")
+                return
 
             if not verify_admin(email):
                 self._send_error(403, "Admin access required")
@@ -361,7 +353,8 @@ class handler(BaseHTTPRequestHandler):
             })
 
         except Exception as e:
-            self._send_error(500, str(e))
+            print(f"Admin error: {e}")
+            self._send_error(500, "An unexpected error occurred")
 
     def _send_success(self, data):
         self.send_response(200)

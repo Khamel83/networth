@@ -110,17 +110,12 @@ class handler(BaseHTTPRequestHandler):
             parsed = urlparse(self.path)
             params = parse_qs(parsed.query)
 
-            # Get player email from auth header
-            auth_header = self.headers.get('Authorization', '')
-            player_email = None
-            if auth_header.startswith('Bearer '):
-                token_or_email = auth_header.replace('Bearer ', '')
-                if '@' in token_or_email:
-                    player_email = token_or_email.lower()
-
+            from api.auth import verify_session
+            token = self.headers.get('Authorization', '').replace('Bearer ', '').strip()
+            player_email = verify_session(token)
             if not player_email:
-                player_email = params.get('player_email', [''])[0].lower()
-
+                # Fall back to query param for legacy support
+                player_email = params.get('player_email', [''])[0].lower() or None
             if not player_email:
                 self.send_response(401)
                 self.send_header('Content-Type', 'application/json')
@@ -238,10 +233,53 @@ class handler(BaseHTTPRequestHandler):
         """
         try:
             from api.supabase_http import table
+            from api.auth import verify_session
+
+            # Require valid session
+            token = self.headers.get('Authorization', '').replace('Bearer ', '').strip()
+            player_email = verify_session(token)
+            if not player_email:
+                self.send_response(401)
+                self.send_header('Content-Type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    "success": False,
+                    "error": "Authentication required"
+                }).encode())
+                return
 
             content_length = int(self.headers.get('Content-Length', 0))
             body = self.rfile.read(content_length).decode('utf-8')
             data = json.loads(body) if body else {}
+
+            # Verify the authenticated player is one of the match participants (or admin)
+            player1_id = data.get('player1_id')
+            player2_id = data.get('player2_id')
+            submitter_result = table('players').select('id,is_admin').eq('email', player_email).single().execute()
+            if submitter_result.error or not submitter_result.data:
+                self.send_response(403)
+                self.send_header('Content-Type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    "success": False,
+                    "error": "Player not found"
+                }).encode())
+                return
+            submitter = submitter_result.data[0] if isinstance(submitter_result.data, list) else submitter_result.data
+            submitter_id = submitter.get('id')
+            is_admin = submitter.get('is_admin', False)
+            if not is_admin and str(submitter_id) not in (str(player1_id), str(player2_id)):
+                self.send_response(403)
+                self.send_header('Content-Type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    "success": False,
+                    "error": "You can only report scores for your own matches"
+                }).encode())
+                return
 
             # Calculate total games from set scores
             set1_p1 = int(data.get('set1_p1', 0))
