@@ -497,7 +497,7 @@ if (response.status === 401) {
 - Added email and phone display on player profile pages
 - Fixed availability key mismatch between API response formats
 - Added auto-save for availability checkboxes with visual feedback
-- Extended Vercel function timeout to 30s for cold starts
+- Extended Vercel function timeout to 60s for cold starts (raised again March 2026 — 30s wasn't enough for 28 bulk emails)
 - Added rate limit handling for Supabase OTP requests
 - Updated "Favorite Players" to "Favorite Pro Players" with better placeholder
 - **Admin: Current Pairings view** - Shows who is matched with whom (names, emails, phones)
@@ -536,6 +536,26 @@ if (response.status === 401) {
   - `POST /api/system` with `action: check_email_connectivity` — validates Resend API key daily (catches stale keys before pairing day)
   - Fixed CI auth check: grep for secret template literal was always failing (every commit since March 4); simplified to `grep -q "Authorization: Bearer"`
   - 69/69 tests passing
+- **Security hardening (March 27)** — Full RLS + session token overhaul:
+  - Real session tokens in `session_tokens` DB table; `verify_session()` in `api/auth.py`
+  - All `if '@' in token` auth bypass patterns removed (6 endpoints)
+  - CRON_SECRET endpoints now reject everything except the exact secret
+  - `SUPABASE_SERVICE_ROLE_KEY` used server-side; anon key has deny-all RLS policies
+  - Password fields (`password_hash`, reset tokens) never returned by any endpoint
+  - Frontend: `networth_token` localStorage now stores real session token (not email)
+  - `migrations/03_session_tokens_and_rls.sql` applied in Supabase
+  - Error responses: `str(e)` replaced with generic message + `print()` for server logs
+- **504 false alarm fix (March 27)** — 28 players × ~1s/email = >30s. Function was timing out
+  AFTER all emails delivered. `maxDuration` raised to 60s (Vercel Hobby max).
+- **Auto-verify after 504 (March 27)** — Workflow now checks `email_log` before alerting:
+  if emails are in the log, exit 0 (no alert). Only fires alert if emails truly didn't go out.
+  New `check_recent_send` action in `api/email.py` queries email_log by action + today's date.
+
+### 21. Vercel 504 False Alarm on Bulk Email
+**Symptom:** GitHub Actions shows failure, admin gets alert, but all emails were delivered
+**Cause:** Bulk send to 28 players takes ~31s (0.6s sleep × emails + network). Old `maxDuration: 30` killed the function AFTER all emails sent but before it could return 200. GitHub Actions saw 504 → fired alert.
+**Fix:** `maxDuration: 60` in vercel.json. Workflow now catches 504, queries `email_log` via `check_recent_send`, exits 0 if emails confirmed sent.
+**Rule:** Always set `maxDuration` based on worst-case bulk operation time, not just DB query time.
 
 ### February 2026
 - **Report Issue feature** - Users can report bugs from dashboard via `/api/report_issue` (sends admin alert email)
