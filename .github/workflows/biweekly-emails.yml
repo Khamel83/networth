@@ -161,6 +161,23 @@ jobs:
           RESPONSE=$(cat /tmp/response.json)
           echo "HTTP $HTTP_STATUS: $RESPONSE"
 
+          if [ "$HTTP_STATUS" = "504" ] || [ "$HTTP_STATUS" = "502" ]; then
+            echo "Got $HTTP_STATUS — verifying via email_log before declaring failure..."
+            sleep 5
+            CHECK=$(curl -s -X POST "${{ secrets.SITE_URL }}/api/email" \
+              -H "Content-Type: application/json" \
+              -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+              -d '{"action":"check_recent_send","email_action":"send_availability_check"}')
+            echo "email_log check: $CHECK"
+            if [ "$(echo "$CHECK" | jq -r '.already_sent')" = "true" ]; then
+              SENT=$(echo "$CHECK" | jq -r '.sent // 0')
+              echo "::notice::Confirmed: $SENT emails delivered (email_log). 504 was a response timeout, not a real failure."
+              exit 0
+            fi
+            echo "::error::HTTP $HTTP_STATUS and email_log shows no sends today. Real failure."
+            exit 1
+          fi
+
           if [ "$HTTP_STATUS" -lt 200 ] || [ "$HTTP_STATUS" -ge 300 ]; then
             echo "::error::HTTP $HTTP_STATUS: $RESPONSE"
             exit 1
@@ -215,6 +232,23 @@ jobs:
             -d '{"action": "send_final_reminder"}')
           RESPONSE=$(cat /tmp/response.json)
           echo "HTTP $HTTP_STATUS: $RESPONSE"
+
+          if [ "$HTTP_STATUS" = "504" ] || [ "$HTTP_STATUS" = "502" ]; then
+            echo "Got $HTTP_STATUS — verifying via email_log before declaring failure..."
+            sleep 5
+            CHECK=$(curl -s -X POST "${{ secrets.SITE_URL }}/api/email" \
+              -H "Content-Type: application/json" \
+              -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+              -d '{"action":"check_recent_send","email_action":"send_final_reminder"}')
+            echo "email_log check: $CHECK"
+            if [ "$(echo "$CHECK" | jq -r '.already_sent')" = "true" ]; then
+              SENT=$(echo "$CHECK" | jq -r '.sent // 0')
+              echo "::notice::Confirmed: $SENT emails delivered (email_log). 504 was a response timeout, not a real failure."
+              exit 0
+            fi
+            echo "::error::HTTP $HTTP_STATUS and email_log shows no sends today. Real failure."
+            exit 1
+          fi
 
           if [ "$HTTP_STATUS" -lt 200 ] || [ "$HTTP_STATUS" -ge 300 ]; then
             echo "::error::HTTP $HTTP_STATUS: $RESPONSE"
@@ -344,6 +378,23 @@ jobs:
             -d '{"action": "send_midmonth_reminders"}')
           RESPONSE=$(cat /tmp/response.json)
           echo "HTTP $HTTP_STATUS: $RESPONSE"
+
+          if [ "$HTTP_STATUS" = "504" ] || [ "$HTTP_STATUS" = "502" ]; then
+            echo "Got $HTTP_STATUS — verifying via email_log before declaring failure..."
+            sleep 5
+            CHECK=$(curl -s -X POST "${{ secrets.SITE_URL }}/api/email" \
+              -H "Content-Type: application/json" \
+              -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+              -d '{"action":"check_recent_send","email_action":"send_midmonth_reminders"}')
+            echo "email_log check: $CHECK"
+            if [ "$(echo "$CHECK" | jq -r '.already_sent')" = "true" ]; then
+              SENT=$(echo "$CHECK" | jq -r '.sent // 0')
+              echo "::notice::Confirmed: $SENT emails delivered (email_log). 504 was a response timeout, not a real failure."
+              exit 0
+            fi
+            echo "::error::HTTP $HTTP_STATUS and email_log shows no sends today. Real failure."
+            exit 1
+          fi
 
           if [ "$HTTP_STATUS" -lt 200 ] || [ "$HTTP_STATUS" -ge 300 ]; then
             echo "::error::HTTP $HTTP_STATUS: $RESPONSE"

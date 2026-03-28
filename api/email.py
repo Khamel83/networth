@@ -7,7 +7,7 @@ from http.server import BaseHTTPRequestHandler
 import json
 import os
 import time as _time
-from datetime import datetime
+from datetime import datetime, timezone
 
 # Initialize Sentry for error tracking
 from api.sentry_init import init_sentry
@@ -869,6 +869,36 @@ class handler(BaseHTTPRequestHandler):
                     })
                 else:
                     self._send_error(500, result.get('error'))
+
+            elif action == 'check_recent_send':
+                # Check email_log to verify if a bulk action was sent today
+                # Used by GitHub Actions to validate after a 504 (was the send real or not?)
+                # Auth: same CRON_SECRET required
+                cron_secret = os.environ.get('CRON_SECRET', '')
+                auth = self.headers.get('Authorization', '').replace('Bearer ', '')
+                if not cron_secret or auth != cron_secret:
+                    self._send_error(401, 'Unauthorized')
+                    return
+
+                from api.supabase_http import table
+                check_action = data.get('email_action', '')
+                if not check_action:
+                    self._send_error(400, "email_action required")
+                    return
+
+                # Find rows for this action sent since midnight UTC today
+                today_start = datetime.now(timezone.utc).strftime('%Y-%m-%dT00:00:00+00:00')
+                result = table('email_log').select('resend_email_id,sent_at').eq('action', check_action).gte('sent_at', today_start).execute()
+                if result.error:
+                    self._send_error(500, "Failed to query email_log")
+                    return
+
+                count = len(result.data) if result.data else 0
+                self._send_success({
+                    "already_sent": count > 0,
+                    "sent": count,
+                    "email_action": check_action
+                })
 
             else:
                 self._send_error(400, f"Unknown action: {action}")
