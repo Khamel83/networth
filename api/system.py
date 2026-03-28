@@ -79,6 +79,8 @@ class handler(BaseHTTPRequestHandler):
                 self._handle_reconcile_month(data)
             elif action == 'check_email_connectivity':
                 self._handle_check_email_connectivity()
+            elif action == 'unlock_stale_runs':
+                self._handle_unlock_stale_runs(data)
             else:
                 self._send_error(400, f"Unknown action: {action}")
 
@@ -320,6 +322,45 @@ class handler(BaseHTTPRequestHandler):
             self._send_error(500, f"Resend authentication failed: {str(e)}")
         except Exception as e:
             self._send_error(500, f"Resend connectivity check failed: {str(e)}")
+
+    def _handle_unlock_stale_runs(self, data):
+        """Mark stale 'running' automation_runs as failed so locks can be retried."""
+        from api.supabase_http import table
+
+        cron_secret = os.environ.get('CRON_SECRET', '')
+        if not cron_secret:
+            self._send_error(500, "CRON_SECRET not configured")
+            return
+        auth = self.headers.get('Authorization', '').replace('Bearer ', '')
+        if auth != cron_secret:
+            self._send_error(401, "Unauthorized")
+            return
+
+        action_filter = data.get('action')  # optional: only unlock a specific action
+        period_filter = data.get('period_label')  # optional: only a specific period
+
+        q = table('automation_runs').select('id, action, period_label, started_at').eq('status', 'running')
+        if action_filter:
+            q = q.eq('action', action_filter)
+        if period_filter:
+            q = q.eq('period_label', period_filter)
+
+        result = q.execute()
+        if result.error:
+            self._send_error(500, f"Failed to query stale runs: {result.error}")
+            return
+
+        unlocked = []
+        for row in (result.data or []):
+            upd = table('automation_runs').update({
+                'status': 'failed',
+                'ended_at': datetime.now(timezone.utc).isoformat(),
+                'error_json': {'reason': 'manually unlocked via admin action'},
+            }).eq('id', row['id']).execute()
+            if not upd.error:
+                unlocked.append({'id': row['id'], 'action': row['action'], 'period_label': row['period_label']})
+
+        self._send_success({'unlocked': unlocked, 'count': len(unlocked)})
 
     def _send_success(self, data):
         self.send_response(200)
