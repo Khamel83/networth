@@ -1,9 +1,6 @@
 # Tennis League Email Automation
 # ================================
-# SCHEDULE DISABLED TEMPORARILY - CRON_SECRET needs to be set in Vercel
-# Manual triggers still work below
-# ================================================
-# Schedule (when re-enabled):
+# Schedule:
 # - 27th of month at 9am PT: Monthly availability reminder
 # - Last day of month at 9am PT: Final availability reminder
 # - 1st of month at 9am PT: Generate pairings (emails sent automatically)
@@ -17,18 +14,17 @@
 name: Tennis League Emails
 
 on:
-  # SCHEDULE DISABLED - Uncomment to re-enable after CRON_SECRET is set in Vercel
-  # schedule:
-  #   # 27th of month at 9am PT (5pm UTC) - Monthly availability reminder
-  #   - cron: '0 17 27 * *'
-  #   # 28-31 of month at 9am PT (5pm UTC) - Final availability reminder (last day check)
-  #   - cron: '0 17 28-31 * *'
-  #   # 1st of month at 9am PT (5pm UTC) - Generate pairings
-  #   - cron: '0 17 1 * *'
-  #   # 1st of month at 12pm PT (8pm UTC) - Health check / self-healing backup
-  #   - cron: '0 20 1 * *'
-  #   # 15th of month at 9am PT (5pm UTC) - Mid-month match reminder
-  #   - cron: '0 17 15 * *'
+  schedule:
+    # 27th of month at 9am PT (5pm UTC) - Monthly availability reminder
+    - cron: '0 17 27 * *'
+    # 28-31 of month at 9am PT (5pm UTC) - Final availability reminder (last day check)
+    - cron: '0 17 28-31 * *'
+    # 1st of month at 9am PT (5pm UTC) - Generate pairings
+    - cron: '0 17 1 * *'
+    # 1st of month at 12pm PT (8pm UTC) - Health check / self-healing backup
+    - cron: '0 20 1 * *'
+    # 15th of month at 9am PT (5pm UTC) - Mid-month match reminder
+    - cron: '0 17 15 * *'
   workflow_dispatch:
     inputs:
       action:
