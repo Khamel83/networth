@@ -51,7 +51,7 @@ class Table:
     def insert(self, data) -> 'Result':
         """Insert row(s) - accepts dict for single row or list for multiple"""
         url = _build_url(self.table_name)
-        headers = _get_headers()
+        headers = {**_get_headers(), 'Prefer': 'return=representation'}
         response = httpx.post(url, headers=headers, json=data)
         return Result(response)
 
