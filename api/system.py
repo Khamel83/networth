@@ -339,7 +339,7 @@ class handler(BaseHTTPRequestHandler):
         action_filter = data.get('action')  # optional: only unlock a specific action
         period_filter = data.get('period_label')  # optional: only a specific period
 
-        q = table('automation_runs').select('id, action, period_label, started_at').eq('status', 'running')
+        q = table('automation_runs').select('id, action, period_label, started_at').in_('status', ['running'])
         if action_filter:
             q = q.eq('action', action_filter)
         if period_filter:
@@ -353,7 +353,7 @@ class handler(BaseHTTPRequestHandler):
         unlocked = []
         for row in (result.data or []):
             upd = table('automation_runs').update({
-                'status': 'failed',
+                'status': 'failed_terminal',
                 'ended_at': datetime.now(timezone.utc).isoformat(),
                 'error_json': {'reason': 'manually unlocked via admin action'},
             }).eq('id', row['id']).execute()
