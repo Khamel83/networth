@@ -557,6 +557,30 @@ if (response.status === 401) {
 **Fix:** `maxDuration: 60` in vercel.json. Workflow now catches 504, queries `email_log` via `check_recent_send`, exits 0 if emails confirmed sent.
 **Rule:** Always set `maxDuration` based on worst-case bulk operation time, not just DB query time.
 
+### 22. Python dict.get() Doesn't Use Default When Key Exists But Is None
+**Symptom:** Pairings generation crashes with `TypeError: '<' not supported between instances of 'NoneType' and 'int'`
+**Cause:** `p.get('rank', 999)` returns `None` (not 999) when the key exists but the value is `None`. A new player had `rank = NULL` in the database.
+**Fix:** Use `p.get('rank') or 999` instead of `p.get('rank', 999)`. The `or` pattern handles both missing key AND null value.
+**Rule:** Never use `.get(key, default)` for database fields that can be NULL — always use `.get(key) or default`.
+
+### 23. Pairings Preflight Auth Test Was Accidentally Running Pairings
+**Symptom:** GitHub Actions preflight auth check for pairings returns 500, misreported as "CRON_SECRET not configured"
+**Cause:** The pairings preflight sent `{}` to `/api/pairings` which actually tried to generate pairings (no `test_auth_check` action handler). Other jobs used `/api/email test_auth_check` which is safe. Any server error was misinterpreted as missing CRON_SECRET.
+**Fix:** All preflight auth tests now use `/api/email test_auth_check` — same CRON_SECRET, no side effects.
+**Rule:** Preflight tests must be side-effect-free. Never send data that could trigger real work.
+
+### 24. Test Email Filter Caught Test Helper's Default Email Domain
+**Symptom:** 12 test failures after adding test email rejection to `is_player_available()`
+**Cause:** Test helper creates emails like `alice@test.com`, which matches the `'@test.' in _email` filter. All test players became "unavailable."
+**Fix:** Changed test helper default domain from `@test.com` to `@example.net`.
+**Rule:** When adding validation that filters by pattern, check that test fixtures don't accidentally match.
+
+### April 2026
+- **Fixed pairings crash on NULL rank** — `p.get('rank', 999)` returns None when key exists but is null; changed to `p.get('rank') or 999` (lines 382, 396)
+- **Fixed preflight auth test** — pairings preflight was hitting /api/pairings with {} (actually ran pairings); now uses /api/email test_auth_check like all other jobs
+- **April pairings generated** — 13 pairings, 13 emails sent, 0 repeats confirmed
+- **CRON_SECRET synced** — Vercel + GitHub + vault all matching
+
 ### February 2026
 - **Report Issue feature** - Users can report bugs from dashboard via `/api/report_issue` (sends admin alert email)
 - **Daily health check** - GitHub Actions workflow runs daily health check with email alerts on failure
