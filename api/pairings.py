@@ -379,7 +379,7 @@ def generate_pairings(players, blocked_pairs, all_assignments, all_matches):
                 removed_player = ashley
 
         if not removed_player:
-            available_players.sort(key=lambda p: (p.get('rank', 999), p.get('band_order', 0)))
+            available_players.sort(key=lambda p: (p.get('rank') or 999, p.get('band_order') or 0))
             removed_player = available_players.pop()
 
         skipped = [removed_player] if removed_player else []
@@ -393,7 +393,7 @@ def generate_pairings(players, blocked_pairs, all_assignments, all_matches):
     # Pass 1: exact fresh matching for small/medium leagues.
     # If a no-repeat full pairing exists, this finds it.
     # Fallback to deterministic greedy if league size is larger than solver bound.
-    available_players.sort(key=lambda p: (p.get('rank', 999), str(p.get('id'))))
+    available_players.sort(key=lambda p: (p.get('rank') or 999, str(p.get('id'))))
     exact_pairs, exact_unpaired = _find_best_fresh_pairs(available_players, blocked_set, all_time_pairs)
 
     if exact_pairs is not None:

@@ -280,17 +280,21 @@ jobs:
         id: verify-auth
         run: |
           echo "Testing CRON_SECRET auth before generating pairings..."
+          # Use /api/email test_auth_check — same CRON_SECRET, safe no-side-effect test
+          # 400 = auth passed (action is invalid but recognized as protected)
+          # 401 = auth failed (CRON_SECRET mismatch)
           TEST_STATUS=$(curl -s -o /tmp/auth_test.json -w "%{http_code}" \
-            -X POST "${{ secrets.SITE_URL }}/api/pairings" \
+            -X POST "${{ secrets.SITE_URL }}/api/email" \
             -H "Content-Type: application/json" \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            -d '{}')
+            -d '{"action":"test_auth_check"}')
           echo "Auth test HTTP status: $TEST_STATUS"
+          cat /tmp/auth_test.json
           if [ "$TEST_STATUS" = "401" ]; then
             echo "::error::CRON_SECRET auth failed (401). Verify secrets match between GitHub and Vercel."
             exit 1
-          elif [ "$TEST_STATUS" = "500" ]; then
-            echo "::error::CRON_SECRET not configured in Vercel (500)."
+          elif [ "$TEST_STATUS" != "400" ] && [ "$TEST_STATUS" != "200" ]; then
+            echo "::error::Unexpected auth test response: HTTP $TEST_STATUS"
             exit 1
           fi
           echo "✓ CRON_SECRET auth verified"

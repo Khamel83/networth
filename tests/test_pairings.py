@@ -15,7 +15,7 @@ def make_player(id, name, band='competitive', rms=7.0, email=None,
     return {
         'id': id,
         'name': name,
-        'email': email or f'{name.lower().replace(" ", "")}@test.com',
+        'email': email or f'{name.lower().replace(" ", "")}@example.net',
         'rms': rms,
         'rms_score': rms,
         'band': band,
