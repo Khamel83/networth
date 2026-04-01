@@ -152,6 +152,14 @@ def is_player_available(player):
     if player.get('email') == admin_email:
         return False
 
+    # Exclude test/fake email addresses
+    _email = player.get('email', '').lower()
+    _test_tlds = ('.invalid', '.test', '.example', '.localhost', '.onion')
+    if any(_email.endswith(t) for t in _test_tlds):
+        return False
+    if 'test' in _email and '@test.' in _email:
+        return False
+
     # Social Butterflies are never included in matching
     if player.get('membership_tier') == 'social_butterfly':
         return False
