@@ -2,6 +2,8 @@
 
 | File | Date | Title | Topics |
 |------|------|-------|--------|
+| [20260327_210136__command-name__clear__command-name_.md.age](20260327_210136__command-name__clear__command-name_.md.age) | 2026-03-27 21:01:36 | <command-name>/clear</command-name> | age |
+| [20260327_210134_pull_from_remote_and_im_fucking_furious_that_we_ha.md.age](20260327_210134_pull_from_remote_and_im_fucking_furious_that_we_ha.md.age) | 2026-03-27 21:01:34 | pull from remote and im fucking furious that we ha... | add, age, api, auth, backend, bug, build, config, database, deploy, feature, fix, frontend, go, implement, javascript, migration, oci, postgres, python, remove, rust, session, setup, test, update |
 | [20260316_233112_ashley_wants_to_boot_Noopur_from_the_league_entire.md.age](20260316_233112_ashley_wants_to_boot_Noopur_from_the_league_entire.md.age) | 2026-03-16 23:31:12 | ashley wants to boot Noopur from the league entire... |  |
 | [20260315_123712_Implement_the_following_plan_.md.age](20260315_123712_Implement_the_following_plan_.md.age) | 2026-03-15 12:37:12 | Implement the following plan: | add, age, api, auth, bug, ci/cd, fix, go, implement, migration, python, remove, test, update |
 | [20260315_121319_what_the_fuck__how_did_we_manage_to_screw_up_the_n.md.age](20260315_121319_what_the_fuck__how_did_we_manage_to_screw_up_the_n.md.age) | 2026-03-15 12:13:19 | what the fuck, how did we manage to screw up the n... | add, age, api, database, fix, go, python, rust |

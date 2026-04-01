@@ -64,6 +64,17 @@ class handler(BaseHTTPRequestHandler):
                 self._send_error(400, "Please enter a valid email address")
                 return
 
+            # Reject test/disposable email patterns
+            _test_tlds = ('.invalid', '.test', '.example', '.localhost', '.onion')
+            _test_words = ('test', 'probe', 'example', 'fake', 'dummy', 'nobody', 'null', 'devnull')
+            _email_domain = email.split('@')[-1].lower()
+            if any(_email_domain.endswith(t) for t in _test_tlds):
+                self._send_error(400, "Please use a real email address")
+                return
+            if any(w in email.lower() for w in _test_words) and not any(c.isdigit() for c in email):
+                self._send_error(400, "Please use a real email address")
+                return
+
             # Import HTTP helper
             from api.supabase_http import table
 
