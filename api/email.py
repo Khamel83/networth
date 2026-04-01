@@ -489,7 +489,8 @@ class handler(BaseHTTPRequestHandler):
             PROTECTED_ACTIONS = {
                 'send_availability_check', 'send_final_reminder',
                 'send_midmonth_reminders', 'send_admin_alert',
-                'resend_match_emails'
+                'resend_match_emails',
+                'test_auth_check',
             }
             if action in PROTECTED_ACTIONS:
                 cron_secret = os.environ.get('CRON_SECRET', '')
