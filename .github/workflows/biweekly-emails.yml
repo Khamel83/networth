@@ -489,6 +489,12 @@ jobs:
               RESPONSE=$(cat /tmp/recovery.json)
               echo "HTTP $HTTP_STATUS: $RESPONSE"
 
+              if [ "$HTTP_STATUS" = "409" ]; then
+                echo "::notice::HTTP 409 - Pairings already generated (duplicate-run protection). Recovery not needed."
+                SUCCESS=true
+                break
+              fi
+
               API_SUCCESS=$(echo "$RESPONSE" | jq -r '.success // false')
               PAIRINGS=$(echo "$RESPONSE" | jq -r '.pairings_created // 0')
               EMAILS=$(echo "$RESPONSE" | jq -r '.emails_sent // 0')
