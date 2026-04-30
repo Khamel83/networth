@@ -161,6 +161,11 @@ jobs:
           RESPONSE=$(cat /tmp/response.json)
           echo "HTTP $HTTP_STATUS: $RESPONSE"
 
+          if [ "$HTTP_STATUS" = "409" ]; then
+            echo "::notice::HTTP 409 - Run already exists for send_availability_check (already succeeded). Skipping."
+            exit 0
+          fi
+
           if [ "$HTTP_STATUS" = "504" ] || [ "$HTTP_STATUS" = "502" ]; then
             echo "Got $HTTP_STATUS — verifying via email_log before declaring failure..."
             sleep 5
@@ -232,6 +237,11 @@ jobs:
             -d '{"action": "send_final_reminder"}')
           RESPONSE=$(cat /tmp/response.json)
           echo "HTTP $HTTP_STATUS: $RESPONSE"
+
+          if [ "$HTTP_STATUS" = "409" ]; then
+            echo "::notice::HTTP 409 - Run already exists for send_final_reminder (already succeeded). Skipping."
+            exit 0
+          fi
 
           if [ "$HTTP_STATUS" = "504" ] || [ "$HTTP_STATUS" = "502" ]; then
             echo "Got $HTTP_STATUS — verifying via email_log before declaring failure..."
@@ -324,6 +334,12 @@ jobs:
             RESPONSE=$(cat /tmp/response.json)
             echo "HTTP $HTTP_STATUS: $RESPONSE"
 
+            if [ "$HTTP_STATUS" = "409" ]; then
+              echo "::notice::HTTP 409 - Pairings already generated for this month. Skipping."
+              SUCCESS=true
+              break
+            fi
+
             API_SUCCESS=$(echo "$RESPONSE" | jq -r '.success // false')
             PAIRINGS=$(echo "$RESPONSE" | jq -r '.pairings_created // 0')
             EMAILS=$(echo "$RESPONSE" | jq -r '.emails_sent // 0')
@@ -382,6 +398,11 @@ jobs:
             -d '{"action": "send_midmonth_reminders"}')
           RESPONSE=$(cat /tmp/response.json)
           echo "HTTP $HTTP_STATUS: $RESPONSE"
+
+          if [ "$HTTP_STATUS" = "409" ]; then
+            echo "::notice::HTTP 409 - Run already exists for send_midmonth_reminders (already succeeded). Skipping."
+            exit 0
+          fi
 
           if [ "$HTTP_STATUS" = "504" ] || [ "$HTTP_STATUS" = "502" ]; then
             echo "Got $HTTP_STATUS — verifying via email_log before declaring failure..."
