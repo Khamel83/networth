@@ -614,6 +614,7 @@ class handler(BaseHTTPRequestHandler):
                 self._send_success({"deleted": count, "period": period_label})
                 return
 
+            dry_run = data.get('dry_run', False)
             period_label = data.get('period_label', datetime.now().strftime('%B %Y'))
             period_type = data.get('period_type', 'month')
             self._run_period = period_label
@@ -623,7 +624,7 @@ class handler(BaseHTTPRequestHandler):
                 'period_type': period_type,
             })
             self._run_id = run_id
-            if lock_error:
+            if lock_error and not dry_run:
                 self._send_error(409, lock_error)
                 return
 
@@ -723,12 +724,34 @@ class handler(BaseHTTPRequestHandler):
                     return
 
             # Step 6c: No existing pairings for this period (duplicate-run protection)
-            existing_resp = table('match_assignments').select('id').eq('period_label', period_label).execute()
-            if existing_resp.error:
-                self._send_error(500, f"Failed to check existing assignments: {existing_resp.error}")
-                return
-            if existing_resp.data:
-                self._send_error(409, f"Pairings for {period_label} already exist ({len(existing_resp.data)} assignments) — aborting to prevent duplicates")
+            # Skipped in dry_run mode — preview doesn't write anything
+            if not dry_run:
+                existing_resp = table('match_assignments').select('id').eq('period_label', period_label).execute()
+                if existing_resp.error:
+                    self._send_error(500, f"Failed to check existing assignments: {existing_resp.error}")
+                    return
+                if existing_resp.data:
+                    self._send_error(409, f"Pairings for {period_label} already exist ({len(existing_resp.data)} assignments) — aborting to prevent duplicates")
+                    return
+
+            # Step 6d: In dry_run mode, return pairings for human review without saving or emailing
+            if dry_run:
+                preview = []
+                for p in pairings:
+                    key = frozenset([p['player1']['id'], p['player2']['id']])
+                    preview.append({
+                        'player1': p['player1']['name'],
+                        'player2': p['player2']['name'],
+                        'forced_repeat': key in forced_repeats,
+                    })
+                self._send_success({
+                    'dry_run': True,
+                    'period': period_label,
+                    'pairings': preview,
+                    'skipped': [pl['name'] for pl in skipped],
+                    'forced_repeat_count': len(forced_repeats),
+                    'total': len(preview),
+                })
                 return
 
             # Step 6d: Build and insert assignments
