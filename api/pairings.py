@@ -343,11 +343,16 @@ def generate_pairings(players, blocked_pairs, all_assignments, all_matches):
         blocked_set.add((bp['player_a'], bp['player_b']))
         blocked_set.add((bp['player_b'], bp['player_a']))
 
-    # Build all-time pair history: frozenset(id1,id2) -> most recent period_label
-    # Used for exhaustion-first: skip any pair that has EVER played (Pass 1)
-    # and for oldest-first selection in Pass 2
+    # Build all-time pair history from BOTH assignments AND logged matches.
+    # match_assignments covers formal monthly pairings; matches covers extra matches
+    # logged via "Log Extra Match" (which don't create assignments). Without both,
+    # players who played a pickup game can get formally paired with the same person.
     all_time_pairs = {}
     for m in all_assignments:
+        key = frozenset([m['player1_id'], m['player2_id']])
+        if key not in all_time_pairs:
+            all_time_pairs[key] = m.get('period_label', '')
+    for m in all_matches:
         key = frozenset([m['player1_id'], m['player2_id']])
         if key not in all_time_pairs:
             all_time_pairs[key] = m.get('period_label', '')
@@ -689,9 +694,13 @@ class handler(BaseHTTPRequestHandler):
                         return
                     seen_players.add(pid)
 
-            # Step 6b: No avoidable repeats
+            # Step 6b: No avoidable repeats (check both assignments AND logged matches)
             all_time_pairs = {}
             for m in all_assignments:
+                key = frozenset([m['player1_id'], m['player2_id']])
+                if key not in all_time_pairs:
+                    all_time_pairs[key] = m.get('period_label', '')
+            for m in all_matches:
                 key = frozenset([m['player1_id'], m['player2_id']])
                 if key not in all_time_pairs:
                     all_time_pairs[key] = m.get('period_label', '')

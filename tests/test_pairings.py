@@ -216,6 +216,38 @@ class TestExhaustionAlgorithm:
             assert ids != frozenset([1, 2]), "A+B should not be paired (they played before)"
             assert ids != frozenset([3, 4]), "C+D should not be paired (they played before)"
 
+    def test_extra_matches_prevent_repeats(self):
+        """
+        Players who logged an extra match (via 'Log Extra Match') should NOT be
+        re-paired, even though there's no match_assignment for them.
+        Regression test for May 2026: Natalie+Katie played an extra match but
+        got formally paired again because only match_assignments was checked.
+        """
+        players = [
+            make_player(1, 'A', band='competitive', rms=7.0),
+            make_player(2, 'B', band='competitive', rms=7.0),
+            make_player(3, 'C', band='competitive', rms=7.0),
+            make_player(4, 'D', band='competitive', rms=7.0),
+            make_player(5, 'E', band='competitive', rms=7.0),
+            make_player(6, 'F', band='competitive', rms=7.0),
+        ]
+        # No formal assignments, but A+B have a logged extra match
+        all_assignments = []
+        all_matches = [
+            make_match(1, 2),  # A+B played an extra match
+        ]
+
+        pairings, skipped, forced_repeats = generate_pairings(
+            players, [], all_assignments, all_matches
+        )
+
+        assert len(pairings) == 3, f"Expected 3 pairings, got {len(pairings)}"
+        assert len(forced_repeats) == 0, f"Expected no forced repeats, got {forced_repeats}"
+
+        for p in pairings:
+            ids = frozenset([p['player1']['id'], p['player2']['id']])
+            assert ids != frozenset([1, 2]), "A+B should not be paired (they logged an extra match)"
+
     def test_all_players_get_paired(self):
         """6 fresh players with no history — all 6 should be paired."""
         players = [make_player(i, f'P{i}', band='competitive', rms=7.0) for i in range(1, 7)]
