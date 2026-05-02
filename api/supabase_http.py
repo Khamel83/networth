@@ -203,12 +203,11 @@ class DeleteBuilder:
     def execute(self) -> 'Result':
         """Execute the delete"""
         url = _build_url(self.table_name)
-        headers = _get_headers()
+        headers = {**_get_headers(), 'Prefer': 'return=representation'}
 
-        # Build query string for filters
         params = {}
-        for i, (column, value) in enumerate(self.filters):
-            params[f'{column}'] = f'eq.{value}'
+        for column, value in self.filters:
+            params[column] = f'eq.{value}'
 
         response = httpx.delete(url, headers=headers, params=params)
         return Result(response)
