@@ -609,9 +609,14 @@ class handler(BaseHTTPRequestHandler):
                 if not period_label:
                     self._send_error(400, 'period_label required for clear_period')
                     return
+                # Clear FK references and run lock before deleting assignments
+                table('email_log').delete().eq('period_label', period_label).execute()
+                table('automation_runs').delete().eq('action', 'generate_pairings').eq('period_label', period_label).execute()
                 del_resp = table('match_assignments').delete().eq('period_label', period_label).execute()
-                count = len(del_resp.data) if not del_resp.error else 0
-                self._send_success({"deleted": count, "period": period_label})
+                if del_resp.error:
+                    self._send_error(500, f"Delete failed: {del_resp.error}")
+                    return
+                self._send_success({"deleted": len(del_resp.data), "period": period_label})
                 return
 
             dry_run = data.get('dry_run', False)
