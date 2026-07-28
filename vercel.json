@@ -2,6 +2,7 @@
   "version": 2,
   "functions": {
     "api/*.py": {
+      "runtime": "@vercel/python@6.51.1",
       "maxDuration": 60,
       "excludeFiles": "{venv,env,.venv,ENV,__pycache__,*.pyc,*.pyo,node_modules,.next,.cache,dist,build}"
     }
