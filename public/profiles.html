@@ -9,6 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/site-nav.css">
 
     <style>
         :root {
@@ -315,15 +316,29 @@
         }
     </style>
 </head>
-<body>
-    <header class="header">
-        <a href="/" class="logo">net worth</a>
-        <nav class="nav-links">
-            <a href="/" class="nav-link">Home</a>
-            <a href="/profiles" class="nav-link" style="opacity: 1;">Players</a>
-            <a href="/dashboard" class="nav-link" id="nav-dashboard" style="display: none;">My Profile</a>
-            <a href="/login" class="nav-link" id="nav-signin">Sign In</a>
-        </nav>
+<body data-page="players">
+    <header class="site-header" data-site-nav>
+        <div class="site-header-inner">
+            <a href="/" class="logo" aria-label="Net Worth home">net worth</a>
+            <button class="site-menu-toggle" type="button" data-menu-toggle aria-controls="site-menu" aria-expanded="false" aria-label="Open navigation">
+                <span class="menu-icon" aria-hidden="true"></span>
+            </button>
+            <div id="site-menu" class="site-menu" data-site-menu>
+                <nav class="site-nav-links" aria-label="Primary navigation">
+                    <a href="/#how-it-works" class="site-nav-link" data-nav-key="how-it-works">How It Works</a>
+                    <a href="/#courts" class="site-nav-link" data-nav-key="courts">Courts</a>
+                    <a href="/rules" class="site-nav-link" data-nav-key="rules">Game Play &amp; Scoring</a>
+                    <a href="/profiles" class="site-nav-link" data-nav-key="players" data-members-only="true">Players</a>
+                    <a href="/#rankings" class="site-nav-link" data-nav-key="rankings" data-members-only="true" hidden>Rankings</a>
+                </nav>
+                <div class="site-nav-auth" data-auth-actions>
+                    <a href="/login" class="btn" data-auth-action="signin">Sign In</a>
+                    <a href="/join" class="btn btn-primary" data-auth-action="join">Join Now</a>
+                    <a href="/dashboard" class="btn" data-auth-action="profile" hidden>My Profile</a>
+                    <a href="#" class="btn btn-primary" data-auth-action="signout" hidden>Sign Out</a>
+                </div>
+            </div>
+        </div>
     </header>
 
     <main class="main">
@@ -356,7 +371,7 @@
                 <a href="/#how-it-works" class="footer-link">How It Works</a>
                 <a href="/#courts" class="footer-link">Courts</a>
                 <a href="/rules" class="footer-link">Game Play & Scoring</a>
-                <a href="/profiles" class="footer-link">Players</a>
+                <a href="/profiles" class="footer-link" data-members-only="true" hidden>Players</a>
                 <a href="mailto:ashleybrooke.kaufman@gmail.com,nmcoffen@gmail.com" class="footer-link">Contact Us</a>
             </nav>
             <p class="footer-copy">Net Worth Tennis</p>
@@ -374,12 +389,6 @@
             return !!(player.email && token);
         }
 
-        function updateNav() {
-            const loggedIn = isLoggedIn();
-            document.getElementById('nav-dashboard').style.display = loggedIn ? 'inline' : 'none';
-            document.getElementById('nav-signin').style.display = loggedIn ? 'none' : 'inline';
-        }
-
         function showState(state) {
             loadingState.style.display = 'none';
             loginRequired.style.display = 'none';
@@ -388,8 +397,6 @@
         }
 
         async function loadPlayers() {
-            updateNav();
-
             // Check if logged in
             if (!isLoggedIn()) {
                 showState(loginRequired);
@@ -450,6 +457,7 @@
         // Initialize
         document.addEventListener('DOMContentLoaded', loadPlayers);
     </script>
+    <script src="/js/site-nav.js"></script>
     <script src="/js/report-issue.js"></script>
 </body>
 </html>
