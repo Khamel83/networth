@@ -61,6 +61,12 @@
             }
         });
 
+        document.querySelectorAll('[data-members-only="true"]').forEach((element) => {
+            if (!element.closest('[data-site-nav]')) {
+                setVisibility(element, session.loggedIn);
+            }
+        });
+
         const signIn = navRoot.querySelector('[data-auth-action="signin"]');
         const join = navRoot.querySelector('[data-auth-action="join"]');
         const profile = navRoot.querySelector('[data-auth-action="profile"]');

@@ -43,6 +43,34 @@
 
 .site-nav-link,
 .site-nav-auth .btn {
+    padding: 0.5rem 1.25rem;
+    border: 2px solid var(--text-white, #ffffff);
+    border-radius: 50px;
+    background: transparent;
+    color: var(--text-white, #ffffff);
+    font-family: var(--font-body, 'Inter', sans-serif);
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: background 0.2s ease, color 0.2s ease;
+}
+
+.site-nav-auth .btn:hover {
+    background: var(--text-white, #ffffff);
+    color: var(--pink, #d165a4);
+}
+
+.site-nav-auth .btn.btn-primary {
+    background: var(--text-white, #ffffff);
+    color: var(--pink, #d165a4);
+}
+
+.site-nav-auth .btn.btn-primary:hover {
+    background: transparent;
+    color: var(--text-white, #ffffff);
+}
+
+.site-nav-auth .btn {
     min-height: 44px;
 }
 
