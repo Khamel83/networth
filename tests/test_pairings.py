@@ -352,6 +352,52 @@ class TestExhaustionAlgorithm:
             assert p['player2']['id'] != 2
 
 
+class TestAdminFlexRotation:
+    """Odd-count pairing must rotate the admin skip predictably."""
+
+    def test_ashley_plays_in_august_when_count_is_odd(self):
+        players = [
+            make_player(1, 'Ashley Kaufman', email='ashleybrooke.kaufman@gmail.com'),
+            make_player(2, 'Natalie Coffen', email='nmcoffen@gmail.com'),
+            make_player(3, 'C'),
+            make_player(4, 'D'),
+            make_player(5, 'E'),
+        ]
+
+        pairings, skipped, _ = generate_pairings(
+            players, [], [], [], period_label='August 2026'
+        )
+
+        assert [p['email'] for p in skipped] == ['nmcoffen@gmail.com']
+        assert any(
+            'ashleybrooke.kaufman@gmail.com' in [
+                pairing['player1']['email'], pairing['player2']['email']
+            ]
+            for pairing in pairings
+        )
+
+    def test_admin_skip_alternates_for_the_following_month(self):
+        players = [
+            make_player(1, 'Ashley Kaufman', email='ashleybrooke.kaufman@gmail.com'),
+            make_player(2, 'Natalie Coffen', email='nmcoffen@gmail.com'),
+            make_player(3, 'C'),
+            make_player(4, 'D'),
+            make_player(5, 'E'),
+        ]
+
+        pairings, skipped, _ = generate_pairings(
+            players, [], [], [], period_label='September 2026'
+        )
+
+        assert [p['email'] for p in skipped] == ['ashleybrooke.kaufman@gmail.com']
+        assert all(
+            'ashleybrooke.kaufman@gmail.com' not in [
+                pairing['player1']['email'], pairing['player2']['email']
+            ]
+            for pairing in pairings
+        )
+
+
 # ─── Pre-Send Validation Gate ────────────────────────────────────────────────
 
 class TestValidationGate:

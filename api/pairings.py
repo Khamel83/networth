@@ -186,6 +186,16 @@ def is_admin_flex(player):
     return email in ['nmcoffen@gmail.com', 'ashleybrooke.kaufman@gmail.com']
 
 
+def _period_month(period_label):
+    """Return the pairing period's month, falling back to the current month."""
+    if period_label:
+        try:
+            return datetime.strptime(period_label.strip(), '%B %Y').month
+        except (AttributeError, ValueError):
+            pass
+    return datetime.now().month
+
+
 def _pair_score(player1, player2):
     """Score pairing quality (higher is better)."""
     score = 100
@@ -302,7 +312,7 @@ def _find_best_fresh_pairs(players, blocked_set, all_time_pairs):
     return pair_idx_list, unpaired_idx
 
 
-def generate_pairings(players, blocked_pairs, all_assignments, all_matches):
+def generate_pairings(players, blocked_pairs, all_assignments, all_matches, period_label=None):
     """
     Generate optimal pairings using exhaustion-first matching.
 
@@ -357,15 +367,14 @@ def generate_pairings(players, blocked_pairs, all_assignments, all_matches):
         if key not in all_time_pairs:
             all_time_pairs[key] = m.get('period_label', '')
 
-    # Handle odd number of players - remove admin flex with alternating rotation
-    # Ashley sits out on odd months (Jan, Mar, May, Jul, Sep, Nov)
-    # Natalie sits out on even months (Feb, Apr, Jun, Aug, Oct, Dec)
+    # Handle odd number of players - remove admin flex with alternating rotation.
+    # Ashley sits out on odd months (Jan, Mar, May, Jul, Sep, Nov),
+    # so Ashley plays in August 2026; Natalie sits out on even months.
     if len(available_players) % 2 == 1:
         natalie = next((p for p in available_players if p.get('email', '').lower() == 'nmcoffen@gmail.com'), None)
         ashley = next((p for p in available_players if p.get('email', '').lower() == 'ashleybrooke.kaufman@gmail.com'), None)
 
-        current_month = datetime.now().month
-        is_odd_month = current_month % 2 == 1
+        is_odd_month = _period_month(period_label) % 2 == 1
 
         removed_player = None
         if is_odd_month:
@@ -699,7 +708,10 @@ class handler(BaseHTTPRequestHandler):
             all_matches = all_matches_resp.data
 
             # 5. Generate pairings using exhaustion-first algorithm
-            pairings, skipped, forced_repeats = generate_pairings(players, blocked_pairs, all_assignments, all_matches)
+            pairings, skipped, forced_repeats = generate_pairings(
+                players, blocked_pairs, all_assignments, all_matches,
+                period_label=period_label
+            )
 
             # 6. Validation gate — runs before any DB write or email
             # Step 6a: No duplicate players
