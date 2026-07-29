@@ -48,3 +48,11 @@ def test_gated_navigation_is_marked_for_shared_auth_behavior():
         html = page(name)
         assert 'data-members-only="true"' in html, name
         assert "data-auth-action" in html, name
+
+
+def test_mobile_menu_has_a_branded_backdrop_for_readability():
+    css = (ROOT / "public" / "css" / "site-nav.css").read_text(encoding="utf-8")
+
+    assert ".site-menu.is-open" in css
+    assert "background: linear-gradient(135deg, rgba(209, 101, 164, 0.98)" in css
+    assert "box-shadow:" in css
