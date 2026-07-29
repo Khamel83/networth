@@ -111,6 +111,50 @@
             color: var(--text-muted);
         }
 
+        .umpire-callout {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1.5rem;
+            margin-bottom: 3rem;
+            padding: 1.25rem 1.5rem;
+            background: linear-gradient(135deg, rgba(209, 101, 164, 0.32), rgba(236, 97, 62, 0.32));
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.28);
+            border-radius: 16px;
+        }
+
+        .umpire-callout h2 {
+            font-family: var(--font-display);
+            font-size: 1.15rem;
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .umpire-callout p {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        .call-umpire-button {
+            flex: 0 0 auto;
+            min-height: 44px;
+            padding: 0.75rem 1.25rem;
+            border: 0;
+            border-radius: 50px;
+            background: linear-gradient(135deg, #d165a4, #ec613e);
+            color: var(--text-white);
+            font: 600 0.9rem var(--font-body);
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(209, 101, 164, 0.28);
+        }
+
+        .call-umpire-button:hover,
+        .call-umpire-button:focus-visible {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(209, 101, 164, 0.4);
+        }
+
         .faq-section {
             margin-bottom: 3rem;
         }
@@ -245,6 +289,17 @@
         }
 
         @media (max-width: 768px) {
+            .umpire-callout {
+                align-items: stretch;
+                flex-direction: column;
+                gap: 1rem;
+                padding: 1.25rem;
+            }
+
+            .call-umpire-button {
+                width: 100%;
+            }
+
             .footer-content {
                 flex-direction: column;
                 text-align: center;
@@ -287,6 +342,16 @@
             <h1 class="page-title">Support</h1>
             <p class="page-subtitle">Got questions? We've got answers.</p>
         </header>
+
+        <section class="umpire-callout" aria-labelledby="call-umpire-title">
+            <div>
+                <h2 id="call-umpire-title">Call the umpire</h2>
+                <p>Something not working? Tell us what happened and we'll take a look.</p>
+            </div>
+            <button type="button" class="call-umpire-button" data-call-umpire>
+                🎾 Call Umpire
+            </button>
+        </section>
 
         <section class="faq-section">
             <h2 class="faq-title">Frequently Asked Questions</h2>
