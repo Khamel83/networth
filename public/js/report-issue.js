@@ -128,6 +128,10 @@
         });
 
         document.getElementById('issue-form').addEventListener('submit', handleSubmit);
+
+        document.querySelectorAll('[data-call-umpire]').forEach((trigger) => {
+            trigger.addEventListener('click', openModal);
+        });
     }
 
     function openModal() {
@@ -195,11 +199,11 @@
     // Initialize
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', () => {
-            createButton();
+            if (document.body.dataset.page !== 'support') createButton();
             createModal();
         });
     } else {
-        createButton();
+        if (document.body.dataset.page !== 'support') createButton();
         createModal();
     }
 })();
