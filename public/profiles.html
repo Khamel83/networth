@@ -108,6 +108,18 @@
             font-size: 1rem;
         }
 
+        .preview-notice {
+            max-width: 34rem;
+            margin: 0 auto 2rem;
+            padding: 0.75rem 1rem;
+            border: 1px solid rgba(255, 255, 255, 0.28);
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.12);
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            text-align: center;
+        }
+
         /* Player Grid */
         .players-grid {
             display: grid;
@@ -345,6 +357,10 @@
         <header class="page-header">
             <h1 class="page-title">Meet the Players</h1>
             <p class="page-subtitle">Your NET WORTH Tennis community</p>
+            <p class="preview-notice" data-preview-mode data-preview-sample hidden>
+                <strong>Sample preview data</strong><br>
+                Not the live league roster.
+            </p>
         </header>
 
         <!-- Login Required State -->
@@ -382,6 +398,18 @@
         const loadingState = document.getElementById('loading-state');
         const loginRequired = document.getElementById('login-required');
         const playersGrid = document.getElementById('players-grid');
+        const previewNotice = document.querySelector('[data-preview-mode]');
+        // Public review URL: /profiles?preview=1
+        const isPreviewMode = new URLSearchParams(window.location.search).get('preview') === '1';
+        const samplePlayers = [
+            { id: 'sample-1', name: 'Maya Chen', membership_tier: 'player', rank: 1, total_games: 24 },
+            { id: 'sample-2', name: 'Casey Rivera', membership_tier: 'player', rank: 2, total_games: 21 },
+            { id: 'sample-3', name: 'Jordan Brooks', membership_tier: 'player', rank: 3, total_games: 18 },
+            { id: 'sample-4', name: 'Taylor Morgan', membership_tier: 'player', rank: 4, total_games: 16 },
+            { id: 'sample-5', name: 'Riley Patel', membership_tier: 'player', rank: 5, total_games: 13 },
+            { id: 'sample-6', name: 'Avery Williams', membership_tier: 'social_butterfly' },
+            { id: 'sample-7', name: 'Quinn Davis', membership_tier: 'social_butterfly' },
+        ];
 
         function isLoggedIn() {
             const player = JSON.parse(localStorage.getItem('networth_player') || '{}');
@@ -396,25 +424,15 @@
             state.style.display = state === playersGrid ? 'grid' : 'block';
         }
 
-        async function loadPlayers() {
-            // Check if logged in
-            if (!isLoggedIn()) {
-                showState(loginRequired);
+        function renderPlayers(players) {
+            if (!players || players.length === 0) {
+                playersGrid.innerHTML = '<p style="text-align: center; grid-column: 1/-1;">No players found</p>';
+                showState(playersGrid);
                 return;
             }
 
-            try {
-                const response = await fetch('/api/players');
-                const data = await response.json();
-
-                if (!data.success || !data.players || data.players.length === 0) {
-                    playersGrid.innerHTML = '<p style="text-align: center; grid-column: 1/-1;">No players found</p>';
-                    showState(playersGrid);
-                    return;
-                }
-
-                // Sort by rank (players with rank first, then social butterflies)
-                const sortedPlayers = data.players.sort((a, b) => {
+            // Sort by rank (players with rank first, then social butterflies)
+            const sortedPlayers = players.sort((a, b) => {
                     // Players come before social butterflies
                     const aIsPlayer = a.membership_tier !== 'social_butterfly';
                     const bIsPlayer = b.membership_tier !== 'social_butterfly';
@@ -446,6 +464,25 @@
                 }).join('');
 
                 showState(playersGrid);
+        }
+
+        async function loadPlayers() {
+            if (isPreviewMode) {
+                previewNotice.hidden = false;
+                renderPlayers(samplePlayers);
+                return;
+            }
+
+            // Check if logged in
+            if (!isPreviewMode && !isLoggedIn()) {
+                showState(loginRequired);
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/players');
+                const data = await response.json();
+                renderPlayers(data.success ? data.players : []);
 
             } catch (err) {
                 console.error('Failed to load players:', err);
