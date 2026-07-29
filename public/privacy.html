@@ -224,34 +224,32 @@
             }
         }
     </style>
+    <link rel="stylesheet" href="/css/site-nav.css">
 </head>
-<body>
-    <header class="header">
-        <a href="/" class="logo">net worth</a>
-        <nav class="nav-links">
-            <a href="/" class="nav-link">Home</a>
-        </nav>
-        <div class="nav-auth">
-            <a href="/login" class="nav-link">Sign In</a>
+<body data-page="privacy">
+    <header class="site-header" data-site-nav>
+        <div class="site-header-inner">
+            <a href="/" class="logo" aria-label="Net Worth home">net worth</a>
+            <button class="site-menu-toggle" type="button" data-menu-toggle aria-controls="site-menu" aria-expanded="false" aria-label="Open navigation">
+                <span class="menu-icon" aria-hidden="true"></span>
+            </button>
+            <div id="site-menu" class="site-menu" data-site-menu>
+                <nav class="site-nav-links" aria-label="Primary navigation">
+                    <a href="/#how-it-works" class="site-nav-link" data-nav-key="how-it-works">How It Works</a>
+                    <a href="/#courts" class="site-nav-link" data-nav-key="courts">Courts</a>
+                    <a href="/rules" class="site-nav-link" data-nav-key="rules">Game Play &amp; Scoring</a>
+                    <a href="/profiles" class="site-nav-link" data-nav-key="players" data-members-only="true" hidden>Players</a>
+                    <a href="/#rankings" class="site-nav-link" data-nav-key="rankings" data-members-only="true" hidden>Rankings</a>
+                </nav>
+                <div class="site-nav-auth" data-auth-actions>
+                    <a href="/login" class="btn" data-auth-action="signin">Sign In</a>
+                    <a href="/join" class="btn btn-primary" data-auth-action="join">Join Now</a>
+                    <a href="/dashboard" class="btn" data-auth-action="profile" hidden>My Profile</a>
+                    <a href="#" class="btn btn-primary" data-auth-action="signout" hidden>Sign Out</a>
+                </div>
+            </div>
         </div>
     </header>
-
-    <script>
-        function isLoggedIn() {
-            const player = JSON.parse(localStorage.getItem('networth_player') || '{}');
-            const token = localStorage.getItem('networth_token') || '';
-            return !!(player.email && token);
-        }
-
-        function updateAuthNav() {
-            const authNav = document.querySelector('.nav-auth');
-            if (isLoggedIn()) {
-                authNav.innerHTML = `<a href="/dashboard" class="nav-link">My Profile</a>`;
-            }
-        }
-
-        document.addEventListener('DOMContentLoaded', updateAuthNav);
-    </script>
 
     <main class="main">
         <header class="page-header">
@@ -318,6 +316,7 @@
             <p class="footer-copy">Net Worth Tennis</p>
         </div>
     </footer>
+    <script src="/js/site-nav.js"></script>
     <script src="/js/report-issue.js"></script>
 </body>
 </html>
