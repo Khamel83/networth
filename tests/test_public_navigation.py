@@ -56,3 +56,12 @@ def test_mobile_menu_has_a_branded_backdrop_for_readability():
     assert ".site-menu.is-open" in css
     assert "background: linear-gradient(135deg, rgba(209, 101, 164, 0.98)" in css
     assert "box-shadow:" in css
+    assert "flex: 0 0 calc(100% + 2rem);" in css
+    assert "min-height: 44px;" in css
+
+
+def test_home_membership_cta_can_shrink_on_narrow_phones():
+    html = page("index.html")
+
+    assert ".membership-cta .btn" in html
+    assert "white-space: normal;" in html
