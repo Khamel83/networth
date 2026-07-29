@@ -196,12 +196,13 @@
 
     .site-menu {
         display: none;
-        flex: 0 0 100%;
+        flex: 0 0 calc(100% + 2rem);
         flex-direction: column;
         align-items: stretch;
         gap: 0;
         margin-inline: -1rem;
         padding: 0.75rem 1rem 1rem;
+        width: calc(100% + 2rem);
         background: linear-gradient(135deg, rgba(209, 101, 164, 0.98), rgba(236, 97, 62, 0.98));
         border-radius: 0 0 1.25rem 1.25rem;
         box-shadow: 0 1rem 2rem rgba(75, 24, 55, 0.2);
@@ -234,6 +235,15 @@
 
     .site-nav-auth .btn {
         justify-content: center;
+    }
+
+    .site-nav-auth .instagram-link {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 44px;
+        min-height: 44px;
+        margin: 0 auto !important;
     }
 }
 
