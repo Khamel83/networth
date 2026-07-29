@@ -73,10 +73,14 @@
             left: 0;
             width: 100%;
             height: 100%;
+            height: 100dvh;
+            box-sizing: border-box;
             background: rgba(0, 0, 0, 0.5);
             z-index: 10000;
             justify-content: center;
-            align-items: center;
+            align-items: flex-start;
+            padding: max(1rem, env(safe-area-inset-top)) 1rem max(1rem, env(safe-area-inset-bottom));
+            overflow-y: auto;
         `;
 
         const content = document.createElement('div');
@@ -84,10 +88,13 @@
             background: white;
             border-radius: 12px;
             padding: 30px;
+            box-sizing: border-box;
             max-width: 500px;
             width: 90%;
             max-height: 80vh;
+            max-height: calc(100dvh - 2rem);
             overflow-y: auto;
+            margin: auto 0;
             box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         `;
@@ -95,9 +102,10 @@
         content.innerHTML = `
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                 <h2 style="margin: 0; color: #d165a4;">🎾 Call the Umpire</h2>
-                <button id="close-modal" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #999;">&times;</button>
+                <button type="button" id="close-modal" aria-label="Close Call the Umpire form" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #999;">&times;</button>
             </div>
             <p style="color: #666; margin-bottom: 20px;">Found a bug or have an issue? Let us know!</p>
+            <p style="color: #666; margin: -8px 0 20px;">Looking for answers? <a href="/support" style="color: #d165a4; font-weight: 600;">Visit Support / FAQ</a></p>
             <form id="issue-form">
                 <div style="margin-bottom: 15px;">
                     <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #333;">Your Name</label>
@@ -129,9 +137,6 @@
 
         document.getElementById('issue-form').addEventListener('submit', handleSubmit);
 
-        document.querySelectorAll('[data-call-umpire]').forEach((trigger) => {
-            trigger.addEventListener('click', openModal);
-        });
     }
 
     function openModal() {
@@ -143,7 +148,7 @@
         document.getElementById('reporter-email').value = user.email === 'Anonymous' ? '' : user.email;
 
         modal.style.display = 'flex';
-        document.getElementById('issue-message').focus();
+        document.getElementById('close-modal').focus();
     }
 
     function closeModal() {
@@ -199,11 +204,11 @@
     // Initialize
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', () => {
-            if (document.body.dataset.page !== 'support') createButton();
+            createButton();
             createModal();
         });
     } else {
-        if (document.body.dataset.page !== 'support') createButton();
+        createButton();
         createModal();
     }
 })();
