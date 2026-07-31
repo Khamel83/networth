@@ -24,7 +24,9 @@ Players self-register via join page → immediately active → can log in right 
 - Check Resend API key is valid: `POST /api/system` with `action: check_email_connectivity`
 
 ### Key files:
-- `api/pairings.py` - Matching algorithm (exact fresh matching + RMS bands), sends match emails
+- `api/pairings.py` - Pairing orchestration, validation, and match emails
+- `api/matching.py` - General-graph maximum-weight pairing solver
+- `api/ratings.py` - Deterministic uncertainty-aware ratings from valid two-set results
 - `api/email.py` - Resend API sender + 8 email templates (including admin alerts)
 - `api/join.py` - Player registration (handles re-registration of inactive accounts)
 - `api/admin.py` - Admin dashboard API (approve/reject/pause players, payment tracking)
@@ -378,8 +380,8 @@ WHERE is_active = true
 ### 16. Greedy Fresh Pairing Can Still Produce Avoidable Repeats
 **Symptom:** Repeat pairs can appear even when a full fresh matching exists
 **Cause:** Greedy local decisions can create dead ends for remaining players
-**Fix:** Exact fresh matching solver (<=20 players) chooses the global best non-repeat matching before any repeat fallback
-**Rule:** For small leagues, use exact matching first; use greedy only as fallback for larger pools.
+**Fix:** The current solver uses general-graph maximum-weight matching for the full supported roster (2–100 players), choosing global maximum cardinality/freshness before similarity.
+**Rule:** Do not reintroduce a size-based greedy fallback.
 
 ### 17. Silent Result Failures from Custom ORM
 **Symptom:** Queries return empty results with no error — algorithm runs on empty data, silent wrong behavior
@@ -517,8 +519,8 @@ if (response.status === 401) {
 - **Added CRON_SECRET auth** - All GitHub Actions curl POSTs now send `Authorization: Bearer $CRON_SECRET`; pairings.py and email.py validate it server-side
 - **Fixed CI/CD tests** - Added `api/__init__.py`, `tests/conftest.py`, fixed wrong mock patches; 28/28 tests now pass
 - **March pairings generated** - 14 pairings, 14 emails sent (3rd, manually triggered after fixing automation)
-- **Reliability refactor (exact fresh matching)** - Complete overhaul after repeat-pair incidents:
-  - Algorithm: penalty-based anti-staleness → hard-block fresh pass → exact fresh matching solver (<=20 players) before repeat fallback
+- **Reliability refactor (general-graph matching)** - Complete overhaul after repeat-pair incidents:
+  - Algorithm: hard exclusions → maximum-cardinality general-graph matching → fresh-pair priority → uncertainty-aware rating similarity
   - Full validation gate before any email: duplicate player check, avoidable repeat check, duplicate-run protection (409), DB insert + count verify
   - `supabase_http.py`: Result class now checks HTTP status first; fixes bare except swallowing errors silently
   - All API files: error guards after every `.execute()` call; HTTP 500 on errors (not 200 + fake data)

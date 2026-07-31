@@ -165,6 +165,12 @@ CREATE INDEX idx_players_rank ON players(rank) WHERE is_active = true;
 CREATE INDEX idx_players_email ON players(email);
 CREATE INDEX idx_matches_period ON matches(period_type, period_label);
 CREATE INDEX idx_matches_players ON matches(player1_id, player2_id);
+CREATE UNIQUE INDEX idx_unique_match_per_period
+    ON matches (
+        LEAST(player1_id, player2_id),
+        GREATEST(player1_id, player2_id),
+        period_label
+    );
 CREATE INDEX idx_availability_player ON player_availability(player_id);
 CREATE INDEX idx_feedback_match ON match_feedback(match_id);
 CREATE INDEX idx_feedback_about ON match_feedback(about_player_id);

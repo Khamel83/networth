@@ -376,6 +376,12 @@ class TestAuthAPI:
 class TestMatchesAPI:
     """Test matches endpoint - including extra match (no assignment) flow"""
 
+    def test_two_set_total_ignores_legacy_third_set_value(self):
+        """The league's stored total is always the two recorded sets."""
+        from api.matches import calculate_two_set_games
+
+        assert calculate_two_set_games(6, 4, 6, 3) == (12, 7)
+
     def test_matches_module_importable(self):
         """Matches module should be importable"""
         from api import matches
@@ -403,16 +409,14 @@ class TestMatchesAPI:
         assert data['player1_id'] == 'uuid-player1'
         assert data['player2_id'] == 'uuid-player2'
 
-        # Verify games calculation logic matches what the API does
-        set1_p1 = int(data.get('set1_p1', 0))
-        set1_p2 = int(data.get('set1_p2', 0))
-        set2_p1 = int(data.get('set2_p1', 0))
-        set2_p2 = int(data.get('set2_p2', 0))
-        set3_p1 = int(data.get('set3_p1') or 0)
-        set3_p2 = int(data.get('set3_p2') or 0)
-
-        player1_games = set1_p1 + set2_p1 + set3_p1
-        player2_games = set1_p2 + set2_p2 + set3_p2
+        # Verify the authoritative two-set total used by the API.
+        from api.matches import calculate_two_set_games
+        player1_games, player2_games = calculate_two_set_games(
+            data['set1_p1'],
+            data['set1_p2'],
+            data['set2_p1'],
+            data['set2_p2'],
+        )
 
         assert player1_games == 12  # 6 + 6
         assert player2_games == 7   # 4 + 3

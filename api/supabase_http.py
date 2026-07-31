@@ -77,6 +77,8 @@ class SelectBuilder:
         self.filters = []
         self.order_by = None
         self.limit_val = None
+        self.range_start = None
+        self.range_end = None
         self.single_result = False
 
     def eq(self, column: str, value: Any) -> 'SelectBuilder':
@@ -100,6 +102,12 @@ class SelectBuilder:
     def limit(self, n: int) -> 'SelectBuilder':
         """Limit results"""
         self.limit_val = n
+        return self
+
+    def range(self, start: int, end: int) -> 'SelectBuilder':
+        """Request an inclusive PostgREST row range for pagination."""
+        self.range_start = start
+        self.range_end = end
         return self
 
     def single(self) -> 'SelectBuilder':
@@ -126,6 +134,12 @@ class SelectBuilder:
         """Execute the query"""
         url = _build_url(self.table_name)
         headers = _get_headers()
+        if self.range_start is not None and self.range_end is not None:
+            headers = {
+                **headers,
+                'Range': f'{self.range_start}-{self.range_end}',
+                'Prefer': 'count=exact',
+            }
 
         params = {'select': self.columns}
 
