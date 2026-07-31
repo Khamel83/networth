@@ -122,12 +122,14 @@ class handler(BaseHTTPRequestHandler):
                 if result.data and len(result.data) > 0:
                     email_sent = False
                     email_error = None
+                    email_delivery_mode = None
                     try:
                         from api.email import send_email, get_welcome_email_html
                         welcome_html = get_welcome_email_html(name, membership_tier)
                         email_result = send_email(email, "Welcome to Net Worth Tennis!", welcome_html)
-                        email_sent = email_result.get('success', False)
-                        if not email_sent:
+                        email_sent = bool(email_result.get('sent', False))
+                        email_delivery_mode = email_result.get('delivery_mode')
+                        if not email_sent and not email_result.get('blocked'):
                             email_error = email_result.get('error', 'Unknown email error')
                     except Exception as e:
                         email_error = str(e)
@@ -138,6 +140,7 @@ class handler(BaseHTTPRequestHandler):
                         "player_created": True,
                         "is_active": True,
                         "welcome_email_sent": email_sent,
+                        "email_delivery_mode": email_delivery_mode,
                         "email_error": email_error
                     })
                 else:

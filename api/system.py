@@ -15,6 +15,7 @@ from datetime import datetime, timezone
 # Initialize Sentry for error tracking
 from api.sentry_init import init_sentry
 from api.reliability import preflight, try_start_run, append_event, update_run
+from api.email_policy import delivery_mode, require_cron_secret
 init_sentry()
 
 
@@ -99,86 +100,24 @@ class handler(BaseHTTPRequestHandler):
             self._send_error(400, "Missing 'message' field")
             return
 
-        # Import email sender
-        import resend
+        from api.supabase_http import table
 
-        api_key = os.environ.get('RESEND_API_KEY')
-        if not api_key:
-            self._send_error(500, "Email service not configured")
+        result = table('issue_reports').insert({
+            'reporter_email': reporter_email,
+            'reporter_name': reporter_name,
+            'page_path': page_path,
+            'message': message,
+            'status': 'open',
+        }).execute()
+        if result.error:
+            self._send_error(500, 'Failed to queue issue report')
             return
-
-        resend.api_key = api_key
-
-        # Get sysadmin email only (other league admins don't need technical bug reports)
-        admin_email = os.environ.get('ADMIN_EMAIL')
-        if not admin_email:
-            self._send_error(500, "ADMIN_EMAIL not configured")
-            return
-
-        # Build email
-        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S UTC')
-        html = f"""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <style>
-                body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; }}
-                .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
-                .header {{ text-align: center; margin-bottom: 30px; }}
-                .header h1 {{ color: #d165a4; margin: 0; }}
-                .content {{ background: #f9f9f9; border-radius: 10px; padding: 30px; }}
-                .field {{ margin-bottom: 20px; }}
-                .field-label {{ font-weight: 600; color: #d165a4; }}
-                .field-value {{ margin-top: 5px; }}
-                .message {{ background: white; padding: 15px; border-radius: 5px; border-left: 3px solid #d165a4; }}
-                .footer {{ text-align: center; color: #999; font-size: 12px; margin-top: 30px; }}
-            </style>
-        </head>
-        <body>
-            <div class="container">
-                <div class="header">
-                    <h1>Issue Report</h1>
-                </div>
-                <div class="content">
-                    <div class="field">
-                        <div class="field-label">From:</div>
-                        <div class="field-value">{reporter_name} ({reporter_email})</div>
-                    </div>
-                    <div class="field">
-                        <div class="field-label">Page:</div>
-                        <div class="field-value">{page_path}</div>
-                    </div>
-                    <div class="field">
-                        <div class="field-label">Time:</div>
-                        <div class="field-value">{timestamp}</div>
-                    </div>
-                    <div class="field">
-                        <div class="field-label">Message:</div>
-                        <div class="message">{message}</div>
-                    </div>
-                </div>
-                <div class="footer">
-                    <p>Net Worth Tennis - User Report</p>
-                </div>
-            </div>
-        </body>
-        </html>
-        """
-
-        # Send email to sysadmin
-        params = {
-            "from": "Net Worth Tennis <hello@networthtennis.com>",
-            "to": admin_email,
-            "subject": f"Issue Report from {reporter_name or 'User'}",
-            "html": html,
-            "reply_to": reporter_email if reporter_email != 'Anonymous' else 'ashleybrooke.kaufman@gmail.com'
-        }
-
-        response = resend.Emails.send(params)
 
         self._send_success({
-            "message": "Issue report sent to sysadmin",
-            "id": response.get('id')
+            'message': 'Issue report queued',
+            'queued': True,
+            'delivery_mode': delivery_mode(),
+            'id': result.data[0].get('id') if result.data else None,
         })
 
     def _handle_reconcile_month(self, data):
@@ -308,6 +247,9 @@ class handler(BaseHTTPRequestHandler):
 
     def _handle_check_email_connectivity(self):
         """Validate Resend API key by making a read-only API call"""
+        if not require_cron_secret(self):
+            return
+
         import resend
 
         api_key = os.environ.get('RESEND_API_KEY')

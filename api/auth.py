@@ -222,8 +222,13 @@ class handler(BaseHTTPRequestHandler):
 
                     result = send_email(email, "Reset Your Net Worth Tennis Password", html)
 
-                    if result.get('success'):
+                    if result.get('sent'):
                         self._send_success({"message": "Password reset email sent"})
+                    elif result.get('blocked'):
+                        self._send_success({
+                            "message": "If an account exists, a reset link will be sent.",
+                            "email_delivery_mode": result.get('delivery_mode'),
+                        })
                     else:
                         self._send_error(500, "Failed to send reset email")
                     return

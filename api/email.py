@@ -12,6 +12,13 @@ from datetime import datetime, timezone
 # Initialize Sentry for error tracking
 from api.sentry_init import init_sentry
 from api.reliability import preflight, try_start_run, append_event, update_run
+from api.email_policy import (
+    CRON_PROTECTED_ACTIONS,
+    DISABLED_PUBLIC_ACTIONS,
+    blocked_delivery_result,
+    delivery_mode,
+    require_cron_secret,
+)
 init_sentry()
 
 # Email Configuration
@@ -48,6 +55,13 @@ def send_email(to_email, subject, html_content, reply_to=None, _retry=True):
     Returns:
         dict with success status
     """
+    recipients = to_email if isinstance(to_email, list) else [to_email]
+    mode = delivery_mode()
+    if mode != 'live':
+        result = blocked_delivery_result(1, mode)
+        result['sent_to'] = recipients
+        return result
+
     import resend
 
     api_key = os.environ.get('RESEND_API_KEY')
@@ -62,11 +76,6 @@ def send_email(to_email, subject, html_content, reply_to=None, _retry=True):
 
     try:
         # Handle single email or list
-        if isinstance(to_email, list):
-            recipients = to_email
-        else:
-            recipients = [to_email]
-
         reply_to_value = _normalize_reply_to(reply_to) or REPLY_TO_EMAIL
 
         # Build email params
@@ -81,15 +90,15 @@ def send_email(to_email, subject, html_content, reply_to=None, _retry=True):
         # Send via Resend
         response = resend.Emails.send(params)
 
-        return {'success': True, 'sent_to': recipients, 'id': response.get('id')}
+        return {'success': True, 'sent': True, 'sent_to': recipients, 'id': response.get('id')}
 
     except resend.exceptions.RateLimitError as e:
         if _retry:
             _time.sleep(1)
             return send_email(to_email, subject, html_content, reply_to, _retry=False)
-        return {'success': False, 'error': f'Rate limit: {str(e)}'}
+        return {'success': False, 'sent': False, 'error': f'Rate limit: {str(e)}'}
     except Exception as e:
-        return {'success': False, 'error': str(e)}
+        return {'success': False, 'sent': False, 'error': str(e)}
 
 
 def send_bulk_emails(messages, idempotency_key=None, _retry=True):
@@ -101,6 +110,20 @@ def send_bulk_emails(messages, idempotency_key=None, _retry=True):
     messages. Resend's batch endpoint keeps each recipient isolated while
     reducing the provider round trips to one per 100 messages.
     """
+    if not messages:
+        return {
+            'success': True,
+            'sent': 0,
+            'failed': 0,
+            'deliveries': [],
+            'errors': [],
+            'delivery_mode': delivery_mode(),
+        }
+
+    mode = delivery_mode()
+    if mode != 'live':
+        return blocked_delivery_result(len(messages), mode)
+
     import resend
 
     api_key = os.environ.get('RESEND_API_KEY')
@@ -112,9 +135,6 @@ def send_bulk_emails(messages, idempotency_key=None, _retry=True):
             'deliveries': [],
             'errors': ['RESEND_API_KEY not configured in environment variables'],
         }
-
-    if not messages:
-        return {'success': True, 'sent': 0, 'failed': 0, 'deliveries': [], 'errors': []}
 
     batch_sender = getattr(resend, 'Batch', None)
     if batch_sender is None or not hasattr(batch_sender, 'send'):
@@ -560,6 +580,7 @@ class handler(BaseHTTPRequestHandler):
         resend_configured = bool(os.environ.get('RESEND_API_KEY'))
         self._send_success({
             "status": "ready" if resend_configured else "not_configured",
+            "delivery_mode": delivery_mode(),
             "sender": SENDER_EMAIL,
             "reply_to": REPLY_TO_EMAIL,
             "message": "Email system ready (Resend)" if resend_configured else "RESEND_API_KEY not set in environment"
@@ -575,27 +596,19 @@ class handler(BaseHTTPRequestHandler):
             body = self.rfile.read(content_length).decode('utf-8')
             data = json.loads(body) if body else {}
 
-            action = data.get('action', 'send')
+            action = data.get('action')
+            if not action:
+                self._send_error(400, "Missing 'action' field")
+                return
             self._run_action = action
             self._run_period = data.get('period_label', datetime.now().strftime('%B %Y'))
             strict_mode = bool(data.get('strict', True))
 
-            # Auth check for mass-send actions (GitHub Actions must pass CRON_SECRET)
-            PROTECTED_ACTIONS = {
-                'send_availability_check', 'send_final_reminder',
-                'send_midmonth_reminders', 'send_admin_alert',
-                'resend_match_emails',
-                'test_auth_check',
-            }
-            if action in PROTECTED_ACTIONS:
-                cron_secret = os.environ.get('CRON_SECRET', '')
-                if not cron_secret:
-                    self._send_error(500, 'CRON_SECRET not configured')
-                    return
-                auth = self.headers.get('Authorization', '').replace('Bearer ', '')
-                if auth != cron_secret:
-                    self._send_error(401, 'Unauthorized')
-                    return
+            if action in CRON_PROTECTED_ACTIONS and not require_cron_secret(self):
+                return
+            if action in DISABLED_PUBLIC_ACTIONS:
+                self._send_error(403, 'Action is not publicly available')
+                return
 
             RUN_TRACKED_ACTIONS = {
                 'send_availability_check',

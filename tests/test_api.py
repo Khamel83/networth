@@ -128,6 +128,7 @@ class TestSystemAPI:
         """POST /api/system with report_issue should accept valid report"""
         from api.system import handler
         import io
+        from types import SimpleNamespace
 
         mock_request = Mock()
         mock_handler = handler(mock_request, None, None)
@@ -149,13 +150,18 @@ class TestSystemAPI:
         mock_handler.headers.get = Mock(return_value=str(len(body)))
         mock_handler.rfile = io.BytesIO(body)
 
-        # resend is imported inside the function; patch it at the module level it imports from
-        with patch('resend.Emails.send', return_value={'id': 'test-id'}):
-            with patch.dict(os.environ, {'ADMIN_EMAIL': 'admin@test.com'}):
-                mock_handler.do_POST()
+        fake_table = Mock()
+        fake_table.insert.return_value.execute.return_value = SimpleNamespace(
+            data=[{'id': 'test-id'}], error=None
+        )
+        with patch('api.supabase_http.table', return_value=fake_table):
+            mock_handler.do_POST()
 
-                # Should return 200 success
-                mock_handler.send_response.assert_called_with(200)
+        # Should return 200 success without sending an email
+        mock_handler.send_response.assert_called_with(200)
+        payload = json.loads(mock_handler.wfile.write.call_args[0][0].decode())
+        assert payload['queued'] is True
+        fake_table.insert.assert_called_once()
 
 
 
@@ -667,7 +673,10 @@ class TestEmailReliability:
             'data': [{'id': f'resend-{index}'} for index in range(len(messages))]
         }
 
-        with patch.dict(os.environ, {'RESEND_API_KEY': 'test-resend-key'}):
+        with patch.dict(os.environ, {
+            'RESEND_API_KEY': 'test-resend-key',
+            'EMAIL_DELIVERY_MODE': 'live',
+        }):
             with patch.object(resend.Batch, 'send', return_value=batch_response) as batch_send:
                 with patch('api.email._time.sleep') as sleep:
                     result = send_bulk_emails(messages, idempotency_key='networth:test-run:0')
@@ -695,7 +704,10 @@ class TestEmailReliability:
             'html': '<p>Reminder</p>',
         } for _ in range(4)]
 
-        with patch.dict(os.environ, {'RESEND_API_KEY': 'test-resend-key'}):
+        with patch.dict(os.environ, {
+            'RESEND_API_KEY': 'test-resend-key',
+            'EMAIL_DELIVERY_MODE': 'live',
+        }):
             with patch.object(resend.Batch, 'send', return_value={'data': []}):
                 result = send_bulk_emails(messages, idempotency_key='networth:test-failure')
 
@@ -759,6 +771,7 @@ class TestEmailReliability:
                             with patch.dict(os.environ, {
                                 'CRON_SECRET': 'test-cron-secret',
                                 'RESEND_API_KEY': 'test-resend-key',
+                                'EMAIL_DELIVERY_MODE': 'live',
                             }):
                                 with patch.object(resend.Batch, 'send', return_value={
                                     'data': [{'id': 'resend-1'}, {'id': 'resend-2'}]
@@ -847,6 +860,7 @@ class TestEmailReliability:
                             with patch.dict(os.environ, {
                                 'CRON_SECRET': 'test-cron-secret',
                                 'RESEND_API_KEY': 'test-resend-key',
+                                'EMAIL_DELIVERY_MODE': 'live',
                             }):
                                 with patch.object(resend.Batch, 'send', return_value={
                                     'data': [{'id': 'resend-1'}]
@@ -890,9 +904,10 @@ class TestEmailReliability:
                 raise rate_limit_err
             return {'id': 'retry-success-id'}
 
-        with patch('resend.Emails.send', side_effect=mock_send):
-            with patch('api.email._time') as mock_time:
-                result = send_email('player@test.com', 'Subject', '<p>Hello</p>')
+        with patch.dict(os.environ, {'EMAIL_DELIVERY_MODE': 'live'}):
+            with patch('resend.Emails.send', side_effect=mock_send):
+                with patch('api.email._time') as mock_time:
+                    result = send_email('player@test.com', 'Subject', '<p>Hello</p>')
 
         assert result['success'] is True
         assert result['id'] == 'retry-success-id'
@@ -905,9 +920,10 @@ class TestEmailReliability:
         from api.email import send_email
 
         rate_limit_err = resend.exceptions.RateLimitError("rate limited", "rate_limit", 429)
-        with patch('resend.Emails.send', side_effect=rate_limit_err):
-            with patch('api.email._time'):
-                result = send_email('player@test.com', 'Subject', '<p>Hello</p>')
+        with patch.dict(os.environ, {'EMAIL_DELIVERY_MODE': 'live'}):
+            with patch('resend.Emails.send', side_effect=rate_limit_err):
+                with patch('api.email._time'):
+                    result = send_email('player@test.com', 'Subject', '<p>Hello</p>')
 
         assert result['success'] is False
         assert 'Rate limit' in result['error']
