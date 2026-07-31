@@ -66,7 +66,7 @@ class TestEmailAPI:
         mock_handler.rfile = io.BytesIO(body)
 
         # send_email imports resend internally; patch send_email directly
-        with patch('api.email.send_email', return_value={'success': True, 'id': 'test-id'}):
+        with patch('api.email.send_email', return_value={'success': True, 'sent': True, 'id': 'test-id'}):
             with patch.dict(os.environ, {'ADMIN_EMAIL': 'admin@test.com', 'CRON_SECRET': 'test-cron-secret'}):
                 mock_handler.do_POST()
 
@@ -200,13 +200,13 @@ class TestSupabaseHTTP:
         response.json.return_value = []
 
         with patch('api.supabase_http.httpx.get', return_value=response) as http_get:
-            result = table('email_log').select('resend_email_id,sent_at').eq(
+            result = table('email_delivery_log').select('delivery_status,provider_id,created_at').eq(
                 'action', 'send_final_reminder'
-            ).gte('sent_at', '2026-07-31T00:00:00+00:00').execute()
+            ).gte('created_at', '2026-07-31T00:00:00+00:00').execute()
 
         assert result.error is None
         params = http_get.call_args.kwargs['params']
-        assert params['sent_at'] == 'gte.2026-07-31T00:00:00+00:00'
+        assert params['created_at'] == 'gte.2026-07-31T00:00:00+00:00'
 
 
 class TestWorkflowGateCheck:
@@ -599,8 +599,8 @@ class TestPairingsAPI:
 class TestEmailReliability:
     """Test email reliability improvements"""
 
-    def test_check_recent_send_queries_email_log_since_utc_midnight(self):
-        """The post-timeout verification path must query email_log successfully."""
+    def test_check_recent_send_queries_canonical_ledger_since_utc_midnight(self):
+        """Post-timeout inspection must query the canonical ledger."""
         from api.email import handler
         from types import SimpleNamespace
         import io
@@ -623,8 +623,8 @@ class TestEmailReliability:
             def execute(self):
                 return SimpleNamespace(
                     data=[
-                        {'resend_email_id': 'email-1', 'sent_at': '2026-07-31T18:19:00+00:00'},
-                        {'resend_email_id': 'email-2', 'sent_at': '2026-07-31T18:19:01+00:00'},
+                        {'delivery_status': 'accepted', 'provider_id': 'email-1', 'created_at': '2026-07-31T18:19:00+00:00'},
+                        {'delivery_status': 'accepted', 'provider_id': 'email-2', 'created_at': '2026-07-31T18:19:01+00:00'},
                     ],
                     error=None,
                 )
@@ -658,7 +658,7 @@ class TestEmailReliability:
         assert payload['success'] is True
         assert payload['already_sent'] is True
         assert payload['sent'] == 2
-        assert any(filter_item[0:2] == ('sent_at', 'gte') for filter_item in fake_query.filters)
+        assert any(filter_item[0:2] == ('created_at', 'gte') for filter_item in fake_query.filters)
 
     def test_send_bulk_emails_uses_one_resend_batch_for_player_reminders(self):
         """A normal reminder batch must not spend one provider request per player."""
@@ -720,8 +720,8 @@ class TestEmailReliability:
         assert result['sent'] == 0
         assert result['failed'] == len(messages)
 
-    def test_final_reminder_handler_batches_provider_calls_and_logs_deliveries(self):
-        """The scheduled final reminder must batch Resend and bulk-write its audit rows."""
+    def test_final_reminder_handler_batches_provider_calls_and_claims_ledger_rows(self):
+        """The scheduled final reminder uses bounded batches and the canonical ledger."""
         from api.email import handler
         from types import SimpleNamespace
         import io
@@ -792,11 +792,11 @@ class TestEmailReliability:
         batch_send.assert_called_once()
         assert len(inserted_rows) == 1
         assert len(inserted_rows[0]) == len(players)
-        assert [row['resend_email_id'] for row in inserted_rows[0]] == [
-            'resend-1', 'resend-2'
-        ]
+        assert all(row['delivery_status'] == 'pending' for row in inserted_rows[0])
+        assert all(row['message_key'].startswith('send_final_reminder:') for row in inserted_rows[0])
+        assert len({row['idempotency_key'] for row in inserted_rows[0]}) == 1
 
-    def test_midmonth_handler_batches_provider_calls_and_logs_deliveries(self):
+    def test_midmonth_handler_batches_provider_calls_and_claims_ledger_rows(self):
         """The scheduled mid-month reminder must use the same bounded batch path."""
         from api.email import handler
         from types import SimpleNamespace
@@ -880,7 +880,8 @@ class TestEmailReliability:
         mock_handler.send_response.assert_called_with(200)
         batch_send.assert_called_once()
         assert len(inserted_rows) == 1
-        assert inserted_rows[0][0]['resend_email_id'] == 'resend-1'
+        assert inserted_rows[0][0]['delivery_status'] == 'pending'
+        assert inserted_rows[0][0]['message_key'].startswith('send_midmonth_reminders:')
 
     def test_pairings_email_path_uses_bounded_batch_delivery(self):
         """Pairing generation must not retain the old serial provider loop."""
@@ -938,10 +939,8 @@ class TestEmailReliability:
         with open('api/email.py', 'r') as f:
             content = f.read()
 
-        # All bulk send error paths must use extra={"sent": sent, ...} pattern
-        assert 'extra={"sent": sent' in content or "extra={'sent': sent" in content or \
-               'extra={"sent": sent, "failed"' in content, \
-            "_send_error calls for bulk sends must include extra with sent count"
+        # Bulk send failures use structured outcome/count payloads.
+        assert "'outcome': 'pre_send_failure'" in content
 
     def test_midmonth_reminder_skips_already_sent_pairs(self):
         """Midmonth reminder should only send to pairs with reminder_sent_at = null"""
@@ -956,16 +955,13 @@ class TestEmailReliability:
         assert "is_('reminder_sent_at', 'null')" in content, \
             "Midmonth reminder must filter by reminder_sent_at IS NULL"
 
-    def test_email_log_written_on_midmonth_success(self):
-        """email_log row should be inserted after each successful midmonth reminder"""
-        # Verify email_log insert is in the send_midmonth_reminders code
+    def test_canonical_delivery_ledger_used_for_midmonth_success(self):
+        """Midmonth delivery state is written to the canonical ledger."""
         with open('api/email.py', 'r') as f:
             content = f.read()
 
-        assert "'action': 'send_midmonth_reminders'" in content, \
-            "email_log insert with action=send_midmonth_reminders must exist"
-        assert "email_log" in content, \
-            "email_log table must be referenced in email.py"
+        assert 'build_delivery_rows' in content
+        assert "'midmonth_reminder'" in content
 
     def test_pairings_continue_on_email_failure(self):
         """All pairings should be attempted even if one email fails"""
@@ -983,8 +979,7 @@ class TestEmailReliability:
         standalone_breaks = re.findall(r'^\s+break\s*$', email_section, re.MULTILINE)
         assert len(standalone_breaks) == 0, \
             "Email send loop must not have a 'break' statement — all pairings must be attempted"
-        assert 'Continue to attempt all remaining pairings' in email_section, \
-            "Email send loop should have comment explaining no-break behavior"
+        assert 'Process every pairing in bounded batches' in email_section
 
 
 def test_imports():

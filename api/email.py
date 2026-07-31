@@ -19,6 +19,14 @@ from api.email_policy import (
     delivery_mode,
     require_cron_secret,
 )
+from api.email_delivery import (
+    build_delivery_rows,
+    deliver_batch,
+    delivery_idempotency_key,
+    delivery_summary,
+    find_reconciliation_required,
+    reconcile_batch,
+)
 init_sentry()
 
 # Email Configuration
@@ -122,7 +130,10 @@ def send_bulk_emails(messages, idempotency_key=None, _retry=True):
 
     mode = delivery_mode()
     if mode != 'live':
-        return blocked_delivery_result(len(messages), mode)
+        result = blocked_delivery_result(len(messages), mode)
+        result['outcome'] = 'delivery_disabled'
+        result['idempotency_key'] = idempotency_key
+        return result
 
     import resend
 
@@ -130,20 +141,24 @@ def send_bulk_emails(messages, idempotency_key=None, _retry=True):
     if not api_key:
         return {
             'success': False,
+            'outcome': 'pre_send_failure',
             'sent': 0,
             'failed': len(messages),
             'deliveries': [],
             'errors': ['RESEND_API_KEY not configured in environment variables'],
+            'idempotency_key': idempotency_key,
         }
 
     batch_sender = getattr(resend, 'Batch', None)
     if batch_sender is None or not hasattr(batch_sender, 'send'):
         return {
             'success': False,
+            'outcome': 'pre_send_failure',
             'sent': 0,
             'failed': len(messages),
             'deliveries': [],
             'errors': ['Resend SDK does not support batch email sends'],
+            'idempotency_key': idempotency_key,
         }
 
     resend.api_key = api_key
@@ -198,11 +213,138 @@ def send_bulk_emails(messages, idempotency_key=None, _retry=True):
 
     return {
         'success': not errors,
+        'outcome': 'accepted' if not errors else 'unknown_needs_reconciliation',
         'sent': len(deliveries),
         'failed': len(messages) - len(deliveries),
         'deliveries': deliveries,
         'errors': errors,
+        'idempotency_key': idempotency_key,
     }
+
+
+def _deliver_scheduled_batches(
+    action,
+    period_label,
+    template,
+    logical_messages,
+    provider_messages,
+    run_id=None,
+):
+    """Deliver scheduled messages through the canonical ledger in <=100 chunks."""
+    if len(logical_messages) != len(provider_messages):
+        return {
+            'success': False,
+            'outcome': 'pre_send_failure',
+            'sent': 0,
+            'failed': len(provider_messages),
+            'errors': ['Logical and provider message counts do not match'],
+            'reconciliation_required': False,
+            'delivery_summary': delivery_summary([]),
+        }
+
+    if not provider_messages:
+        return {
+            'success': True,
+            'outcome': 'no_targets',
+            'sent': 0,
+            'failed': 0,
+            'would_send': 0,
+            'errors': [],
+            'reconciliation_required': False,
+            'delivery_summary': delivery_summary([]),
+        }
+
+    results = []
+    for start in range(0, len(provider_messages), RESEND_BATCH_SIZE):
+        batch_index = start // RESEND_BATCH_SIZE
+        batch_provider_messages = provider_messages[start:start + RESEND_BATCH_SIZE]
+        batch_logical_messages = logical_messages[start:start + RESEND_BATCH_SIZE]
+        provider_batch_key = delivery_idempotency_key(
+            action, period_label, f'batch:{batch_index}'
+        )
+        ledger_rows = build_delivery_rows(
+            action,
+            period_label,
+            batch_logical_messages,
+            template,
+            provider_batch_key,
+            run_id=run_id,
+        )
+        results.append(deliver_batch(
+            batch_provider_messages,
+            ledger_rows,
+            provider_sender=send_bulk_emails,
+        ))
+
+    errors = [error for result in results for error in result.get('errors', [])]
+    sent = sum(result.get('sent', 0) for result in results)
+    would_send = sum(result.get('would_send', 0) for result in results)
+    summaries = [result.get('delivery_summary', {}) for result in results]
+    summary = {
+        state: sum(item.get(state, 0) for item in summaries)
+        for state in ('pending', 'accepted', 'failed', 'unknown')
+    }
+    outcomes = {result.get('outcome') for result in results}
+    reconciliation_required = bool(
+        outcomes & {'accepted_needs_reconciliation', 'unknown_needs_reconciliation'}
+    )
+    if 'pre_send_failure' in outcomes:
+        outcome = 'pre_send_failure'
+        success = False
+    elif 'unknown_needs_reconciliation' in outcomes:
+        outcome = 'unknown_needs_reconciliation'
+        success = True
+    elif 'accepted_needs_reconciliation' in outcomes:
+        outcome = 'accepted_needs_reconciliation'
+        success = True
+    elif 'delivery_disabled' in outcomes:
+        outcome = 'delivery_disabled'
+        success = True
+    else:
+        outcome = 'accepted'
+        success = True
+    return {
+        'success': success,
+        'outcome': outcome,
+        'sent': sent,
+        'failed': sum(result.get('failed', 0) for result in results),
+        'would_send': would_send,
+        'errors': errors,
+        'reconciliation_required': reconciliation_required,
+        'delivery_summary': summary,
+        'batch_results': results,
+    }
+
+
+def _rebuild_reconciliation_messages(action, period_label, rows):
+    """Rebuild only templates whose original payload is deterministic."""
+    ordered_rows = sorted(rows, key=lambda row: row.get('message_key', ''))
+    templates = {row.get('template') for row in ordered_rows}
+    if action in {'send_availability_check', 'send_availability_check_paused_only'} and templates == {'availability_check'}:
+        html = get_availability_check_email_html()
+        return [
+            {
+                'from': SENDER_EMAIL,
+                'to': row.get('recipient_emails', []),
+                'subject': 'Quick check: are you playing next month?',
+                'html': html,
+                'reply_to': REPLY_TO_EMAIL,
+            }
+            for row in ordered_rows
+        ], None
+    if action == 'send_final_reminder' and templates == {'final_reminder'}:
+        html = get_final_reminder_email_html()
+        return [
+            {
+                'from': SENDER_EMAIL,
+                'to': row.get('recipient_emails', []),
+                'subject': 'Last call: update your playing status',
+                'html': html,
+                'reply_to': REPLY_TO_EMAIL,
+            }
+            for row in ordered_rows
+        ], None
+    return None, 'Original message payload is not deterministic for reconciliation'
 
 
 # =============================================================================
@@ -609,12 +751,17 @@ class handler(BaseHTTPRequestHandler):
             if action in DISABLED_PUBLIC_ACTIONS:
                 self._send_error(403, 'Action is not publicly available')
                 return
+            if action == 'resend_match_emails':
+                self._send_error(
+                    410,
+                    'Deprecated. Use reconcile_email_delivery with the original action and period.',
+                )
+                return
 
             RUN_TRACKED_ACTIONS = {
                 'send_availability_check',
                 'send_final_reminder',
                 'send_midmonth_reminders',
-                'resend_match_emails',
             }
             if action in RUN_TRACKED_ACTIONS:
                 run_id, lock_error = try_start_run(action, self._run_period, {'source': 'api/email'})
@@ -644,7 +791,7 @@ class handler(BaseHTTPRequestHandler):
                     return
 
                 result = send_email(to_email, subject, html, reply_to)
-                if result['success']:
+                if result.get('sent'):
                     self._send_success(result)
                 else:
                     self._send_error(500, result.get('error', 'Failed to send email'))
@@ -661,7 +808,7 @@ class handler(BaseHTTPRequestHandler):
                 html = get_welcome_email_html(player_name)
                 result = send_email(to_email, "Welcome to Net Worth Tennis!", html)
 
-                if result['success']:
+                if result.get('sent'):
                     self._send_success({"message": "Welcome email sent", **result})
                 else:
                     self._send_error(500, result.get('error'))
@@ -671,7 +818,7 @@ class handler(BaseHTTPRequestHandler):
                 from api.supabase_http import table
 
                 # Get all players with 'player' tier (excludes 'social_butterfly' and 'admin' tiers)
-                players = table('players').select('email, name').eq('membership_tier', 'player').execute()
+                players = table('players').select('id, email, name').eq('membership_tier', 'player').execute()
 
                 if players.error:
                     self._send_error(500, f"Failed to load players: {players.error}")
@@ -681,7 +828,7 @@ class handler(BaseHTTPRequestHandler):
                     return
 
                 html = get_availability_check_email_html()
-                period = datetime.now().strftime('%B %Y')
+                period = self._run_period
 
                 messages = [{
                     'from': SENDER_EMAIL,
@@ -690,33 +837,35 @@ class handler(BaseHTTPRequestHandler):
                     'html': html,
                     'reply_to': REPLY_TO_EMAIL,
                 } for player in players.data]
-                result = send_bulk_emails(
+                logical_messages = [{
+                    'logical_id': player.get('id') or player['email'],
+                    'recipient_emails': [player['email']],
+                } for player in players.data]
+                result = _deliver_scheduled_batches(
+                    action,
+                    period,
+                    'availability_check',
+                    logical_messages,
                     messages,
-                    idempotency_key=f'networth:{action}:{period}',
+                    run_id=self._run_id,
                 )
-                sent = result.get('sent', 0)
-                errors = result.get('errors', [])
-                deliveries = result.get('deliveries', [])
 
-                if deliveries:
-                    log_rows = [{
-                        'action': action,
-                        'to_emails': delivery['to'],
-                        'period_label': period,
-                        'resend_email_id': delivery['id'],
-                    } for delivery in deliveries]
-                    log_result = table('email_log').insert(log_rows).execute()
-                    if log_result.error:
-                        errors.append(f'Failed to write email_log: {log_result.error}')
-
-                if errors and strict_mode:
-                    self._send_error(500, f"Sent {sent}, failed {len(errors)}: {errors[0]}",
-                                     extra={"sent": sent, "failed": len(errors), "errors": errors})
+                if result['outcome'] == 'pre_send_failure' and strict_mode:
+                    self._send_error(
+                        500,
+                        f"Email delivery failed: {result['errors'][0] if result['errors'] else 'unknown error'}",
+                        extra=result,
+                    )
                     return
                 self._send_success({
-                    "message": f"Sent availability check to {sent} players",
-                    "sent": sent,
-                    "errors": errors if errors else None
+                    "message": f"Processed availability check for {len(players.data)} players",
+                    "sent": result['sent'],
+                    "failed": result['failed'],
+                    "would_send": result.get('would_send', 0),
+                    "outcome": result['outcome'],
+                    "reconciliation_required": result['reconciliation_required'],
+                    "delivery_summary": result['delivery_summary'],
+                    "errors": result['errors'] or None,
                 })
 
             elif action == 'send_final_reminder':
@@ -724,7 +873,7 @@ class handler(BaseHTTPRequestHandler):
 
                 # All players (including paused - they need to know to reactivate!)
                 # Players with 'player' tier only (excludes 'social_butterfly' and 'admin' tiers)
-                players = table('players').select('email, name').eq('membership_tier', 'player').execute()
+                players = table('players').select('id, email, name').eq('membership_tier', 'player').execute()
 
                 if players.error:
                     self._send_error(500, f"Failed to load players: {players.error}")
@@ -734,7 +883,7 @@ class handler(BaseHTTPRequestHandler):
                     return
 
                 html = get_final_reminder_email_html()
-                period = datetime.now().strftime('%B %Y')
+                period = self._run_period
 
                 messages = [{
                     'from': SENDER_EMAIL,
@@ -743,33 +892,35 @@ class handler(BaseHTTPRequestHandler):
                     'html': html,
                     'reply_to': REPLY_TO_EMAIL,
                 } for player in players.data]
-                result = send_bulk_emails(
+                logical_messages = [{
+                    'logical_id': player.get('id') or player['email'],
+                    'recipient_emails': [player['email']],
+                } for player in players.data]
+                result = _deliver_scheduled_batches(
+                    action,
+                    period,
+                    'final_reminder',
+                    logical_messages,
                     messages,
-                    idempotency_key=f'networth:{action}:{period}',
+                    run_id=self._run_id,
                 )
-                sent = result.get('sent', 0)
-                errors = result.get('errors', [])
-                deliveries = result.get('deliveries', [])
 
-                if deliveries:
-                    log_rows = [{
-                        'action': action,
-                        'to_emails': delivery['to'],
-                        'period_label': period,
-                        'resend_email_id': delivery['id'],
-                    } for delivery in deliveries]
-                    log_result = table('email_log').insert(log_rows).execute()
-                    if log_result.error:
-                        errors.append(f'Failed to write email_log: {log_result.error}')
-
-                if errors and strict_mode:
-                    self._send_error(500, f"Sent {sent}, failed {len(errors)}: {errors[0]}",
-                                     extra={"sent": sent, "failed": len(errors), "errors": errors})
+                if result['outcome'] == 'pre_send_failure' and strict_mode:
+                    self._send_error(
+                        500,
+                        f"Email delivery failed: {result['errors'][0] if result['errors'] else 'unknown error'}",
+                        extra=result,
+                    )
                     return
                 self._send_success({
-                    "message": f"Sent final reminder to {sent} players",
-                    "sent": sent,
-                    "errors": errors if errors else None
+                    "message": f"Processed final reminder for {len(players.data)} players",
+                    "sent": result['sent'],
+                    "failed": result['failed'],
+                    "would_send": result.get('would_send', 0),
+                    "outcome": result['outcome'],
+                    "reconciliation_required": result['reconciliation_required'],
+                    "delivery_summary": result['delivery_summary'],
+                    "errors": result['errors'] or None,
                 })
 
             elif action == 'send_availability_check_paused_only':
@@ -777,7 +928,7 @@ class handler(BaseHTTPRequestHandler):
                 from api.supabase_http import table
 
                 # Get paused players with 'player' tier only (excludes 'social_butterfly' and 'admin' tiers)
-                players = table('players').select('email, name').eq('is_active', False).eq('membership_tier', 'player').execute()
+                players = table('players').select('id, email, name').eq('is_active', False).eq('membership_tier', 'player').execute()
 
                 if players.error:
                     self._send_error(500, f"Failed to load players: {players.error}")
@@ -786,32 +937,52 @@ class handler(BaseHTTPRequestHandler):
                     self._send_success({"message": "No paused players to email", "sent": 0})
                     return
 
-                import time
                 html = get_availability_check_email_html()
-                sent = 0
-                errors = []
+                period = self._run_period
+                messages = [{
+                    'from': SENDER_EMAIL,
+                    'to': [player['email']],
+                    'subject': 'Quick check: are you playing next month?',
+                    'html': html,
+                    'reply_to': REPLY_TO_EMAIL,
+                } for player in players.data]
+                logical_messages = [{
+                    'logical_id': player.get('id') or player['email'],
+                    'recipient_emails': [player['email']],
+                } for player in players.data]
+                result = _deliver_scheduled_batches(
+                    action,
+                    period,
+                    'availability_check',
+                    logical_messages,
+                    messages,
+                    run_id=self._run_id,
+                )
 
-                for i, player in enumerate(players.data):
-                    # Rate limit: Resend allows 2 req/sec
-                    if i > 0:
-                        time.sleep(0.6)
-                    result = send_email(player['email'], "Quick check: are you playing next month?", html)
-                    if result['success']:
-                        sent += 1
-                    else:
-                        errors.append(f"{player['email']}: {result.get('error')}")
+                if result['outcome'] == 'pre_send_failure' and strict_mode:
+                    self._send_error(
+                        500,
+                        f"Email delivery failed: {result['errors'][0] if result['errors'] else 'unknown error'}",
+                        extra=result,
+                    )
+                    return
 
                 self._send_success({
-                    "message": f"Sent availability check to {sent} paused players",
-                    "sent": sent,
-                    "errors": errors if errors else None
+                    "message": f"Processed availability check for {len(players.data)} paused players",
+                    "sent": result['sent'],
+                    "failed": result['failed'],
+                    "would_send": result.get('would_send', 0),
+                    "outcome": result['outcome'],
+                    "reconciliation_required": result['reconciliation_required'],
+                    "delivery_summary": result['delivery_summary'],
+                    "errors": result['errors'] or None,
                 })
 
             elif action == 'send_midmonth_reminders':
                 from api.supabase_http import table
 
                 # Get current month's pending matches that haven't been reminded yet
-                month = datetime.now().strftime('%B %Y')
+                month = self._run_period
                 matches_result = table('match_assignments').select('*').eq('period_label', month).eq('status', 'pending').is_('reminder_sent_at', 'null').execute()
 
                 if matches_result.error:
@@ -835,6 +1006,7 @@ class handler(BaseHTTPRequestHandler):
                 players_map = {pl['id']: pl for pl in players_result.data if pl['id'] in player_ids}
 
                 errors = []
+                logical_messages = []
                 email_jobs = []
                 for match in matches_result.data:
                     p1 = players_map.get(match.get('player1_id'), {})
@@ -856,120 +1028,127 @@ class handler(BaseHTTPRequestHandler):
                         'html': html,
                         'reply_to': p1['email'],
                     }))
-
-                bulk_result = send_bulk_emails(
-                    [message for _, message in email_jobs],
-                    idempotency_key=f'networth:{action}:{month}',
-                )
-                sent = bulk_result.get('sent', 0)
-                errors.extend(bulk_result.get('errors', []))
-                log_rows = []
-
-                for (match, message), delivery in zip(email_jobs, bulk_result.get('deliveries', [])):
-                    table('match_assignments').update({
-                        'reminder_sent_at': datetime.now(timezone.utc).isoformat(),
-                        'reminder_email_id': delivery['id'],
-                    }).eq('id', match.get('id')).execute()
-                    log_rows.append({
-                        'action': 'send_midmonth_reminders',
-                        'to_emails': delivery['to'],
-                        'period_label': month,
-                        'match_id': match.get('id'),
-                        'resend_email_id': delivery['id'],
+                    logical_messages.append({
+                        'logical_id': match.get('id'),
+                        'recipient_emails': [p1['email'], p2['email']],
                     })
 
-                if log_rows:
-                    log_result = table('email_log').insert(log_rows).execute()
-                    if log_result.error:
-                        errors.append(f'Failed to write email_log: {log_result.error}')
+                result = _deliver_scheduled_batches(
+                    action,
+                    month,
+                    'midmonth_reminder',
+                    logical_messages,
+                    [message for _, message in email_jobs],
+                    run_id=self._run_id,
+                )
 
-                if errors and strict_mode:
-                    self._send_error(500, f"Sent {sent}, failed {len(errors)}: {errors[0]}",
-                                     extra={"sent": sent, "failed": len(errors), "errors": errors})
+                errors.extend(result.get('errors', []))
+                if result['outcome'] == 'accepted':
+                    accepted_deliveries = [
+                        delivery
+                        for batch_result in result.get('batch_results', [])
+                        for delivery in batch_result.get('deliveries', [])
+                    ]
+                    for (match, _message), delivery in zip(email_jobs, accepted_deliveries):
+                        table('match_assignments').update({
+                            'reminder_sent_at': datetime.now(timezone.utc).isoformat(),
+                            'reminder_email_id': delivery['id'],
+                        }).eq('id', match.get('id')).execute()
+
+                if result['outcome'] == 'pre_send_failure' and strict_mode:
+                    self._send_error(
+                        500,
+                        f"Email delivery failed: {errors[0] if errors else 'unknown error'}",
+                        extra=result,
+                    )
                     return
                 self._send_success({
-                    "message": f"Sent mid-month reminders to {sent} match pairs",
-                    "sent": sent,
-                    "errors": errors if errors else None
+                    "message": f"Processed mid-month reminders for {len(email_jobs)} match pairs",
+                    "sent": result['sent'],
+                    "failed": result['failed'],
+                    "would_send": result.get('would_send', 0),
+                    "outcome": result['outcome'],
+                    "reconciliation_required": result['reconciliation_required'],
+                    "delivery_summary": result['delivery_summary'],
+                    "errors": errors or None,
                 })
 
-            elif action == 'resend_match_emails':
-                # Resend match assignment emails for current month
-                import time
-                from api.supabase_http import table
-
-                month = datetime.now().strftime('%B %Y')
-                matches = table('match_assignments').select('*').eq('period_label', month).execute()
-
-                if not matches.data:
-                    self._send_success({"message": "No matches found for current month", "sent": 0})
+            elif action == 'reconcile_email_delivery':
+                target_action = data.get('email_action') or data.get('target_action')
+                period = data.get('period_label', self._run_period)
+                if not target_action:
+                    self._send_error(400, "email_action required")
                     return
 
-                # Get all players
-                players_result = table('players').select('id, name, email, phone, avail_weekday_early, avail_weekday_day, avail_weekday_late, avail_weekend_early, avail_weekend_day, avail_weekend_late').execute()
-                players_map = {p['id']: p for p in players_result.data}
+                pending = find_reconciliation_required(
+                    action=target_action,
+                    period_label=period,
+                )
+                if not pending['success']:
+                    self._send_error(500, pending['error'])
+                    return
+                if not pending['rows']:
+                    self._send_success({
+                        'outcome': 'already_complete',
+                        'reconciliation_required': False,
+                        'delivery_summary': pending['summary'],
+                        'email_action': target_action,
+                        'period_label': period,
+                    })
+                    return
 
-                sent = 0
-                errors = []
+                rows_by_key = {}
+                for row in pending['rows']:
+                    rows_by_key.setdefault(row.get('idempotency_key'), []).append(row)
 
-                for i, match in enumerate(matches.data):
-                    if i > 0:
-                        time.sleep(0.6)
-
-                    p1 = players_map.get(match.get('player1_id'), {})
-                    p2 = players_map.get(match.get('player2_id'), {})
-
-                    if not p1 or not p2:
-                        errors.append(f"Match {match.get('id')}: Player not found")
-                        continue
-
-                    # Build availability text
-                    def get_avail(p):
-                        parts = []
-                        wd = []
-                        if p.get('avail_weekday_early'): wd.append('before 9am')
-                        if p.get('avail_weekday_day'): wd.append('9-5')
-                        if p.get('avail_weekday_late'): wd.append('after 5pm')
-                        if wd: parts.append(f"Weekdays: {', '.join(wd)}")
-                        we = []
-                        if p.get('avail_weekend_early'): we.append('before 9am')
-                        if p.get('avail_weekend_day'): we.append('9-5')
-                        if p.get('avail_weekend_late'): we.append('after 5pm')
-                        if we: parts.append(f"Weekends: {', '.join(we)}")
-                        return ' | '.join(parts) if parts else ''
-
-                    html = get_match_assignment_email_html(
-                        p1['name'], p2['name'], month,
-                        get_avail(p1), get_avail(p2),
-                        p1.get('phone', ''), p2.get('phone', '')
+                results = []
+                for provider_batch_key, rows in rows_by_key.items():
+                    messages, rebuild_error = _rebuild_reconciliation_messages(
+                        target_action, period, rows
                     )
-                    subject = f"{p1['name']}, meet {p2['name']} - You're matched for {month}!"
+                    if rebuild_error:
+                        results.append({
+                            'success': True,
+                            'outcome': 'manual_review_required',
+                            'sent': 0,
+                            'failed': 0,
+                            'errors': [rebuild_error],
+                            'idempotency_key': provider_batch_key,
+                            'delivery_summary': delivery_summary(rows),
+                        })
+                        continue
+                    results.append(reconcile_batch(
+                        messages,
+                        rows,
+                        provider_sender=send_bulk_emails,
+                    ))
 
-                    result = send_email([p1['email'], p2['email']], subject, html, reply_to=p1['email'])
-                    if result.get('success'):
-                        sent += 1
-                        # Update match_email_id and write to universal email log
-                        table('match_assignments').update({
-                            'match_email_id': result.get('id'),
-                        }).eq('id', match.get('id')).execute()
-                        table('email_log').insert({
-                            'action': 'resend_match_emails',
-                            'to_emails': [p1['email'], p2['email']],
-                            'period_label': month,
-                            'match_id': match.get('id'),
-                            'resend_email_id': result.get('id'),
-                        }).execute()
-                    else:
-                        errors.append(f"{p1['name']} & {p2['name']}: {result.get('error')}")
-
-                if errors and strict_mode:
-                    self._send_error(500, f"Sent {sent}, failed {len(errors)}: {errors[0]}",
-                                     extra={"sent": sent, "failed": len(errors), "errors": errors})
-                    return
+                outcomes = {result.get('outcome') for result in results}
+                if 'manual_review_required' in outcomes:
+                    outcome = 'manual_review_required'
+                elif 'unknown_needs_reconciliation' in outcomes:
+                    outcome = 'unknown_needs_reconciliation'
+                elif 'accepted_needs_reconciliation' in outcomes:
+                    outcome = 'accepted_needs_reconciliation'
+                elif 'delivery_disabled' in outcomes:
+                    outcome = 'delivery_disabled'
+                else:
+                    outcome = 'accepted'
                 self._send_success({
-                    "message": f"Sent match emails to {sent} pairs",
-                    "sent": sent,
-                    "errors": errors if errors else None
+                    'outcome': outcome,
+                    'reconciliation_required': outcome != 'accepted',
+                    'sent': sum(result.get('sent', 0) for result in results),
+                    'would_send': sum(result.get('would_send', 0) for result in results),
+                    'errors': [error for result in results for error in result.get('errors', [])] or None,
+                    'delivery_summary': {
+                        state: sum(
+                            result.get('delivery_summary', {}).get(state, 0)
+                            for result in results
+                        )
+                        for state in ('pending', 'accepted', 'failed', 'unknown')
+                    },
+                    'email_action': target_action,
+                    'period_label': period,
                 })
 
             elif action == 'send_admin_alert':
@@ -990,42 +1169,48 @@ class handler(BaseHTTPRequestHandler):
                 html = get_admin_alert_email_html(subject, message)
                 result = send_email(admin_email, f"Net Worth Alert: {subject}", html)
 
-                if result['success']:
+                if result.get('sent'):
                     self._send_success({
                         "message": "Alert sent to sysadmin",
-                        "sent_to": admin_email
+                        "sent_to": admin_email,
+                        **result,
+                    })
+                elif result.get('blocked'):
+                    self._send_success({
+                        "message": "Admin alert delivery disabled",
+                        "sent": 0,
+                        "outcome": "delivery_disabled",
+                        "delivery_mode": result.get('delivery_mode'),
                     })
                 else:
                     self._send_error(500, result.get('error'))
 
             elif action == 'check_recent_send':
-                # Check email_log to verify if a bulk action was sent today
-                # Used by GitHub Actions to validate after a 504 (was the send real or not?)
-                # Auth: same CRON_SECRET required
-                cron_secret = os.environ.get('CRON_SECRET', '')
-                auth = self.headers.get('Authorization', '').replace('Bearer ', '')
-                if not cron_secret or auth != cron_secret:
-                    self._send_error(401, 'Unauthorized')
-                    return
-
+                # Read the canonical delivery ledger for post-timeout inspection.
                 from api.supabase_http import table
                 check_action = data.get('email_action', '')
                 if not check_action:
                     self._send_error(400, "email_action required")
                     return
 
-                # Find rows for this action sent since midnight UTC today
+                # Find rows for this action since midnight UTC today.
                 today_start = datetime.now(timezone.utc).strftime('%Y-%m-%dT00:00:00+00:00')
-                result = table('email_log').select('resend_email_id,sent_at').eq('action', check_action).gte('sent_at', today_start).execute()
+                result = table('email_delivery_log').select(
+                    'delivery_status,provider_id,created_at'
+                ).eq('action', check_action).gte('created_at', today_start).execute()
                 if result.error:
-                    self._send_error(500, "Failed to query email_log")
+                    self._send_error(500, "Failed to query email_delivery_log")
                     return
 
-                count = len(result.data) if result.data else 0
+                rows = result.data or []
+                summary = delivery_summary(rows)
+                count = summary['accepted']
                 self._send_success({
                     "already_sent": count > 0,
                     "sent": count,
-                    "email_action": check_action
+                    "email_action": check_action,
+                    "delivery_summary": summary,
+                    "reconciliation_required": bool(summary['pending'] or summary['unknown']),
                 })
 
             else:

@@ -13,6 +13,7 @@ CRON_PROTECTED_ACTIONS = frozenset({
     'resend_match_emails',
     'send_admin_alert',
     'check_recent_send',
+    'reconcile_email_delivery',
     'test_auth_check',
 })
 

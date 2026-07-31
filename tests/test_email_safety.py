@@ -207,6 +207,25 @@ def test_pairings_get_requires_cron_or_verified_admin(monkeypatch):
     table.assert_not_called()
 
 
+def test_deprecated_match_email_action_cannot_send(monkeypatch):
+    monkeypatch.setenv('CRON_SECRET', 'cron-secret')
+    from api.email import handler
+
+    instance = _handler_request(handler, {'action': 'resend_match_emails'})
+    instance.headers.get = Mock(side_effect=lambda key, default=None: {
+        'Content-Length': str(len(json.dumps({'action': 'resend_match_emails'}).encode())),
+        'Authorization': 'Bearer cron-secret',
+    }.get(key, default))
+
+    with patch('api.email.send_email') as send_email:
+        with patch('api.supabase_http.table') as table:
+            instance.do_POST()
+
+    instance.send_response.assert_called_with(410)
+    send_email.assert_not_called()
+    table.assert_not_called()
+
+
 def test_public_players_response_contains_only_allowlisted_fields():
     from api.players import PUBLIC_PLAYER_FIELDS, handler
 

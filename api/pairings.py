@@ -20,6 +20,12 @@ from datetime import datetime, date
 # Initialize Sentry for error tracking
 from api.sentry_init import init_sentry
 from api.reliability import preflight, try_start_run, append_event, update_run
+from api.email_delivery import (
+    build_delivery_rows,
+    deliver_batch,
+    delivery_idempotency_key,
+    delivery_summary,
+)
 init_sentry()
 
 
@@ -638,7 +644,7 @@ class handler(BaseHTTPRequestHandler):
                     self._send_error(400, 'period_label required for clear_period')
                     return
                 # Clear FK references and run lock before deleting assignments
-                table('email_log').delete().eq('period_label', period_label).execute()
+                table('email_delivery_log').delete().eq('period_label', period_label).execute()
                 table('automation_runs').delete().eq('action', 'generate_pairings').eq('period_label', period_label).execute()
                 del_resp = table('match_assignments').delete().eq('period_label', period_label).execute()
                 if del_resp.error:
@@ -825,6 +831,7 @@ class handler(BaseHTTPRequestHandler):
             # 7. Send match assignment emails — only reached after all validation passes
             emails_sent = 0
             email_errors = []
+            delivery_results = []
             try:
                 from api.email import SENDER_EMAIL, send_bulk_emails, get_match_assignment_email_html
                 email_jobs = []
@@ -850,55 +857,104 @@ class handler(BaseHTTPRequestHandler):
                         'reply_to': p1['email'],
                     }))
 
-                bulk_result = send_bulk_emails(
-                    [message for _, message in email_jobs],
-                    idempotency_key=f'networth:generate_pairings:{period_label}',
-                )
-                emails_sent = bulk_result.get('sent', 0)
-                email_errors.extend(bulk_result.get('errors', []))
-                log_rows = []
-
-                for (p, _), delivery in zip(email_jobs, bulk_result.get('deliveries', [])):
-                    p1 = p['player1']
-                    p2 = p['player2']
-                    assignment_id = assignment_id_map.get(frozenset([p1['id'], p2['id']]))
-                    if assignment_id:
-                        table('match_assignments').update({
-                            'match_email_id': delivery['id'],
-                        }).eq('id', assignment_id).execute()
-                        log_rows.append({
-                            'action': 'generate_pairings',
-                            'to_emails': delivery['to'],
-                            'period_label': period_label,
-                            'match_id': assignment_id,
-                            'resend_email_id': delivery['id'],
+                for start in range(0, len(email_jobs), 100):
+                    # Process every pairing in bounded batches; no early break
+                    # after a delivery result so reconciliation sees all rows.
+                    batch_jobs = email_jobs[start:start + 100]
+                    batch_messages = [message for _, message in batch_jobs]
+                    logical_messages = []
+                    for pairing, message in batch_jobs:
+                        p1 = pairing['player1']
+                        p2 = pairing['player2']
+                        assignment_id = assignment_id_map.get(
+                            frozenset([p1['id'], p2['id']])
+                        )
+                        logical_messages.append({
+                            'logical_id': assignment_id,
+                            'recipient_emails': message['to'],
                         })
+                    provider_batch_key = delivery_idempotency_key(
+                        'generate_pairings', period_label, f'batch:{start // 100}'
+                    )
+                    ledger_rows = build_delivery_rows(
+                        'generate_pairings',
+                        period_label,
+                        logical_messages,
+                        'match_assignment',
+                        provider_batch_key,
+                        run_id=self._run_id,
+                    )
+                    result = deliver_batch(
+                        batch_messages,
+                        ledger_rows,
+                        provider_sender=send_bulk_emails,
+                    )
+                    delivery_results.append((batch_jobs, result))
+                    emails_sent += result.get('sent', 0)
+                    email_errors.extend(result.get('errors', []))
 
-                if log_rows:
-                    log_result = table('email_log').insert(log_rows).execute()
-                    if log_result.error:
-                        email_errors.append(f'Failed to write email_log: {log_result.error}')
-                # Continue to attempt all remaining pairings via the batch (no break)
+                    if result.get('outcome') == 'accepted':
+                        for (pairing, _message), delivery in zip(
+                            batch_jobs, result.get('deliveries', [])
+                        ):
+                            p1 = pairing['player1']
+                            p2 = pairing['player2']
+                            assignment_id = assignment_id_map.get(
+                                frozenset([p1['id'], p2['id']])
+                            )
+                            if assignment_id:
+                                table('match_assignments').update({
+                                    'match_email_id': delivery['id'],
+                                }).eq('id', assignment_id).execute()
             except Exception as e:
                 email_errors.append(f"Email system error: {str(e)}")
 
-            if email_errors:
+            outcomes = {result.get('outcome') for _, result in delivery_results}
+            if 'pre_send_failure' in outcomes or (
+                email_errors and not outcomes
+            ):
                 append_event(self._run_id, 'email_delivery', 'error', 'Match email delivery failed', {
                     'emails_sent': emails_sent,
                     'pairings_created': len(assignments),
                     'errors': email_errors,
                 })
                 self._send_error(500, f"Email delivery failed: {emails_sent}/{len(assignments)} sent: {email_errors[0]}",
-                                 extra={"sent": emails_sent, "failed": len(email_errors), "errors": email_errors})
+                                 extra={
+                                     "sent": emails_sent,
+                                     "failed": len(email_errors),
+                                     "errors": email_errors,
+                                     "reconciliation_required": False,
+                                 })
                 return
 
-            if emails_sent != len(assignments):
+            reconciliation_required = bool(
+                outcomes & {'accepted_needs_reconciliation', 'unknown_needs_reconciliation'}
+            )
+            if emails_sent != len(assignments) and not reconciliation_required and 'delivery_disabled' not in outcomes:
                 append_event(self._run_id, 'postcheck', 'error', 'Postcheck failed: sent count mismatch', {
                     'emails_sent': emails_sent,
                     'pairings_created': len(assignments),
                 })
                 self._send_error(500, f"Postcheck failed: sent {emails_sent} emails for {len(assignments)} pairings")
                 return
+
+            if 'unknown_needs_reconciliation' in outcomes:
+                delivery_outcome = 'unknown_needs_reconciliation'
+            elif 'accepted_needs_reconciliation' in outcomes:
+                delivery_outcome = 'accepted_needs_reconciliation'
+            elif 'delivery_disabled' in outcomes:
+                delivery_outcome = 'delivery_disabled'
+            else:
+                delivery_outcome = 'accepted'
+
+            delivery_summaries = [
+                result.get('delivery_summary', {})
+                for _, result in delivery_results
+            ]
+            combined_delivery_summary = {
+                state: sum(summary.get(state, 0) for summary in delivery_summaries)
+                for state in ('pending', 'accepted', 'failed', 'unknown')
+            }
 
             # 8. Update RMS scores for all players
             for player in players:
@@ -907,16 +963,24 @@ class handler(BaseHTTPRequestHandler):
             append_event(self._run_id, 'postcheck', 'info', 'Pairings run completed', {
                 'pairings_created': len(assignments),
                 'emails_sent': emails_sent,
+                'delivery_outcome': delivery_outcome,
+                'reconciliation_required': reconciliation_required,
             })
-            update_run(self._run_id, 'succeeded', summary={
+            update_run(self._run_id, 'repairing' if reconciliation_required else 'succeeded', summary={
                 'period': period_label,
                 'pairings_created': len(assignments),
                 'emails_sent': emails_sent,
+                'delivery_outcome': delivery_outcome,
+                'reconciliation_required': reconciliation_required,
             })
             self._send_success({
                 'period': period_label,
                 'pairings_created': len(assignments),
                 'emails_sent': emails_sent,
+                'would_send': len(assignments) if delivery_outcome == 'delivery_disabled' else 0,
+                'delivery_outcome': delivery_outcome,
+                'reconciliation_required': reconciliation_required,
+                'delivery_summary': combined_delivery_summary,
                 'email_errors': email_errors if email_errors else None,
                 'players_available': len([p for p in players if is_player_available(p)]),
                 'players_unavailable': len([p for p in players if not is_player_available(p)]),
