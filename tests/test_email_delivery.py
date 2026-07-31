@@ -275,6 +275,7 @@ def test_hardening_migration_supports_existing_and_absent_ledger_tables():
     assert 'ADD COLUMN IF NOT EXISTS accepted_at' in source
     assert "SET delivery_status = 'accepted'" in source
     assert 'DROP INDEX IF EXISTS public.idx_email_delivery_idempotency' in source
+    assert source.index('DROP INDEX IF EXISTS public.idx_email_delivery_idempotency') < source.index('DO $$')
     assert 'idx_email_delivery_message_key' in source
     assert 'idx_automation_runs_action_period_active' in source
     assert 'information_schema.columns' in source

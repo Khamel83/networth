@@ -107,6 +107,12 @@ SET message_key = action || ':' || period_label || ':' || id::text,
     END
 WHERE message_key IS NULL OR idempotency_key IS NULL;
 
+-- Remove the legacy recipient-level uniqueness rule before importing the
+-- separate email_log history. The new message_key index below replaces it;
+-- keeping both active can reject a legitimate historical row that overlaps a
+-- previously copied delivery.
+DROP INDEX IF EXISTS public.idx_email_delivery_idempotency;
+
 -- email_log is a separate legacy table in some environments. Map it only when
 -- the read-only inventory proves the required columns and supported types exist.
 DO $$
@@ -210,8 +216,6 @@ ALTER TABLE public.email_delivery_log
 ALTER TABLE public.email_delivery_log
     ADD CONSTRAINT email_delivery_log_delivery_status_check
     CHECK (delivery_status IN ('pending', 'accepted', 'failed', 'unknown'));
-
-DROP INDEX IF EXISTS public.idx_email_delivery_idempotency;
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_email_delivery_message_key
     ON public.email_delivery_log(action, period_label, message_key);
