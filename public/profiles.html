@@ -404,7 +404,10 @@
             }
 
             try {
-                const response = await fetch('/api/players');
+                const token = localStorage.getItem('networth_token') || '';
+                const response = await fetch('/api/players', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
                 const data = await response.json();
 
                 if (!data.success || !data.players || data.players.length === 0) {

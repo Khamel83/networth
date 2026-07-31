@@ -193,6 +193,14 @@ class handler(BaseHTTPRequestHandler):
 
                 player = result.data[0] if isinstance(result.data, list) else result.data
 
+                from api.email_policy import delivery_mode, public_transactional_email_enabled
+                if not public_transactional_email_enabled():
+                    self._send_success({
+                        "message": "If an account exists, a reset link will be sent.",
+                        "email_delivery_mode": delivery_mode(),
+                    })
+                    return
+
                 reset_token = secrets.token_urlsafe(32)
                 expires = datetime.now(timezone.utc) + timedelta(hours=1)
 
@@ -222,8 +230,13 @@ class handler(BaseHTTPRequestHandler):
 
                     result = send_email(email, "Reset Your Net Worth Tennis Password", html)
 
-                    if result.get('success'):
+                    if result.get('sent'):
                         self._send_success({"message": "Password reset email sent"})
+                    elif result.get('blocked'):
+                        self._send_success({
+                            "message": "If an account exists, a reset link will be sent.",
+                            "email_delivery_mode": result.get('delivery_mode'),
+                        })
                     else:
                         self._send_error(500, "Failed to send reset email")
                     return

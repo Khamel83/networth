@@ -32,8 +32,8 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pytest pytest-cov
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          pip install -r requirements.txt -r requirements-ci.txt
+          pip check
 
       - name: Set test environment variables
         run: |
@@ -74,7 +74,7 @@ jobs:
 
       - name: Check for common issues
         run: |
-          python -m pip install flake8
+          python -m pip install -r requirements-ci.txt
           # Stop the build if there are Python syntax errors or undefined names
           flake8 api/ --count --select=E9,F63,F7,F82 --show-source --statistics
           echo "No critical syntax errors found"
@@ -206,31 +206,35 @@ jobs:
             exit 1
           fi
 
-      - name: Check workflow has admin failure notifications
+      - name: Check workflows have no automatic email alerts
         run: |
-          if grep -q "send_admin_alert" .github/workflows/biweekly-emails.yml; then
-            echo "✓ Admin alert notifications found in workflow"
-          else
-            echo "::error::Admin alert notifications not found"
+          if grep -R -q "send_admin_alert" .github/workflows/biweekly-emails.yml .github/workflows/daily-health-check.yml; then
+            echo "::error::Automatic send_admin_alert calls are forbidden"
             exit 1
           fi
+          echo "✓ No automatic admin alert calls"
 
-      - name: Check admin alert calls are authenticated
+      - name: Check delivery gates and reconciliation summaries
         run: |
-          missing=0
-          for wf in .github/workflows/biweekly-emails.yml .github/workflows/daily-health-check.yml; do
-            if grep -q "send_admin_alert" "$wf"; then
-              if grep -q "Authorization: Bearer" "$wf"; then
-                echo "✓ $wf has CRON auth for admin alerts"
-              else
-                echo "::error::$wf has send_admin_alert without CRON auth header"
-                missing=$((missing + 1))
-              fi
+          for needle in delivery_mode reconciliation_required delivery_summary GITHUB_STEP_SUMMARY; do
+            if ! grep -q "$needle" .github/workflows/biweekly-emails.yml; then
+              echo "::error::biweekly-emails.yml missing $needle"
+              exit 1
             fi
           done
-          if [ $missing -gt 0 ]; then
+          if ! grep -q 'TZ: America/Los_Angeles' .github/workflows/biweekly-emails.yml; then
+            echo "::error::Biweekly workflow is not pinned to Pacific time"
             exit 1
           fi
+          if ! grep -q 'Authorization: Bearer' .github/workflows/biweekly-emails.yml; then
+            echo "::error::Biweekly workflow is missing CRON authorization"
+            exit 1
+          fi
+          if grep -q -- '-X POST' .github/workflows/daily-health-check.yml; then
+            echo "::error::Daily health check must remain GET-only"
+            exit 1
+          fi
+          echo "✓ Delivery gates, reconciliation summaries, Pacific time, and GET-only health checks"
 
   api-function-count:
     name: API Function Count Check

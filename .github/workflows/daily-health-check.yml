@@ -2,209 +2,81 @@ name: Daily Health Check
 
 on:
   schedule:
-    # Every day at 9am PT (4pm UTC)
     - cron: '0 16 * * *'
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+env:
+  TZ: America/Los_Angeles
+
 jobs:
   comprehensive-test:
-    name: Test Everything
+    name: Read-only production health check
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install dependencies
+      - name: Check public pages and safe APIs
+        shell: bash
+        env:
+          SITE_URL: https://networthtennis.com
         run: |
-          python -m pip install --quiet pytest requests pyyaml
-
-      - name: Test API endpoints (live)
-        run: |
-          python3 << 'EOF'
-          import requests
-          import sys
-
-          SITE_URL = "https://networthtennis.com"
-          errors = []
-          checks = []
-
-          def check(name, url, expected_status=200):
-              try:
-                  r = requests.get(url, timeout=10)
-                  if r.status_code == expected_status:
-                      checks.append(f"✓ {name}")
-                  else:
-                      errors.append(f"✗ {name}: got {r.status_code}, expected {expected_status}")
-              except Exception as e:
-                  errors.append(f"✗ {name}: {str(e)}")
-
-          # Check all main pages load
-          check("Homepage", f"{SITE_URL}/")
-          check("Login", f"{SITE_URL}/login")
-          check("Join", f"{SITE_URL}/join")
-          check("Dashboard", f"{SITE_URL}/dashboard")
-          check("Rules", f"{SITE_URL}/rules")
-          check("Admin", f"{SITE_URL}/admin")
-
-          # Check API endpoints
-          check("System API (health)", f"{SITE_URL}/api/system")
-          check("Email API status", f"{SITE_URL}/api/email")
-
-          # Check report-issue script exists on homepage
-          try:
-              r = requests.get(f"{SITE_URL}/", timeout=10)
-              if "report-issue.js" in r.text:
-                  checks.append("✓ Report Issue button included")
-              else:
-                  errors.append("✗ Report Issue button missing")
-          except Exception as e:
-              errors.append(f"✗ Report Issue check: {e}")
-
-          # Print results
-          print("\n=== HEALTH CHECK RESULTS ===\n")
-          for c in checks:
-              print(c)
-          if errors:
-              print("\n=== ERRORS ===\n")
-              for e in errors:
-                  print(e)
-              sys.exit(1)
-          else:
-              print("\n✓ ALL CHECKS PASSED\n")
-          EOF
-
-      - name: Verify email templates compile
-        run: |
-          python3 << 'EOF'
-          import importlib.util
-          import sys
-
-          # Load email.py as a module to avoid stdlib 'email' naming conflict
-          spec = importlib.util.spec_from_file_location("email_templates", "api/email.py")
-          email_module = importlib.util.module_from_spec(spec)
-          spec.loader.exec_module(email_module)
-
-          # Test each template generates HTML
-          assert "Welcome" in email_module.get_welcome_email_html("Test", "player")
-          assert "P1" in email_module.get_match_assignment_email_html("P1", "P2", "March 2025")
-          assert "Admin Alert" in email_module.get_admin_alert_email_html("Test", "Msg")
-          print("✓ All email templates generate valid HTML")
-          EOF
-
-      - name: Check API count not exceeded
-        run: |
-          COUNT=$(grep -rl "class handler" api/*.py 2>/dev/null | wc -l)
-          echo "API functions: $COUNT / 12"
-          if [ $COUNT -gt 12 ]; then
-              echo "✗ Exceeds Vercel limit"
-              exit 1
-          fi
-          echo "✓ Within Vercel limit"
-
-      - name: Check workflow files are valid
-        run: |
-          for wf in .github/workflows/*.yml; do
-            python3 -c "import yaml; yaml.safe_load(open('$wf'))" && echo "✓ $(basename $wf)"
-          done
-
-      - name: Check report-issue button on all pages
-        run: |
-          MISSING=0
-          for file in public/*.html; do
-            # Skip fallback.html (emergency page, button won't work during outages)
-            [ "$(basename "$file")" = "fallback.html" ] && continue
-            if ! grep -q "report-issue.js" "$file"; then
-              echo "✗ $file missing report-issue.js"
-              MISSING=$((MISSING + 1))
+          set -euo pipefail
+          export TZ=America/Los_Angeles
+          errors=0
+          check_get() {
+            local name="$1"
+            local url="$2"
+            shift 2
+            local status
+            status=$(curl -sS -o "/tmp/health-${name}.json" -w "%{http_code}" "$url" "$@" || true)
+            echo "$name: HTTP $status"
+            if [ "$status" -lt 200 ] || [ "$status" -ge 300 ]; then
+              echo "::error::$name returned HTTP $status"
+              errors=$((errors + 1))
             fi
-          done
-          if [ $MISSING -eq 0 ]; then
-            echo "✓ All pages have report-issue button"
-          else
+          }
+
+          check_get homepage "$SITE_URL/"
+          check_get login "$SITE_URL/login"
+          check_get join "$SITE_URL/join"
+          check_get dashboard "$SITE_URL/dashboard"
+          check_get rules "$SITE_URL/rules"
+          check_get admin "$SITE_URL/admin"
+          check_get system "$SITE_URL/api/system"
+          # GET /api/email is status-only and never sends.
+          check_get email "$SITE_URL/api/email"
+          check_get players "$SITE_URL/api/players"
+
+          PERIOD="$(date '+%B %Y')"
+          ENCODED_PERIOD=$(python3 -c 'import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1]))' "$PERIOD")
+          check_get pairings "$SITE_URL/api/pairings?period=$ENCODED_PERIOD" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
+
+          if ! grep -q 'report-issue.js' /tmp/health-homepage.json; then
+            echo "::error::Homepage is missing report-issue.js"
+            errors=$((errors + 1))
+          fi
+
+          MODE=$(jq -r '.delivery_mode // "disabled"' /tmp/health-email.json)
+          echo "delivery_mode=$MODE"
+          {
+            echo "## Daily read-only health check"
+            echo "- Pacific time: $(date --iso-8601=seconds)"
+            echo "- Period: $PERIOD"
+            echo "- Email API delivery_mode: `$MODE`"
+            echo "- No POST, workflow dispatch, provider probe, or email alert was performed."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if ! jq -e '.players | type == "array"' /tmp/health-players.json >/dev/null; then
+            echo "::error::Players API did not return an array"
+            errors=$((errors + 1))
+          fi
+          if jq -e '.players[] | has("email") or has("phone") or has("is_admin")' /tmp/health-players.json >/dev/null; then
+            echo "::error::Public players response contains private fields"
+            errors=$((errors + 1))
+          fi
+
+          if [ "$errors" -gt 0 ]; then
             exit 1
           fi
-
-      - name: Verify password reset flow exists
-        run: |
-          [ -f "public/reset-password.html" ] && echo "✓ reset-password.html exists"
-          grep -q "reset_password" api/auth.py && echo "✓ auth.py has reset_password"
-          grep -q "request_password_reset" api/auth.py && echo "✓ auth.py has request_password_reset"
-
-      - name: Check Resend email connectivity
-        run: |
-          HTTP_STATUS=$(curl -s -o /tmp/email_conn.json -w "%{http_code}" \
-            -X POST "${{ secrets.SITE_URL }}/api/system" \
-            -H "Content-Type: application/json" \
-            -d '{"action": "check_email_connectivity"}')
-          echo "Email connectivity: HTTP $HTTP_STATUS: $(cat /tmp/email_conn.json)"
-          if [ "$HTTP_STATUS" != "200" ]; then
-            echo "✗ Resend API key invalid or service unreachable"
-            exit 1
-          fi
-          echo "✓ Resend email connectivity verified"
-
-      - name: Check what's coming up
-        run: |
-          DAY=$(date +%-d)
-          MONTH=$(date +%m)
-          YEAR=$(date +%Y)
-          LAST_DAY=$(date -d "$YEAR-$MONTH-01 +1 month -1 day" +%-d)
-
-          echo "=== UPCOMING EVENTS ==="
-
-          if [ "$DAY" = "27" ]; then
-            echo "📅 Tomorrow (28th): Check if last day - final availability reminder may run"
-          fi
-
-          if [ "$DAY" = "$LAST_DAY" ]; then
-            echo "📅 TOMORROW: Pairing generation (1st of month)"
-          fi
-
-          if [ "$DAY" = "1" ]; then
-            echo "📅 Today: Pairing generation ran this morning"
-            echo "📅 Today at 12pm PT: Health check / self-healing"
-          fi
-
-          if [ "$DAY" = "15" ]; then
-            echo "📅 Tomorrow (16th): Mid-month match reminders"
-          fi
-
-      - name: Send reminder alert (last day of month only)
-        if: success()
-        run: |
-          DAY=$(date +%-d)
-          MONTH=$(date +%m)
-          YEAR=$(date +%Y)
-          LAST_DAY=$(date -d "$YEAR-$MONTH-01 +1 month -1 day" +%-d)
-
-          # Only send email on last day of month (remind about pairings tomorrow)
-          if [ "$DAY" = "$LAST_DAY" ]; then
-            HTTP_STATUS=$(curl -s -o /tmp/alert.json -w "%{http_code}" \
-              -X POST "${{ secrets.SITE_URL }}/api/email" \
-              -H "Content-Type: application/json" \
-              -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-              -d '{
-                "action": "send_admin_alert",
-                "subject": "⚠️ Reminder: Pairings Tomorrow",
-                "message": "Daily health check passed. Pairings will generate tomorrow (1st of month). Make sure players have updated availability."
-              }')
-            echo "Admin alert: HTTP $HTTP_STATUS: $(cat /tmp/alert.json)"
-          fi
-
-      - name: Send failure alert
-        if: failure()
-        run: |
-          curl -sL -X POST "${{ secrets.SITE_URL }}/api/email" \
-            -H "Content-Type: application/json" \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            -d '{
-              "action": "send_admin_alert",
-              "subject": "🚨 Daily Health Check Failed",
-              "message": "Automated daily health check detected failures. Check workflow: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-            }'
