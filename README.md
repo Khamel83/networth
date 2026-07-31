@@ -28,7 +28,8 @@ Daily safety net (`.github/workflows/daily-health-check.yml`):
 - Protected automation actions now require `CRON_SECRET`.
 - Scheduled actions fail closed on delivery/validation errors (no silent success).
 - Pairings generation has preflight checks, lock semantics, and strict postchecks.
-- Pairings generation now uses an exact fresh-matching solver (for league sizes up to 20) so avoidable repeat pairs are eliminated.
+- Pairings generation now uses a general-graph maximum-weight solver for dynamic rosters through 100 players, so avoidable repeat pairs are eliminated without a size-based greedy fallback.
+- Pairing quality uses a deterministic uncertainty-aware rating rebuilt from valid two-set match history; no new player data is required.
 - `reconcile_month` endpoint exists for safe month reconciliation (`POST /api/system`).
 - Reliability tracking tables:
   - `automation_runs`
@@ -37,6 +38,7 @@ Daily safety net (`.github/workflows/daily-health-check.yml`):
 
 Migration:
 - `migrations/02_reliability_automation.sql`
+- `migrations/04_match_history_integrity.sql` (run after resolving any existing duplicate pair/period match rows)
 
 ## Tech Stack
 
@@ -54,6 +56,8 @@ Utility modules:
 - `api/supabase_http.py`
 - `api/reliability.py`
 - `api/sentry_init.py`
+- `api/ratings.py`
+- `api/matching.py`
 
 ## Required Configuration
 
@@ -79,8 +83,9 @@ GitHub Actions secrets:
 ## Pairing Rules (Current)
 
 - Primary objective: no repeat pairings when a fresh full pairing is possible.
-- For league sizes <= 20, the solver uses exact matching to maximize fresh, RMS-appropriate pairs.
+- The solver first maximizes the number of assignments, then fresh pairings, then rating similarity, while never using a hard-blocked edge.
 - Repeats are only allowed as last resort when constraints make a fresh full pairing impossible.
+- New players start neutral with high uncertainty; returning players retain history but regain uncertainty after inactivity.
 
 ## Local Dev
 

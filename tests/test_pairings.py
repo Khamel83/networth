@@ -2,7 +2,6 @@
 Tests for the pairing algorithm in api/pairings.py.
 All tests are mocked — no real DB calls.
 """
-import pytest
 from datetime import date, timedelta
 from unittest.mock import patch
 
@@ -55,85 +54,11 @@ def make_match(p1_id, p2_id, s1p1=6, s1p2=4, s2p1=6, s2p2=3):
     }
 
 
-# ─── calculate_rms ───────────────────────────────────────────────────────────
-
-from api.pairings import calculate_rms, get_performance_band, is_player_available, generate_pairings
-
-
-class TestCalculateRms:
-    def test_no_matches_returns_none(self):
-        assert calculate_rms(1, []) is None
-
-    def test_no_matches_for_player_returns_none(self):
-        matches = [make_match(2, 3)]
-        assert calculate_rms(1, matches) is None
-
-    def test_one_match_as_player1(self):
-        # player 1 won 6+6=12 games
-        matches = [make_match(1, 2, s1p1=6, s1p2=4, s2p1=6, s2p2=3)]
-        assert calculate_rms(1, matches) == 12.0
-
-    def test_one_match_as_player2(self):
-        # player 2 won 4+3=7 games
-        matches = [make_match(1, 2, s1p1=6, s1p2=4, s2p1=6, s2p2=3)]
-        assert calculate_rms(2, matches) == 7.0
-
-    def test_averages_last_three_matches(self):
-        matches = [
-            make_match(1, 2, s1p1=6, s1p2=4, s2p1=6, s2p2=3),   # p1 wins 12
-            make_match(1, 3, s1p1=4, s1p2=6, s2p1=3, s2p2=6),   # p1 wins 7
-            make_match(1, 4, s1p1=6, s1p2=2, s2p1=6, s2p2=1),   # p1 wins 12
-        ]
-        rms = calculate_rms(1, matches)
-        assert rms == pytest.approx((12 + 7 + 12) / 3)
-
-    def test_only_uses_last_three_matches(self):
-        # 4 matches — only last 3 should be counted
-        matches = [
-            make_match(1, 2, s1p1=6, s1p2=0, s2p1=6, s2p2=0),   # p1 wins 12
-            make_match(1, 3, s1p1=6, s1p2=0, s2p1=6, s2p2=0),   # p1 wins 12
-            make_match(1, 4, s1p1=6, s1p2=0, s2p1=6, s2p2=0),   # p1 wins 12
-            make_match(1, 5, s1p1=0, s1p2=6, s2p1=0, s2p2=6),   # p1 wins 0 (4th, ignored)
-        ]
-        rms = calculate_rms(1, matches)
-        assert rms == 12.0  # Only first 3 counted (12+12+12)/3
-
-
-# ─── get_performance_band ────────────────────────────────────────────────────
-
-class TestGetPerformanceBand:
-    def test_none_returns_new(self):
-        band, order = get_performance_band(None)
-        assert band == 'new'
-        assert order == 0
-
-    def test_exactly_six_is_developing(self):
-        band, order = get_performance_band(6.0)
-        assert band == 'developing'
-
-    def test_six_point_one_is_competitive(self):
-        band, order = get_performance_band(6.1)
-        assert band == 'competitive'
-
-    def test_nine_is_competitive(self):
-        band, order = get_performance_band(9.0)
-        assert band == 'competitive'
-
-    def test_nine_point_one_is_strong(self):
-        band, order = get_performance_band(9.1)
-        assert band == 'strong'
-
-    def test_twelve_is_strong(self):
-        band, order = get_performance_band(12.0)
-        assert band == 'strong'
-
-    def test_twelve_point_one_is_dominant(self):
-        band, order = get_performance_band(12.1)
-        assert band == 'dominant'
-
-    def test_band_orders_are_ascending(self):
-        orders = [get_performance_band(rms)[1] for rms in [None, 3, 7, 10, 15]]
-        assert orders == sorted(orders)
+from api.pairings import (
+    _load_all_match_scores,
+    is_player_available,
+    generate_pairings,
+)
 
 
 # ─── is_player_available ─────────────────────────────────────────────────────
@@ -500,3 +425,40 @@ class TestValidationGate:
         ok, err = gate_check([fake_pairing], all_time_pairs, forced_repeats)
         assert ok, "Gate should allow forced repeat"
         assert err is None
+
+
+class TestMatchHistoryPagination:
+    def test_loader_reads_all_pages_without_a_500_row_ceiling(self):
+        first_page = [{"id": index} for index in range(500)]
+        second_page = [{"id": 500}]
+        ranges = []
+
+        class Result:
+            def __init__(self, data):
+                self.data = data
+                self.error = None
+
+        class Query:
+            def select(self, _columns):
+                return self
+
+            def order(self, _column, desc=False):
+                return self
+
+            def range(self, start, end):
+                ranges.append((start, end))
+                self.page = first_page if start == 0 else second_page
+                return self
+
+            def execute(self):
+                return Result(self.page)
+
+        class FakeTable:
+            def __call__(self, _name):
+                return Query()
+
+        response = _load_all_match_scores(FakeTable())
+
+        assert response.error is None
+        assert len(response.data) == 501
+        assert ranges == [(0, 499), (500, 999)]

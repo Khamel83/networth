@@ -3,7 +3,7 @@ Vercel Serverless Function: Matches API
 Handles match reporting and history with Supabase REST API.
 
 Match reporting flow:
-1. Player enters set scores (e.g., 6-4, 3-6, 6-2)
+1. Player enters the two set scores (e.g., 6-4, 6-3)
 2. Player answers "Would you play again?" (for silent blocking)
 3. System calculates games won for each player
 4. Updates player total_games for ranking
@@ -15,6 +15,7 @@ from datetime import datetime, timezone
 
 # Initialize Sentry for error tracking
 from api.sentry_init import init_sentry
+from api.ratings import is_valid_rating_match
 init_sentry()
 
 
@@ -36,6 +37,14 @@ SAMPLE_MATCHES = [
      "set1_p1": 6, "set1_p2": 4, "set2_p1": 7, "set2_p2": 5,
      "player1_games": 13, "player2_games": 9, "period_label": "December 2024", "court": "Los Feliz"},
 ]
+
+
+def calculate_two_set_games(set1_p1, set1_p2, set2_p1, set2_p2):
+    """Return the authoritative two-set totals used by the league."""
+    return (
+        int(set1_p1) + int(set2_p1),
+        int(set1_p2) + int(set2_p2),
+    )
 
 
 class handler(BaseHTTPRequestHandler):
@@ -226,7 +235,6 @@ class handler(BaseHTTPRequestHandler):
             "player2_id": 2,                # Opponent
             "set1_p1": 6, "set1_p2": 4,     # Set 1 score
             "set2_p1": 6, "set2_p2": 3,     # Set 2 score
-            "set3_p1": null, "set3_p2": null,  # Optional Set 3
             "court": "Vermont Canyon",
             "would_play_again": true        # Feedback (silent blocking if false)
         }
@@ -286,11 +294,12 @@ class handler(BaseHTTPRequestHandler):
             set1_p2 = int(data.get('set1_p2', 0))
             set2_p1 = int(data.get('set2_p1', 0))
             set2_p2 = int(data.get('set2_p2', 0))
-            set3_p1 = int(data.get('set3_p1') or 0)
-            set3_p2 = int(data.get('set3_p2') or 0)
-
-            player1_games = set1_p1 + set2_p1 + set3_p1
-            player2_games = set1_p2 + set2_p2 + set3_p2
+            player1_games, player2_games = calculate_two_set_games(
+                set1_p1,
+                set1_p2,
+                set2_p1,
+                set2_p2,
+            )
 
             match_data = {
                 "player1_id": data['player1_id'],
@@ -299,8 +308,6 @@ class handler(BaseHTTPRequestHandler):
                 "set1_p2": set1_p2,
                 "set2_p1": set2_p1,
                 "set2_p2": set2_p2,
-                "set3_p1": set3_p1 if set3_p1 > 0 else None,
-                "set3_p2": set3_p2 if set3_p2 > 0 else None,
                 "player1_games": player1_games,
                 "player2_games": player2_games,
                 "period_type": data.get('period_type', 'month'),
@@ -309,6 +316,17 @@ class handler(BaseHTTPRequestHandler):
                 "match_date": data.get('match_date'),
                 "is_forfeit": data.get('is_forfeit', False)
             }
+
+            if not is_valid_rating_match(match_data):
+                self.send_response(400)
+                self.send_header('Content-Type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    "success": False,
+                    "error": "Enter two complete valid set scores before submitting the match."
+                }).encode())
+                return
 
             # Insert match
             response = table('matches').insert(match_data).execute()

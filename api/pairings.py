@@ -1,16 +1,8 @@
-"""
-Vercel Serverless Function: Pairing Algorithm (RMS-Based)
+"""Vercel Serverless Function: safe monthly pairing orchestration.
 
-Generates monthly match pairings based on:
-1. RMS (Rolling Match Score) - Average total games won in last 3 matches
-2. Performance bands: developing (≤6), competitive (6.1-9), strong (9.1-12), dominant (>12)
-3. New players paired together when possible
-4. Anti-staleness: avoid same matchup within 3 months
-5. Admin flex: remove Ashley/Natalie if odd count
-6. Only matches Players (not Social Butterflies)
-
-Updated for Ashley's Christmas 2025 feedback.
-Uses Supabase REST API (no Python supabase client).
+The rating and general-graph solver live in pure modules.  This file keeps the
+HTTP boundary responsible for authentication, Supabase reads/writes, validation,
+and the existing post-validation email path.
 """
 from http.server import BaseHTTPRequestHandler
 import json
@@ -20,65 +12,8 @@ from datetime import datetime, date
 # Initialize Sentry for error tracking
 from api.sentry_init import init_sentry
 from api.reliability import preflight, try_start_run, append_event, update_run
+from api.matching import build_pairing_plan
 init_sentry()
-
-
-def calculate_rms(player_id, matches):
-    """
-    Calculate Rolling Match Score (RMS) for a player.
-    RMS = Average total games won in last 3 completed matches.
-
-    Args:
-        player_id: The player's ID
-        matches: List of recent matches from database
-
-    Returns:
-        float or None if player has no matches
-    """
-    player_matches = []
-
-    for m in matches:
-        if m['player1_id'] == player_id:
-            games_won = (m.get('set1_p1', 0) or 0) + (m.get('set2_p1', 0) or 0)
-            player_matches.append(games_won)
-        elif m['player2_id'] == player_id:
-            games_won = (m.get('set1_p2', 0) or 0) + (m.get('set2_p2', 0) or 0)
-            player_matches.append(games_won)
-
-        # Only consider last 3 matches
-        if len(player_matches) >= 3:
-            break
-
-    if not player_matches:
-        return None
-
-    return sum(player_matches) / len(player_matches)
-
-
-def get_performance_band(rms):
-    """
-    Get performance band based on RMS score.
-
-    Bands:
-    - developing: ≤6 games average
-    - competitive: 6.1-9 games average
-    - strong: 9.1-12 games average
-    - dominant: >12 games average
-    - new: No RMS (new player)
-
-    Returns:
-        tuple: (band_name, band_order) where band_order is used for sorting
-    """
-    if rms is None:
-        return ('new', 0)  # New players get matched together
-    if rms <= 6:
-        return ('developing', 1)
-    elif rms <= 9:
-        return ('competitive', 2)
-    elif rms <= 12:
-        return ('strong', 3)
-    else:
-        return ('dominant', 4)
 
 
 def get_availability_text(player):
@@ -196,316 +131,88 @@ def _period_month(period_label):
     return datetime.now().month
 
 
-def _pair_score(player1, player2):
-    """Score pairing quality (higher is better)."""
-    score = 100
-
-    # Prefer similar RMS when available
-    if player1.get('rms') is not None and player2.get('rms') is not None:
-        rms_diff = abs(player1['rms'] - player2['rms'])
-        score += max(0, 20 - rms_diff * 3)
-
-    # Prefer same/adjacent bands
-    band_diff = abs(player1.get('band_order', 0) - player2.get('band_order', 0))
-    score += max(0, 30 - band_diff * 10)
-
-    return score
-
-
-def _find_best_fresh_pairs(players, blocked_set, all_time_pairs):
-    """
-    Exact fresh-pair solver for small leagues.
-
-    Finds a maximum-cardinality matching using only non-repeat, non-blocked edges.
-    Tiebreak: highest total score.
-
-    Returns:
-      (pair_idx_list, unpaired_idx_list) where pair_idx_list is [(i, j), ...]
-    """
-    n = len(players)
-    if n == 0:
-        return [], []
-
-    # Keep search bounded to avoid pathological explosion on very large leagues.
-    if n > 20:
-        return None, None
-
-    neighbors = [[] for _ in range(n)]
-    edge_score = {}
-    for i in range(n):
-        for j in range(i + 1, n):
-            p1 = players[i]
-            p2 = players[j]
-            if (p1['id'], p2['id']) in blocked_set:
-                continue
-            key = frozenset([p1['id'], p2['id']])
-            if key in all_time_pairs:
-                continue  # Fresh pass only
-            s = _pair_score(p1, p2)
-            neighbors[i].append(j)
-            neighbors[j].append(i)
-            edge_score[(i, j)] = s
-            edge_score[(j, i)] = s
-
-    from functools import lru_cache
-
-    @lru_cache(maxsize=None)
-    def solve(mask):
-        # Returns tuple: (pair_count, score_sum, pairs_tuple, unpaired_tuple)
-        if mask == 0:
-            return (0, 0, tuple(), tuple())
-
-        # Pick the unpaired player with the fewest available partners in mask
-        bits = [idx for idx in range(n) if mask & (1 << idx)]
-        best_i = None
-        best_degree = 10**9
-        for idx in bits:
-            deg = 0
-            for nb in neighbors[idx]:
-                if mask & (1 << nb):
-                    deg += 1
-            if deg < best_degree:
-                best_degree = deg
-                best_i = idx
-
-        i = best_i
-        best = None
-
-        # Option A: leave i unmatched
-        next_mask = mask & ~(1 << i)
-        a_cnt, a_score, a_pairs, a_unpaired = solve(next_mask)
-        best = (a_cnt, a_score, a_pairs, tuple(sorted((i,) + a_unpaired)))
-
-        # Option B: pair i with each eligible j
-        # Highest-score edges first to reduce search churn.
-        candidates = [j for j in neighbors[i] if mask & (1 << j)]
-        candidates.sort(key=lambda j: edge_score[(i, j)], reverse=True)
-
-        for j in candidates:
-            pair_mask = mask & ~(1 << i) & ~(1 << j)
-            c_cnt, c_score, c_pairs, c_unpaired = solve(pair_mask)
-            c_cnt += 1
-            c_score += edge_score[(i, j)]
-            c_pairs = tuple(sorted(((min(i, j), max(i, j)),) + c_pairs))
-            candidate = (c_cnt, c_score, c_pairs, c_unpaired)
-
-            # Max pairs first, then score.
-            if (candidate[0] > best[0]) or (candidate[0] == best[0] and candidate[1] > best[1]):
-                best = candidate
-
-        return best
-
-    full_mask = (1 << n) - 1
-    pair_count, _score, pairs, unpaired = solve(full_mask)
-
-    # Safety: ensure no duplicates in output
-    used = set()
-    pair_idx_list = []
-    for i, j in pairs:
-        if i in used or j in used:
-            continue
-        used.add(i)
-        used.add(j)
-        pair_idx_list.append((i, j))
-
-    unpaired_idx = [idx for idx in range(n) if idx not in used]
-    return pair_idx_list, unpaired_idx
-
-
 def generate_pairings(players, blocked_pairs, all_assignments, all_matches, period_label=None):
+    """Generate a safe plan from a complete roster/history snapshot.
+
+    The public return shape stays compatible with the existing handler/tests,
+    while the actual work is delegated to the general-graph solver.  Admin
+    flex is resolved before the solver so Natalie/Ashley remain the normal
+    solution to an odd roster.
     """
-    Generate optimal pairings using exhaustion-first matching.
-
-    Algorithm:
-    1. Calculate RMS for each player
-    2. Group players by performance band
-    3. Pass 1: treat ALL previously-paired players as blocked — pair everyone fresh
-    4. Pass 2: for any player who couldn't be paired fresh, allow repeats (oldest first)
-    5. Handle odd player by removing admin flex or floating to adjacent band
-
-    Args:
-        players: List of eligible players
-        blocked_pairs: List of hard-blocked pairs (wouldn't play again)
-        all_assignments: ALL historical match assignments (for exhaustion check)
-        all_matches: All matches with scores (for RMS calculation)
-
-    Returns:
-        tuple: (pairings, skipped, forced_repeats)
-            forced_repeats: set of frozenset pair keys that were unavoidable repeats
-    """
-    # Filter to only available players
-    available_players = [p for p in players if is_player_available(p)]
-
+    available_players = [player for player in players if is_player_available(player)]
     if len(available_players) < 2:
         return [], available_players, set()
 
-    # Calculate RMS for each player and add to player dict
-    for player in available_players:
-        rms = calculate_rms(player['id'], all_matches)
-        player['rms'] = rms
-        band, band_order = get_performance_band(rms)
-        player['band'] = band
-        player['band_order'] = band_order
-
-    # Convert hard-blocked pairs to a set for O(1) lookup
-    blocked_set = set()
-    for bp in blocked_pairs:
-        blocked_set.add((bp['player_a'], bp['player_b']))
-        blocked_set.add((bp['player_b'], bp['player_a']))
-
-    # Build all-time pair history from BOTH assignments AND logged matches.
-    # match_assignments covers formal monthly pairings; matches covers extra matches
-    # logged via "Log Extra Match" (which don't create assignments). Without both,
-    # players who played a pickup game can get formally paired with the same person.
-    all_time_pairs = {}
-    for m in all_assignments:
-        key = frozenset([m['player1_id'], m['player2_id']])
-        if key not in all_time_pairs:
-            all_time_pairs[key] = m.get('period_label', '')
-    for m in all_matches:
-        key = frozenset([m['player1_id'], m['player2_id']])
-        if key not in all_time_pairs:
-            all_time_pairs[key] = m.get('period_label', '')
-
-    # Handle odd number of players - remove admin flex with alternating rotation.
-    # Ashley sits out on odd months (Jan, Mar, May, Jul, Sep, Nov),
-    # so Ashley plays in August 2026; Natalie sits out on even months.
+    skipped = []
     if len(available_players) % 2 == 1:
-        natalie = next((p for p in available_players if p.get('email', '').lower() == 'nmcoffen@gmail.com'), None)
-        ashley = next((p for p in available_players if p.get('email', '').lower() == 'ashleybrooke.kaufman@gmail.com'), None)
-
+        natalie = next(
+            (p for p in available_players if p.get('email', '').lower() == 'nmcoffen@gmail.com'),
+            None,
+        )
+        ashley = next(
+            (p for p in available_players if p.get('email', '').lower() == 'ashleybrooke.kaufman@gmail.com'),
+            None,
+        )
         is_odd_month = _period_month(period_label) % 2 == 1
-
         removed_player = None
         if is_odd_month:
-            if ashley:
-                available_players.remove(ashley)
-                removed_player = ashley
-            elif natalie:
-                available_players.remove(natalie)
-                removed_player = natalie
+            removed_player = ashley or natalie
         else:
-            if natalie:
-                available_players.remove(natalie)
-                removed_player = natalie
-            elif ashley:
-                available_players.remove(ashley)
-                removed_player = ashley
+            removed_player = natalie or ashley
+        if removed_player is None:
+            removed_player = sorted(
+                available_players,
+                key=lambda p: (p.get('rank') or 999, str(p.get('id'))),
+            )[-1]
+        available_players.remove(removed_player)
+        skipped.append(removed_player)
 
-        if not removed_player:
-            available_players.sort(key=lambda p: (p.get('rank') or 999, p.get('band_order') or 0))
-            removed_player = available_players.pop()
+    plan = build_pairing_plan(
+        available_players,
+        assignment_history=all_assignments,
+        canonical_matches=all_matches,
+        hard_blocks=blocked_pairs,
+        period_label=period_label,
+        as_of=period_label,
+    )
+    skipped.extend(plan['unpaired'])
+    return plan['pairings'], skipped, set(plan['forced_repeats'])
 
-        skipped = [removed_player] if removed_player else []
-    else:
-        skipped = []
 
-    pairings = []
-    unpaired = []
-    forced_repeats = set()
-
-    # Pass 1: exact fresh matching for small/medium leagues.
-    # If a no-repeat full pairing exists, this finds it.
-    # Fallback to deterministic greedy if league size is larger than solver bound.
-    available_players.sort(key=lambda p: (p.get('rank') or 999, str(p.get('id'))))
-    exact_pairs, exact_unpaired = _find_best_fresh_pairs(available_players, blocked_set, all_time_pairs)
-
-    if exact_pairs is not None:
-        for i, j in exact_pairs:
-            p1 = available_players[i]
-            p2 = available_players[j]
-            pairings.append({
-                'player1': p1,
-                'player2': p2,
-                'player1_availability': get_availability_text(p1),
-                'player2_availability': get_availability_text(p2),
-                'score': _pair_score(p1, p2),
-                'band': p1['band'] if p1['band'] == p2['band'] else f"cross-band ({p1['band']} + {p2['band']})"
-            })
-        unpaired = [available_players[idx] for idx in exact_unpaired]
-    else:
-        # Deterministic fallback (large league): greedy fresh first.
-        working = list(available_players)
-        while len(working) >= 2:
-            player1 = working.pop(0)
-            best_idx = None
-            best_score = -999
-            for i, player2 in enumerate(working):
-                if (player1['id'], player2['id']) in blocked_set:
-                    continue
-                pair_key = frozenset([player1['id'], player2['id']])
-                if pair_key in all_time_pairs:
-                    continue
-                score = _pair_score(player1, player2)
-                if score > best_score:
-                    best_score = score
-                    best_idx = i
-
-            if best_idx is not None:
-                player2 = working.pop(best_idx)
-                pairings.append({
-                    'player1': player1,
-                    'player2': player2,
-                    'player1_availability': get_availability_text(player1),
-                    'player2_availability': get_availability_text(player2),
-                    'score': best_score,
-                    'band': player1['band'] if player1['band'] == player2['band'] else f"cross-band ({player1['band']} + {player2['band']})"
-                })
-            else:
-                unpaired.append(player1)
-        unpaired.extend(working)
-
-    # Pass 2: allow repeats for anyone still unpaired (exhausted all fresh options)
-    while len(unpaired) >= 2:
-        player1 = unpaired.pop(0)
-
-        best_idx = None
-        best_score = -999
-        for i, player2 in enumerate(unpaired):
-            if (player1['id'], player2['id']) in blocked_set:
-                continue
-            score = _pair_score(player1, player2)
-            pair_key = frozenset([player1['id'], player2['id']])
-            if pair_key in all_time_pairs:
-                score -= 500  # Huge penalty but not impossible
-            if score > best_score:
-                best_score = score
-                best_idx = i
-
-        if best_idx is not None:
-            player2 = unpaired.pop(best_idx)
-            pair_key = frozenset([player1['id'], player2['id']])
-            if pair_key in all_time_pairs:
-                forced_repeats.add(pair_key)
-            pairings.append({
-                'player1': player1,
-                'player2': player2,
-                'player1_availability': get_availability_text(player1),
-                'player2_availability': get_availability_text(player2),
-                'score': best_score,
-                'band': f"cross-band ({player1['band']} + {player2['band']})"
-            })
+def _load_all_rows(table, table_name, columns, order_column, page_size=500):
+    """Load a complete Supabase result in bounded PostgREST pages."""
+    rows = []
+    offset = 0
+    while True:
+        query = table(table_name).select(columns)
+        if order_column:
+            query = query.order(order_column, desc=True)
+        range_method = getattr(query, 'range', None)
+        if callable(range_method):
+            response = range_method(offset, offset + page_size - 1).execute()
         else:
-            skipped.append(player1)
+            # Compatibility with small test doubles and older local clients.
+            response = query.execute()
+        if response.error:
+            return response
+        page = response.data or []
+        rows.extend(page)
+        if not callable(range_method) or len(page) < page_size:
+            break
+        offset += page_size
 
-    skipped.extend(unpaired)
+    response.data = rows
+    return response
 
-    return pairings, skipped, forced_repeats
 
-
-def update_player_rms(player_id, matches):
-    """Update a player's RMS score and band in the database"""
-    from api.supabase_http import table
-
-    rms = calculate_rms(player_id, matches)
-    band, _ = get_performance_band(rms)
-
-    table('players').update({
-        'rms_score': rms,
-        'rms_band': band
-    }).eq('id', player_id).execute()
-
-    return rms, band
+def _load_all_match_scores(table, page_size=500):
+    """Load the complete two-set score history in bounded pages."""
+    columns = (
+        'id, player1_id, player2_id, set1_p1, set1_p2, set2_p1, set2_p2, '
+        'player1_games, player2_games, period_label, match_date, status, '
+        'is_forfeit, created_at'
+    )
+    return _load_all_rows(table, 'matches', columns, 'created_at', page_size)
 
 
 class handler(BaseHTTPRequestHandler):
@@ -655,7 +362,7 @@ class handler(BaseHTTPRequestHandler):
             # 1. Get all active Players (exclude Social Butterflies and admin)
             admin_email = os.environ.get('ADMIN_EMAIL', 'khamel@khamel.com')
             players_resp = table('players')\
-                .select('id, name, email, phone, skill_level, rank, is_active, unavailable_until, membership_tier, rms_score, rms_band, avail_weekday_early, avail_weekday_day, avail_weekday_late, avail_weekend_early, avail_weekend_day, avail_weekend_late, available_morning, available_afternoon, available_evening')\
+                .select('id, name, email, phone, skill_level, rank, is_active, unavailable_until, membership_tier, avail_weekday_early, avail_weekday_day, avail_weekday_late, avail_weekend_early, avail_weekend_day, avail_weekend_late, available_morning, available_afternoon, available_evening')\
                 .eq('is_active', True)\
                 .neq('membership_tier', 'social_butterfly')\
                 .neq('email', admin_email)\
@@ -669,39 +376,43 @@ class handler(BaseHTTPRequestHandler):
                 return
             players = players_resp.data
 
-            # 2. Get blocked pairs (from "would not play again" feedback)
-            blocked_resp = table('match_feedback')\
-                .select('from_player_id, about_player_id')\
-                .eq('would_play_again', False)\
-                .execute()
+            # 2. Get every hard-block feedback row (from "would not play again")
+            blocked_resp = _load_all_rows(
+                table,
+                'match_feedback',
+                'from_player_id, about_player_id, would_play_again',
+                'created_at',
+            )
             if blocked_resp.error:
                 self._send_error(500, f"Failed to load blocked pairs: {blocked_resp.error}")
                 return
             blocked_pairs = []
             for b in blocked_resp.data:
+                if b.get('would_play_again', True) is not False:
+                    continue
                 blocked_pairs.append({
                     'player_a': min(b['from_player_id'], b['about_player_id']),
                     'player_b': max(b['from_player_id'], b['about_player_id'])
                 })
 
-            # 3. Get ALL historical match assignments (exhaustion-first algorithm needs full history)
-            # NOTE: match_assignments uses 'assigned_at', not 'created_at'
-            history_resp = table('match_assignments')\
-                .select('player1_id, player2_id, period_label, assigned_at')\
-                .order('assigned_at', desc=True)\
-                .execute()
+            # 3. Get the complete assignment history for repeat detection.
+            # NOTE: match_assignments uses 'assigned_at', not 'created_at'.
+            history_resp = _load_all_rows(
+                table,
+                'match_assignments',
+                'player1_id, player2_id, period_label, assigned_at',
+                'assigned_at',
+            )
             if history_resp.error:
                 # Hard stop — never generate pairings without knowing full pairing history
                 self._send_error(500, f"Failed to load match history: {history_resp.error}")
                 return
             all_assignments = history_resp.data
 
-            # 4. Get all matches with scores (for RMS calculation)
-            all_matches_resp = table('matches')\
-                .select('player1_id, player2_id, set1_p1, set1_p2, set2_p1, set2_p2')\
-                .order('created_at', desc=True)\
-                .limit(500)\
-                .execute()
+            # 4. Get the complete two-set score history for deterministic rating
+            # rebuilds and repeat detection. Pagination removes the old 500-row
+            # ceiling without loading an unbounded response at once.
+            all_matches_resp = _load_all_match_scores(table)
             if all_matches_resp.error:
                 self._send_error(500, f"Failed to load match scores: {all_matches_resp.error}")
                 return
@@ -872,18 +583,16 @@ class handler(BaseHTTPRequestHandler):
                 self._send_error(500, f"Postcheck failed: sent {emails_sent} emails for {len(assignments)} pairings")
                 return
 
-            # 8. Update RMS scores for all players
-            for player in players:
-                update_player_rms(player['id'], all_matches)
-
             append_event(self._run_id, 'postcheck', 'info', 'Pairings run completed', {
                 'pairings_created': len(assignments),
                 'emails_sent': emails_sent,
+                'rating_model': 'elo-two-set-v1',
             })
             update_run(self._run_id, 'succeeded', summary={
                 'period': period_label,
                 'pairings_created': len(assignments),
                 'emails_sent': emails_sent,
+                'rating_model': 'elo-two-set-v1',
             })
             self._send_success({
                 'period': period_label,
@@ -897,13 +606,15 @@ class handler(BaseHTTPRequestHandler):
                     'player1': p['player1']['name'],
                     'player1_email': p['player1']['email'],
                     'player1_availability': p['player1_availability'],
-                    'player1_rms': p['player1'].get('rms'),
-                    'player1_band': p['player1'].get('band'),
+                    'player1_rating': p['player1'].get('rating'),
+                    'player1_uncertainty': p['player1'].get('uncertainty'),
+                    'player1_valid_results': p['player1'].get('valid_results'),
                     'player2': p['player2']['name'],
                     'player2_email': p['player2']['email'],
                     'player2_availability': p['player2_availability'],
-                    'player2_rms': p['player2'].get('rms'),
-                    'player2_band': p['player2'].get('band'),
+                    'player2_rating': p['player2'].get('rating'),
+                    'player2_uncertainty': p['player2'].get('uncertainty'),
+                    'player2_valid_results': p['player2'].get('valid_results'),
                     'match_score': p['score'],
                     'match_band': p['band']
                 } for p in pairings]

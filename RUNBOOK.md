@@ -235,5 +235,5 @@ If secrets mismatch, scheduled jobs will fail by design.
 ### Pairing repeat policy (operator expectation)
 
 - The monthly pairing engine prioritizes non-repeat pairings.
-- For this league size, it uses exact fresh matching, not random greedy pairing.
+- It uses the general-graph maximum-weight solver, not a size-based greedy fallback; the supported target is 2–100 players.
 - If repeat pairs appear, treat that as a bug and investigate immediately (do not assume expected behavior).

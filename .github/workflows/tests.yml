@@ -44,7 +44,7 @@ jobs:
 
       - name: Run API tests
         run: |
-          pytest tests/test_api.py -v --tb=short --cov=api --cov-report=term --cov-report=xml
+          pytest tests -v --tb=short --cov=api --cov-report=term --cov-report=xml
 
       - name: Upload coverage reports
         uses: codecov/codecov-action@v4
