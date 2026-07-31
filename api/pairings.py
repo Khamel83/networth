@@ -508,6 +508,27 @@ def update_player_rms(player_id, matches):
     return rms, band
 
 
+def _is_cron_or_verified_admin(handler):
+    """Authorize pairing reads/writes for workflows or verified admins."""
+    token = handler.headers.get('Authorization', '').replace('Bearer ', '').strip()
+    cron_secret = os.environ.get('CRON_SECRET', '').strip()
+    if cron_secret and token == cron_secret:
+        return True
+
+    if token:
+        from api.auth import verify_session
+        from api.admin import verify_admin
+
+        email = verify_session(token)
+        if email and verify_admin(email):
+            return True
+        handler._send_error(403, 'Admin access required')
+        return False
+
+    handler._send_error(401, 'Unauthorized')
+    return False
+
+
 class handler(BaseHTTPRequestHandler):
     def do_OPTIONS(self):
         self.send_response(200)
@@ -519,6 +540,9 @@ class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         """Get pairings for a given period (defaults to current month)"""
         try:
+            if not _is_cron_or_verified_admin(self):
+                return
+
             from api.supabase_http import table
             from urllib.parse import urlparse, parse_qs
 
@@ -598,19 +622,14 @@ class handler(BaseHTTPRequestHandler):
         self._run_action = 'generate_pairings'
         self._run_period = None
         try:
-            from api.supabase_http import table
-
             content_length = int(self.headers.get('Content-Length', 0))
             body = self.rfile.read(content_length).decode('utf-8')
             data = json.loads(body) if body else {}
 
-            # Auth check: CRON_SECRET required (GitHub Actions or admin dashboard)
-            cron_secret = os.environ.get('CRON_SECRET', '')
-            if cron_secret:
-                auth = self.headers.get('Authorization', '').replace('Bearer ', '')
-                if auth != cron_secret:
-                    self._send_error(401, 'Unauthorized')
-                    return
+            if not _is_cron_or_verified_admin(self):
+                return
+
+            from api.supabase_http import table
 
             action = data.get('action', 'generate')
             if action == 'clear_period':

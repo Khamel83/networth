@@ -180,6 +180,87 @@ def test_paused_player_bulk_action_requires_cron_secret(monkeypatch):
     table.assert_not_called()
 
 
+def test_pairings_post_requires_cron_or_verified_admin(monkeypatch):
+    monkeypatch.delenv('CRON_SECRET', raising=False)
+    from api.pairings import handler
+
+    instance = _handler_request(handler, {'action': 'generate'})
+
+    with patch('api.supabase_http.table') as table:
+        instance.do_POST()
+
+    instance.send_response.assert_called_with(401)
+    table.assert_not_called()
+
+
+def test_pairings_get_requires_cron_or_verified_admin(monkeypatch):
+    monkeypatch.delenv('CRON_SECRET', raising=False)
+    from api.pairings import handler
+
+    instance = _handler_request(handler, {})
+    instance.path = '/api/pairings?period=July%202026'
+
+    with patch('api.supabase_http.table') as table:
+        instance.do_GET()
+
+    instance.send_response.assert_called_with(401)
+    table.assert_not_called()
+
+
+def test_public_players_response_contains_only_allowlisted_fields():
+    from api.players import PUBLIC_PLAYER_FIELDS, handler
+
+    class FakeQuery:
+        def select(self, _columns):
+            return self
+
+        def eq(self, _column, _value):
+            return self
+
+        def neq(self, _column, _value):
+            return self
+
+        def order(self, _column, **_kwargs):
+            return self
+
+        def execute(self):
+            return SimpleNamespace(data=[{
+                'id': 'p1',
+                'name': 'Player One',
+                'skill_level': '3.5',
+                'rank': 1,
+                'total_games': 10,
+                'matches_played': 2,
+                'trend': 'up',
+                'membership_tier': 'player',
+                'avatar_url': None,
+                'rms_band': 'competitive',
+                'email': 'private@example.com',
+                'phone': '555-0001',
+                'is_admin': True,
+                'password_hash': 'private',
+                'avail_weekday_day': True,
+            }], error=None)
+
+    instance = _handler_request(handler, {})
+    with patch('api.supabase_http.table', return_value=FakeQuery()):
+        instance.do_GET()
+
+    payload = json.loads(instance.wfile.write.call_args[0][0].decode())
+    assert set(payload['players'][0]) == set(PUBLIC_PLAYER_FIELDS)
+    assert 'email' not in payload['players'][0]
+    assert 'phone' not in payload['players'][0]
+    assert 'is_admin' not in payload['players'][0]
+    assert 'password_hash' not in payload['players'][0]
+    assert not any(key.startswith('avail_') for key in payload['players'][0])
+
+
+def test_profiles_fetch_uses_authenticated_token():
+    source = Path('public/profiles.html').read_text()
+    assert "localStorage.getItem('networth_token')" in source
+    assert "'Authorization': `Bearer ${token}`" in source
+
+
 def test_report_issue_queues_without_resend(monkeypatch):
     monkeypatch.setenv('RESEND_API_KEY', 'test-key')
     from api.system import handler

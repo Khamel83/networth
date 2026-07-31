@@ -567,9 +567,14 @@ class TestPairingsAPI:
         mock_handler.send_header = Mock()
         mock_handler.end_headers = Mock()
         mock_handler.wfile = Mock()
+        mock_handler.headers = Mock()
+        mock_handler.headers.get = Mock(side_effect=lambda key, default=None: {
+            'Authorization': 'Bearer test-cron-secret'
+        }.get(key, default))
 
-        with patch('api.supabase_http.table', side_effect=fake_table):
-            mock_handler.do_GET()
+        with patch.dict(os.environ, {'CRON_SECRET': 'test-cron-secret'}):
+            with patch('api.supabase_http.table', side_effect=fake_table):
+                mock_handler.do_GET()
 
         mock_handler.send_response.assert_called_with(200)
         write_arg = mock_handler.wfile.write.call_args[0][0]
