@@ -186,6 +186,22 @@ class TestSupabaseHTTP:
             assert hasattr(result, 'update')
             assert hasattr(result, 'delete')
 
+    def test_select_gte_builds_supabase_filter(self):
+        """SelectBuilder must support the filter used by post-timeout reconciliation."""
+        from api.supabase_http import table
+
+        response = Mock(status_code=200, text='[]')
+        response.json.return_value = []
+
+        with patch('api.supabase_http.httpx.get', return_value=response) as http_get:
+            result = table('email_log').select('resend_email_id,sent_at').eq(
+                'action', 'send_final_reminder'
+            ).gte('sent_at', '2026-07-31T00:00:00+00:00').execute()
+
+        assert result.error is None
+        params = http_get.call_args.kwargs['params']
+        assert params['sent_at'] == 'gte.2026-07-31T00:00:00+00:00'
+
 
 class TestWorkflowGateCheck:
     """Test workflow gate-check logic"""
@@ -571,6 +587,293 @@ class TestPairingsAPI:
 
 class TestEmailReliability:
     """Test email reliability improvements"""
+
+    def test_check_recent_send_queries_email_log_since_utc_midnight(self):
+        """The post-timeout verification path must query email_log successfully."""
+        from api.email import handler
+        from types import SimpleNamespace
+        import io
+
+        class FakeQuery:
+            def __init__(self):
+                self.filters = []
+
+            def select(self, columns):
+                return self
+
+            def eq(self, column, value):
+                self.filters.append((column, 'eq', value))
+                return self
+
+            def gte(self, column, value):
+                self.filters.append((column, 'gte', value))
+                return self
+
+            def execute(self):
+                return SimpleNamespace(
+                    data=[
+                        {'resend_email_id': 'email-1', 'sent_at': '2026-07-31T18:19:00+00:00'},
+                        {'resend_email_id': 'email-2', 'sent_at': '2026-07-31T18:19:01+00:00'},
+                    ],
+                    error=None,
+                )
+
+        fake_query = FakeQuery()
+
+        mock_request = Mock()
+        mock_handler = handler(mock_request, None, None)
+        mock_handler.send_response = Mock()
+        mock_handler.send_header = Mock()
+        mock_handler.end_headers = Mock()
+        mock_handler.wfile = Mock()
+
+        body = json.dumps({
+            'action': 'check_recent_send',
+            'email_action': 'send_final_reminder',
+        }).encode()
+        mock_handler.headers = Mock()
+        mock_handler.headers.get = Mock(side_effect=lambda key, default=None: {
+            'Content-Length': str(len(body)),
+            'Authorization': 'Bearer test-cron-secret',
+        }.get(key, default))
+        mock_handler.rfile = io.BytesIO(body)
+
+        with patch('api.supabase_http.table', return_value=fake_query):
+            with patch.dict(os.environ, {'CRON_SECRET': 'test-cron-secret'}):
+                mock_handler.do_POST()
+
+        mock_handler.send_response.assert_called_with(200)
+        payload = json.loads(mock_handler.wfile.write.call_args[0][0].decode())
+        assert payload['success'] is True
+        assert payload['already_sent'] is True
+        assert payload['sent'] == 2
+        assert any(filter_item[0:2] == ('sent_at', 'gte') for filter_item in fake_query.filters)
+
+    def test_send_bulk_emails_uses_one_resend_batch_for_player_reminders(self):
+        """A normal reminder batch must not spend one provider request per player."""
+        import resend
+        from api.email import send_bulk_emails
+
+        messages = [
+            {
+                'from': 'Net Worth Tennis <hello@networthtennis.com>',
+                'to': [f'player-{index}@test.com'],
+                'subject': 'Last call',
+                'html': '<p>Reminder</p>',
+            }
+            for index in range(30)
+        ]
+        batch_response = {
+            'data': [{'id': f'resend-{index}'} for index in range(len(messages))]
+        }
+
+        with patch.dict(os.environ, {'RESEND_API_KEY': 'test-resend-key'}):
+            with patch.object(resend.Batch, 'send', return_value=batch_response) as batch_send:
+                with patch('api.email._time.sleep') as sleep:
+                    result = send_bulk_emails(messages, idempotency_key='networth:test-run:0')
+
+        assert result['success'] is True
+        assert result['sent'] == len(messages)
+        assert [delivery['id'] for delivery in result['deliveries']] == [
+            f'resend-{index}' for index in range(len(messages))
+        ]
+        batch_send.assert_called_once()
+        sent_params, options = batch_send.call_args.args
+        assert len(sent_params) == len(messages)
+        assert options['idempotency_key'] == 'networth:test-run:0'
+        sleep.assert_not_called()
+
+    def test_send_bulk_emails_reports_all_unsent_messages_on_batch_failure(self):
+        """A failed batch must expose the full unsent count to the workflow."""
+        import resend
+        from api.email import send_bulk_emails
+
+        messages = [{
+            'from': 'Net Worth Tennis <hello@networthtennis.com>',
+            'to': ['player@test.com'],
+            'subject': 'Reminder',
+            'html': '<p>Reminder</p>',
+        } for _ in range(4)]
+
+        with patch.dict(os.environ, {'RESEND_API_KEY': 'test-resend-key'}):
+            with patch.object(resend.Batch, 'send', return_value={'data': []}):
+                result = send_bulk_emails(messages, idempotency_key='networth:test-failure')
+
+        assert result['success'] is False
+        assert result['sent'] == 0
+        assert result['failed'] == len(messages)
+
+    def test_final_reminder_handler_batches_provider_calls_and_logs_deliveries(self):
+        """The scheduled final reminder must batch Resend and bulk-write its audit rows."""
+        from api.email import handler
+        from types import SimpleNamespace
+        import io
+        import resend
+
+        players = [
+            {'email': 'one@test.com', 'name': 'One'},
+            {'email': 'two@test.com', 'name': 'Two'},
+        ]
+        inserted_rows = []
+
+        class FakeQuery:
+            def __init__(self, table_name):
+                self.table_name = table_name
+
+            def select(self, columns):
+                return self
+
+            def eq(self, column, value):
+                return self
+
+            def insert(self, data):
+                inserted_rows.append(data)
+                return self
+
+            def execute(self):
+                return SimpleNamespace(
+                    data=players if self.table_name == 'players' else [],
+                    error=None,
+                )
+
+        mock_request = Mock()
+        mock_handler = handler(mock_request, None, None)
+        mock_handler.send_response = Mock()
+        mock_handler.send_header = Mock()
+        mock_handler.end_headers = Mock()
+        mock_handler.wfile = Mock()
+
+        body = json.dumps({'action': 'send_final_reminder'}).encode()
+        mock_handler.headers = Mock()
+        mock_handler.headers.get = Mock(side_effect=lambda key, default=None: {
+            'Content-Length': str(len(body)),
+            'Authorization': 'Bearer test-cron-secret',
+        }.get(key, default))
+        mock_handler.rfile = io.BytesIO(body)
+
+        with patch('api.supabase_http.table', side_effect=lambda name: FakeQuery(name)):
+            with patch('api.email.try_start_run', return_value=('run-1', None)):
+                with patch('api.email.preflight', return_value=(True, {})):
+                    with patch('api.email.append_event'):
+                        with patch('api.email.update_run'):
+                            with patch.dict(os.environ, {
+                                'CRON_SECRET': 'test-cron-secret',
+                                'RESEND_API_KEY': 'test-resend-key',
+                            }):
+                                with patch.object(resend.Batch, 'send', return_value={
+                                    'data': [{'id': 'resend-1'}, {'id': 'resend-2'}]
+                                }) as batch_send:
+                                    with patch.object(
+                                        resend.Emails,
+                                        'send',
+                                        side_effect=AssertionError('individual send used'),
+                                    ):
+                                        mock_handler.do_POST()
+
+        mock_handler.send_response.assert_called_with(200)
+        batch_send.assert_called_once()
+        assert len(inserted_rows) == 1
+        assert len(inserted_rows[0]) == len(players)
+        assert [row['resend_email_id'] for row in inserted_rows[0]] == [
+            'resend-1', 'resend-2'
+        ]
+
+    def test_midmonth_handler_batches_provider_calls_and_logs_deliveries(self):
+        """The scheduled mid-month reminder must use the same bounded batch path."""
+        from api.email import handler
+        from types import SimpleNamespace
+        import io
+        import resend
+
+        matches = [{
+            'id': 'match-1',
+            'player1_id': 'player-1',
+            'player2_id': 'player-2',
+            'status': 'pending',
+        }]
+        players = [
+            {'id': 'player-1', 'email': 'one@test.com', 'name': 'One'},
+            {'id': 'player-2', 'email': 'two@test.com', 'name': 'Two'},
+        ]
+        inserted_rows = []
+
+        class FakeQuery:
+            def __init__(self, table_name):
+                self.table_name = table_name
+
+            def select(self, columns):
+                return self
+
+            def eq(self, column, value):
+                return self
+
+            def is_(self, column, value):
+                return self
+
+            def update(self, data):
+                return self
+
+            def insert(self, data):
+                inserted_rows.append(data)
+                return self
+
+            def execute(self):
+                if self.table_name == 'match_assignments':
+                    return SimpleNamespace(data=matches, error=None)
+                if self.table_name == 'players':
+                    return SimpleNamespace(data=players, error=None)
+                return SimpleNamespace(data=[], error=None)
+
+        mock_request = Mock()
+        mock_handler = handler(mock_request, None, None)
+        mock_handler.send_response = Mock()
+        mock_handler.send_header = Mock()
+        mock_handler.end_headers = Mock()
+        mock_handler.wfile = Mock()
+
+        body = json.dumps({'action': 'send_midmonth_reminders'}).encode()
+        mock_handler.headers = Mock()
+        mock_handler.headers.get = Mock(side_effect=lambda key, default=None: {
+            'Content-Length': str(len(body)),
+            'Authorization': 'Bearer test-cron-secret',
+        }.get(key, default))
+        mock_handler.rfile = io.BytesIO(body)
+
+        with patch('api.supabase_http.table', side_effect=lambda name: FakeQuery(name)):
+            with patch('api.email.try_start_run', return_value=('run-1', None)):
+                with patch('api.email.preflight', return_value=(True, {})):
+                    with patch('api.email.append_event'):
+                        with patch('api.email.update_run'):
+                            with patch.dict(os.environ, {
+                                'CRON_SECRET': 'test-cron-secret',
+                                'RESEND_API_KEY': 'test-resend-key',
+                            }):
+                                with patch.object(resend.Batch, 'send', return_value={
+                                    'data': [{'id': 'resend-1'}]
+                                }) as batch_send:
+                                    with patch.object(
+                                        resend.Emails,
+                                        'send',
+                                        side_effect=AssertionError('individual send used'),
+                                    ):
+                                        mock_handler.do_POST()
+
+        mock_handler.send_response.assert_called_with(200)
+        batch_send.assert_called_once()
+        assert len(inserted_rows) == 1
+        assert inserted_rows[0][0]['resend_email_id'] == 'resend-1'
+
+    def test_pairings_email_path_uses_bounded_batch_delivery(self):
+        """Pairing generation must not retain the old serial provider loop."""
+        with open('api/pairings.py', 'r') as f:
+            content = f.read()
+
+        email_section_start = content.find('# 7. Send match assignment emails')
+        email_section_end = content.find('# 8. Update RMS scores')
+        email_section = content[email_section_start:email_section_end]
+
+        assert 'send_bulk_emails' in email_section
+        assert 'time.sleep(0.6)' not in email_section
 
     def test_send_email_retries_on_429(self):
         """send_email should retry once automatically on RateLimitError"""
