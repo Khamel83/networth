@@ -807,12 +807,9 @@ class handler(BaseHTTPRequestHandler):
             emails_sent = 0
             email_errors = []
             try:
-                import time
-                from api.email import send_email, get_match_assignment_email_html
-                for i, p in enumerate(pairings):
-                    # Rate limit: Resend allows 2 req/sec, add delay between emails
-                    if i > 0:
-                        time.sleep(0.6)
+                from api.email import SENDER_EMAIL, send_bulk_emails, get_match_assignment_email_html
+                email_jobs = []
+                for p in pairings:
                     p1 = p['player1']
                     p2 = p['player2']
                     html = get_match_assignment_email_html(
@@ -826,31 +823,43 @@ class handler(BaseHTTPRequestHandler):
                     )
                     subject = f"{p1['name']}, meet {p2['name']} - You're matched for {period_label}!"
                     # Reply-to first player so they can coordinate
-                    reply_to = p1['email']
-                    result = send_email(
-                        [p1['email'], p2['email']],
-                        subject,
-                        html,
-                        reply_to=reply_to
-                    )
-                    if result.get('success'):
-                        emails_sent += 1
-                        # Track email ID in match_assignments and universal email_log
-                        assignment_id = assignment_id_map.get(frozenset([p1['id'], p2['id']]))
-                        if assignment_id:
-                            table('match_assignments').update({
-                                'match_email_id': result.get('id'),
-                            }).eq('id', assignment_id).execute()
-                            table('email_log').insert({
-                                'action': 'generate_pairings',
-                                'to_emails': [p1['email'], p2['email']],
-                                'period_label': period_label,
-                                'match_id': assignment_id,
-                                'resend_email_id': result.get('id'),
-                            }).execute()
-                    else:
-                        email_errors.append(f"{p1['name']} & {p2['name']}: {result.get('error')}")
-                        # Continue to attempt all remaining pairings (no break)
+                    email_jobs.append((p, {
+                        'from': SENDER_EMAIL,
+                        'to': [p1['email'], p2['email']],
+                        'subject': subject,
+                        'html': html,
+                        'reply_to': p1['email'],
+                    }))
+
+                bulk_result = send_bulk_emails(
+                    [message for _, message in email_jobs],
+                    idempotency_key=f'networth:generate_pairings:{period_label}',
+                )
+                emails_sent = bulk_result.get('sent', 0)
+                email_errors.extend(bulk_result.get('errors', []))
+                log_rows = []
+
+                for (p, _), delivery in zip(email_jobs, bulk_result.get('deliveries', [])):
+                    p1 = p['player1']
+                    p2 = p['player2']
+                    assignment_id = assignment_id_map.get(frozenset([p1['id'], p2['id']]))
+                    if assignment_id:
+                        table('match_assignments').update({
+                            'match_email_id': delivery['id'],
+                        }).eq('id', assignment_id).execute()
+                        log_rows.append({
+                            'action': 'generate_pairings',
+                            'to_emails': delivery['to'],
+                            'period_label': period_label,
+                            'match_id': assignment_id,
+                            'resend_email_id': delivery['id'],
+                        })
+
+                if log_rows:
+                    log_result = table('email_log').insert(log_rows).execute()
+                    if log_result.error:
+                        email_errors.append(f'Failed to write email_log: {log_result.error}')
+                # Continue to attempt all remaining pairings via the batch (no break)
             except Exception as e:
                 email_errors.append(f"Email system error: {str(e)}")
 

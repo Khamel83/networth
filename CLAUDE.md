@@ -97,7 +97,8 @@ Automated Emails (GitHub Actions)
 - Free tier: 3,000 emails/month (we use ~100)
 
 ### Rate Limits & Reliability:
-- Resend allows **2 requests/second** on free tier — 0.6s sleep between bulk sends
+- Scheduled bulk sends use Resend's batch endpoint (up to 100 individualized emails per request), with an idempotency key per logical run
+- Batch responses are written to `email_log` in one bulk insert; batches over 100 are chunked with a 0.6s inter-request delay
 - `send_email()` auto-retries once on `RateLimitError` (429) with 1s sleep
 - All bulk send error responses include `sent` + `failed` counts even on partial failure
 - Every successful bulk send writes a row to the `email_log` table
@@ -162,7 +163,7 @@ Players log in with email + password. Password reset via emailed link (`/reset-p
 ### Critical Lessons Learned:
 - **Email case sensitivity:** Always `.lower()` emails before storing/comparing
 - **No reload after auth:** Don't use `window.location.reload()` after setting localStorage - set variables directly and update UI
-- **Cold start timeouts:** Vercel functions need `maxDuration: 30` in vercel.json for Supabase calls
+- **Function timeouts:** Vercel Hobby functions max out at 60 seconds; scheduled bulk email work must stay bounded below that limit
 
 ---
 
@@ -244,8 +245,8 @@ checkbox.addEventListener('change', async () => {
 {
   "functions": {
     "api/*.py": {
-      "runtime": "@vercel/python@4.3.1",
-      "maxDuration": 30  // Extended for Supabase cold starts
+      "runtime": "@vercel/python@6.51.1",
+      "maxDuration": 60
     }
   }
 }
@@ -554,8 +555,9 @@ if (response.status === 401) {
 ### 21. Vercel 504 False Alarm on Bulk Email
 **Symptom:** GitHub Actions shows failure, admin gets alert, but all emails were delivered
 **Cause:** Bulk send to 28 players takes ~31s (0.6s sleep × emails + network). Old `maxDuration: 30` killed the function AFTER all emails sent but before it could return 200. GitHub Actions saw 504 → fired alert.
-**Fix:** `maxDuration: 60` in vercel.json. Workflow now catches 504, queries `email_log` via `check_recent_send`, exits 0 if emails confirmed sent.
-**Rule:** Always set `maxDuration` based on worst-case bulk operation time, not just DB query time.
+**First fix:** `maxDuration: 60` in vercel.json plus a workflow fallback that queries `email_log` via `check_recent_send`.
+**Follow-up fix:** The fallback had a `timezone` scope collision and called an unimplemented `gte` query method; scheduled bulk sends also remained serial. The current implementation uses Resend batch sends, bulk audit writes, stable idempotency keys, and a working reconciliation query.
+**Rule:** Keep scheduled bulk work bounded below the platform limit and reconcile provider-side acceptance before raising a failure alert.
 
 ### 22. Python dict.get() Doesn't Use Default When Key Exists But Is None
 **Symptom:** Pairings generation crashes with `TypeError: '<' not supported between instances of 'NoneType' and 'int'`
