@@ -18,6 +18,8 @@ init_sentry()
 SENDER_NAME = 'Net Worth Tennis'
 SENDER_EMAIL = f'{SENDER_NAME} <hello@networthtennis.com>'
 REPLY_TO_EMAIL = 'ashleybrooke.kaufman@gmail.com'
+RESEND_BATCH_SIZE = 100
+RESEND_BATCH_DELAY_SECONDS = 0.6
 
 
 def _normalize_reply_to(reply_to):
@@ -88,6 +90,99 @@ def send_email(to_email, subject, html_content, reply_to=None, _retry=True):
         return {'success': False, 'error': f'Rate limit: {str(e)}'}
     except Exception as e:
         return {'success': False, 'error': str(e)}
+
+
+def send_bulk_emails(messages, idempotency_key=None, _retry=True):
+    """Send up to 100 individualized messages per Resend batch request.
+
+    The old bulk paths made one provider request and one database write per
+    recipient. That made a normal reminder batch capable of running past
+    Vercel's 60-second function limit after Resend had already accepted the
+    messages. Resend's batch endpoint keeps each recipient isolated while
+    reducing the provider round trips to one per 100 messages.
+    """
+    import resend
+
+    api_key = os.environ.get('RESEND_API_KEY')
+    if not api_key:
+        return {
+            'success': False,
+            'sent': 0,
+            'failed': len(messages),
+            'deliveries': [],
+            'errors': ['RESEND_API_KEY not configured in environment variables'],
+        }
+
+    if not messages:
+        return {'success': True, 'sent': 0, 'failed': 0, 'deliveries': [], 'errors': []}
+
+    batch_sender = getattr(resend, 'Batch', None)
+    if batch_sender is None or not hasattr(batch_sender, 'send'):
+        return {
+            'success': False,
+            'sent': 0,
+            'failed': len(messages),
+            'deliveries': [],
+            'errors': ['Resend SDK does not support batch email sends'],
+        }
+
+    resend.api_key = api_key
+    deliveries = []
+    errors = []
+    batch_count = (len(messages) + RESEND_BATCH_SIZE - 1) // RESEND_BATCH_SIZE
+
+    for batch_index in range(0, len(messages), RESEND_BATCH_SIZE):
+        batch = messages[batch_index:batch_index + RESEND_BATCH_SIZE]
+        if batch_index > 0:
+            _time.sleep(RESEND_BATCH_DELAY_SECONDS)
+
+        options = {'batch_validation': 'strict'}
+        if idempotency_key:
+            options['idempotency_key'] = (
+                idempotency_key
+                if batch_count == 1
+                else f'{idempotency_key}:{batch_index // RESEND_BATCH_SIZE}'
+            )
+
+        try:
+            response = batch_sender.send(batch, options)
+            response_data = response.get('data', []) if isinstance(response, dict) else []
+            if len(response_data) != len(batch):
+                raise RuntimeError(
+                    f'Resend batch returned {len(response_data)} IDs for {len(batch)} messages'
+                )
+
+            batch_deliveries = []
+            for message, provider_response in zip(batch, response_data):
+                provider_id = provider_response.get('id') if isinstance(provider_response, dict) else None
+                if not provider_id:
+                    raise RuntimeError('Resend batch response omitted an email ID')
+                recipients = message.get('to', [])
+                if isinstance(recipients, str):
+                    recipients = [recipients]
+                batch_deliveries.append({
+                    'success': True,
+                    'to': recipients,
+                    'id': provider_id,
+                })
+            deliveries.extend(batch_deliveries)
+        except resend.exceptions.RateLimitError as e:
+            if _retry:
+                _time.sleep(1)
+                return send_bulk_emails(messages, idempotency_key=idempotency_key, _retry=False)
+            errors.append(f'Rate limit: {str(e)}')
+            break
+        except Exception as e:
+            errors.append(str(e))
+            break
+
+    return {
+        'success': not errors,
+        'sent': len(deliveries),
+        'failed': len(messages) - len(deliveries),
+        'deliveries': deliveries,
+        'errors': errors,
+    }
 
 
 # =============================================================================
@@ -572,27 +667,34 @@ class handler(BaseHTTPRequestHandler):
                     self._send_success({"message": "No active players to email", "sent": 0})
                     return
 
-                import time
                 html = get_availability_check_email_html()
-                sent = 0
-                errors = []
                 period = datetime.now().strftime('%B %Y')
 
-                for i, player in enumerate(players.data):
-                    # Rate limit: Resend allows 2 req/sec
-                    if i > 0:
-                        time.sleep(0.6)
-                    result = send_email(player['email'], "Quick check: are you playing next month?", html)
-                    if result['success']:
-                        sent += 1
-                        table('email_log').insert({
-                            'action': 'send_availability_check',
-                            'to_emails': [player['email']],
-                            'period_label': period,
-                            'resend_email_id': result.get('id'),
-                        }).execute()
-                    else:
-                        errors.append(f"{player['email']}: {result.get('error')}")
+                messages = [{
+                    'from': SENDER_EMAIL,
+                    'to': [player['email']],
+                    'subject': 'Quick check: are you playing next month?',
+                    'html': html,
+                    'reply_to': REPLY_TO_EMAIL,
+                } for player in players.data]
+                result = send_bulk_emails(
+                    messages,
+                    idempotency_key=f'networth:{action}:{period}',
+                )
+                sent = result.get('sent', 0)
+                errors = result.get('errors', [])
+                deliveries = result.get('deliveries', [])
+
+                if deliveries:
+                    log_rows = [{
+                        'action': action,
+                        'to_emails': delivery['to'],
+                        'period_label': period,
+                        'resend_email_id': delivery['id'],
+                    } for delivery in deliveries]
+                    log_result = table('email_log').insert(log_rows).execute()
+                    if log_result.error:
+                        errors.append(f'Failed to write email_log: {log_result.error}')
 
                 if errors and strict_mode:
                     self._send_error(500, f"Sent {sent}, failed {len(errors)}: {errors[0]}",
@@ -618,27 +720,34 @@ class handler(BaseHTTPRequestHandler):
                     self._send_success({"message": "No players to email", "sent": 0})
                     return
 
-                import time
                 html = get_final_reminder_email_html()
-                sent = 0
-                errors = []
                 period = datetime.now().strftime('%B %Y')
 
-                for i, player in enumerate(players.data):
-                    # Rate limit: Resend allows 2 req/sec
-                    if i > 0:
-                        time.sleep(0.6)
-                    result = send_email(player['email'], "Last call: update your playing status", html)
-                    if result['success']:
-                        sent += 1
-                        table('email_log').insert({
-                            'action': 'send_final_reminder',
-                            'to_emails': [player['email']],
-                            'period_label': period,
-                            'resend_email_id': result.get('id'),
-                        }).execute()
-                    else:
-                        errors.append(f"{player['email']}: {result.get('error')}")
+                messages = [{
+                    'from': SENDER_EMAIL,
+                    'to': [player['email']],
+                    'subject': 'Last call: update your playing status',
+                    'html': html,
+                    'reply_to': REPLY_TO_EMAIL,
+                } for player in players.data]
+                result = send_bulk_emails(
+                    messages,
+                    idempotency_key=f'networth:{action}:{period}',
+                )
+                sent = result.get('sent', 0)
+                errors = result.get('errors', [])
+                deliveries = result.get('deliveries', [])
+
+                if deliveries:
+                    log_rows = [{
+                        'action': action,
+                        'to_emails': delivery['to'],
+                        'period_label': period,
+                        'resend_email_id': delivery['id'],
+                    } for delivery in deliveries]
+                    log_result = table('email_log').insert(log_rows).execute()
+                    if log_result.error:
+                        errors.append(f'Failed to write email_log: {log_result.error}')
 
                 if errors and strict_mode:
                     self._send_error(500, f"Sent {sent}, failed {len(errors)}: {errors[0]}",
@@ -712,49 +821,54 @@ class handler(BaseHTTPRequestHandler):
                     return
                 players_map = {pl['id']: pl for pl in players_result.data if pl['id'] in player_ids}
 
-                import time
-                sent = 0
                 errors = []
-
-                for i, match in enumerate(matches_result.data):
-                    # Rate limit: Resend allows 2 req/sec
-                    if i > 0:
-                        time.sleep(0.6)
+                email_jobs = []
+                for match in matches_result.data:
                     p1 = players_map.get(match.get('player1_id'), {})
                     p2 = players_map.get(match.get('player2_id'), {})
 
-                    if p1 and p2:
-                        html = get_midmonth_reminder_email_html(
-                            p1.get('name', 'Player'),
-                            p2.get('name', 'Player'),
-                            month
-                        )
-                        # Reply-to first player so they can coordinate
-                        reply_to = p1['email']
-                        result = send_email(
-                            [p1['email'], p2['email']],
-                            f"Friendly reminder to play your {month} match",
-                            html,
-                            reply_to=reply_to
-                        )
-                        if result['success']:
-                            sent += 1
-                            # Record that this pair was reminded so re-runs skip them
-                            from datetime import timezone
-                            table('match_assignments').update({
-                                'reminder_sent_at': datetime.now(timezone.utc).isoformat(),
-                                'reminder_email_id': result.get('id'),
-                            }).eq('id', match.get('id')).execute()
-                            # Write to universal email log
-                            table('email_log').insert({
-                                'action': 'send_midmonth_reminders',
-                                'to_emails': [p1['email'], p2['email']],
-                                'period_label': month,
-                                'match_id': match.get('id'),
-                                'resend_email_id': result.get('id'),
-                            }).execute()
-                        else:
-                            errors.append(f"Match {match.get('id')}: {result.get('error')}")
+                    if not p1 or not p2:
+                        errors.append(f"Match {match.get('id')}: Player not found")
+                        continue
+
+                    html = get_midmonth_reminder_email_html(
+                        p1.get('name', 'Player'),
+                        p2.get('name', 'Player'),
+                        month
+                    )
+                    email_jobs.append((match, {
+                        'from': SENDER_EMAIL,
+                        'to': [p1['email'], p2['email']],
+                        'subject': f"Friendly reminder to play your {month} match",
+                        'html': html,
+                        'reply_to': p1['email'],
+                    }))
+
+                bulk_result = send_bulk_emails(
+                    [message for _, message in email_jobs],
+                    idempotency_key=f'networth:{action}:{month}',
+                )
+                sent = bulk_result.get('sent', 0)
+                errors.extend(bulk_result.get('errors', []))
+                log_rows = []
+
+                for (match, message), delivery in zip(email_jobs, bulk_result.get('deliveries', [])):
+                    table('match_assignments').update({
+                        'reminder_sent_at': datetime.now(timezone.utc).isoformat(),
+                        'reminder_email_id': delivery['id'],
+                    }).eq('id', match.get('id')).execute()
+                    log_rows.append({
+                        'action': 'send_midmonth_reminders',
+                        'to_emails': delivery['to'],
+                        'period_label': month,
+                        'match_id': match.get('id'),
+                        'resend_email_id': delivery['id'],
+                    })
+
+                if log_rows:
+                    log_result = table('email_log').insert(log_rows).execute()
+                    if log_result.error:
+                        errors.append(f'Failed to write email_log: {log_result.error}')
 
                 if errors and strict_mode:
                     self._send_error(500, f"Sent {sent}, failed {len(errors)}: {errors[0]}",
