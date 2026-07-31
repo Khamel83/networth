@@ -122,18 +122,20 @@ class handler(BaseHTTPRequestHandler):
                 if result.data and len(result.data) > 0:
                     email_sent = False
                     email_error = None
-                    email_delivery_mode = None
-                    try:
-                        from api.email import send_email, get_welcome_email_html
-                        welcome_html = get_welcome_email_html(name, membership_tier)
-                        email_result = send_email(email, "Welcome to Net Worth Tennis!", welcome_html)
-                        email_sent = bool(email_result.get('sent', False))
-                        email_delivery_mode = email_result.get('delivery_mode')
-                        if not email_sent and not email_result.get('blocked'):
-                            email_error = email_result.get('error', 'Unknown email error')
-                    except Exception as e:
-                        email_error = str(e)
-                        print(f"Failed to send welcome email: {e}")
+                    from api.email_policy import delivery_mode, public_transactional_email_enabled
+                    email_delivery_mode = delivery_mode()
+                    if public_transactional_email_enabled():
+                        try:
+                            from api.email import send_email, get_welcome_email_html
+                            welcome_html = get_welcome_email_html(name, membership_tier)
+                            email_result = send_email(email, "Welcome to Net Worth Tennis!", welcome_html)
+                            email_sent = bool(email_result.get('sent', False))
+                            email_delivery_mode = email_result.get('delivery_mode', email_delivery_mode)
+                            if not email_sent and not email_result.get('blocked'):
+                                email_error = email_result.get('error', 'Unknown email error')
+                        except Exception as e:
+                            email_error = str(e)
+                            print(f"Failed to send welcome email: {e}")
 
                     self._send_success({
                         "message": "You're in! You can now sign in to access your dashboard.",

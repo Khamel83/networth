@@ -30,6 +30,19 @@ def is_live_delivery():
     return delivery_mode() == 'live'
 
 
+def public_transactional_email_enabled():
+    """Allow signup/reset mail only after a separate operator opt-in.
+
+    These flows are intentionally unauthenticated because a new user cannot
+    log in yet and a locked-out user needs password recovery. They still must
+    be independently enabled in addition to the global live-delivery gate.
+    """
+    return (
+        is_live_delivery()
+        and os.environ.get('PUBLIC_TRANSACTIONAL_EMAILS', '').strip().lower() == 'enabled'
+    )
+
+
 def blocked_delivery_result(message_count, mode=None):
     """Describe a suppressed delivery without contacting the provider."""
     selected_mode = mode or delivery_mode()

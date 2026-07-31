@@ -250,6 +250,15 @@ class handler(BaseHTTPRequestHandler):
         if not require_cron_secret(self):
             return
 
+        if delivery_mode() != 'live':
+            self._send_success({
+                'email_service': 'not_checked',
+                'provider': 'resend',
+                'delivery_mode': delivery_mode(),
+                'outcome': 'delivery_disabled',
+            })
+            return
+
         import resend
 
         api_key = os.environ.get('RESEND_API_KEY')

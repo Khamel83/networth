@@ -26,6 +26,7 @@ Players self-register via join page → immediately active → can log in right 
 - `GET /api/email` returns the current `delivery_mode`; disabled and dry-run never contact Resend.
 - `GET /api/system` is a health check. The provider connectivity probe is protected by `CRON_SECRET` and is read-only.
 - Never use a workflow replay or a test email as deployment verification.
+- Unauthenticated signup/reset mail has a second opt-in, `PUBLIC_TRANSACTIONAL_EMAILS=enabled`, in addition to `EMAIL_DELIVERY_MODE=live`.
 
 ### Key files:
 - `api/pairings.py` - Matching algorithm (exact fresh matching + RMS bands), sends match emails
@@ -543,7 +544,7 @@ if (response.status === 401) {
   - `email_log` table: every successful bulk send writes a row (action, to_emails, period_label, match_id, resend_email_id)
   - `match_assignments.match_email_id`: stores Resend ID of the original match email for traceability
   - `match_assignments.reminder_sent_at/reminder_email_id`: idempotency for mid-month reminders (re-runs skip already-sent pairs)
-  - `POST /api/system` with `action: check_email_connectivity` — validates Resend API key daily (catches stale keys before pairing day)
+  - `POST /api/system` with `action: check_email_connectivity` — formerly validated the Resend API key daily; it is now cron-protected and no-ops unless live delivery is explicitly enabled
   - Fixed CI auth check: grep for secret template literal was always failing (every commit since March 4); simplified to `grep -q "Authorization: Bearer"`
   - 69/69 tests passing
 - **Security hardening (March 27)** — Full RLS + session token overhaul:

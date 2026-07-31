@@ -266,6 +266,7 @@ def test_automation_run_lock_uses_unique_conflict_as_lock(monkeypatch):
 def test_hardening_migration_supports_existing_and_absent_ledger_tables():
     source = Path('migrations/04_email_automation_hardening.sql').read_text()
 
+    assert 'CREATE TABLE IF NOT EXISTS public.automation_runs' in source
     assert 'CREATE TABLE IF NOT EXISTS public.email_delivery_log' in source
     assert 'ADD COLUMN IF NOT EXISTS message_key' in source
     assert 'ADD COLUMN IF NOT EXISTS recipient_emails' in source

@@ -48,6 +48,26 @@ def test_unknown_delivery_mode_fails_closed(monkeypatch):
     assert is_live_delivery() is False
 
 
+def test_public_transactional_email_requires_explicit_opt_in(monkeypatch):
+    monkeypatch.setenv('EMAIL_DELIVERY_MODE', 'live')
+    monkeypatch.delenv('PUBLIC_TRANSACTIONAL_EMAILS', raising=False)
+
+    from api.email_policy import public_transactional_email_enabled
+
+    assert public_transactional_email_enabled() is False
+
+    monkeypatch.setenv('PUBLIC_TRANSACTIONAL_EMAILS', 'enabled')
+    assert public_transactional_email_enabled() is True
+
+    monkeypatch.setenv('EMAIL_DELIVERY_MODE', 'disabled')
+    assert public_transactional_email_enabled() is False
+
+
+def test_public_transactional_paths_are_explicitly_opt_in():
+    assert 'public_transactional_email_enabled' in Path('api/join.py').read_text()
+    assert 'public_transactional_email_enabled' in Path('api/auth.py').read_text()
+
+
 def test_disabled_single_send_never_calls_resend(monkeypatch):
     monkeypatch.delenv('EMAIL_DELIVERY_MODE', raising=False)
 
@@ -319,4 +339,26 @@ def test_check_email_connectivity_requires_cron_secret(monkeypatch):
         instance.do_POST()
 
     instance.send_response.assert_called_with(401)
+    provider_probe.assert_not_called()
+
+
+def test_disabled_connectivity_probe_never_calls_resend(monkeypatch):
+    monkeypatch.setenv('CRON_SECRET', 'cron-secret')
+    monkeypatch.setenv('RESEND_API_KEY', 'test-key')
+    monkeypatch.delenv('EMAIL_DELIVERY_MODE', raising=False)
+    from api.system import handler
+
+    instance = _handler_request(handler, {'action': 'check_email_connectivity'})
+    instance.headers.get = Mock(side_effect=lambda key, default=None: {
+        'Content-Length': str(len(json.dumps({'action': 'check_email_connectivity'}).encode())),
+        'Authorization': 'Bearer cron-secret',
+    }.get(key, default))
+
+    with patch('resend.ApiKeys.list') as provider_probe:
+        instance.do_POST()
+
+    instance.send_response.assert_called_with(200)
+    payload = json.loads(instance.wfile.write.call_args[0][0].decode())
+    assert payload['delivery_mode'] == 'disabled'
+    assert payload['outcome'] == 'delivery_disabled'
     provider_probe.assert_not_called()

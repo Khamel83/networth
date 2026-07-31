@@ -17,7 +17,45 @@
 
 BEGIN;
 
--- The new table branch works on installations that have not run migration 02.
+-- The reliability migration is normally applied first, but this hardening
+-- migration is safe to run on an installation where it was skipped. Create
+-- the run-lock table before declaring the ledger foreign key below.
+CREATE TABLE IF NOT EXISTS public.automation_runs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    action VARCHAR(80) NOT NULL,
+    period_label VARCHAR(50) NOT NULL,
+    status VARCHAR(30) NOT NULL CHECK (status IN (
+        'running',
+        'succeeded',
+        'failed_terminal',
+        'preflight_failed',
+        'postcheck_failed',
+        'repairing',
+        'repaired'
+    )),
+    started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    ended_at TIMESTAMPTZ,
+    summary_json JSONB DEFAULT '{}'::jsonb,
+    error_json JSONB DEFAULT '{}'::jsonb
+);
+
+CREATE INDEX IF NOT EXISTS idx_automation_runs_action_period
+    ON public.automation_runs(action, period_label, started_at DESC);
+
+CREATE TABLE IF NOT EXISTS public.automation_events (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    run_id UUID REFERENCES public.automation_runs(id) ON DELETE CASCADE,
+    event_type VARCHAR(50) NOT NULL,
+    severity VARCHAR(20) NOT NULL CHECK (severity IN ('info', 'warning', 'error')),
+    message TEXT NOT NULL,
+    payload_json JSONB DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_automation_events_run
+    ON public.automation_events(run_id, created_at DESC);
+
+-- The new ledger branch now works even when migration 02 was skipped.
 CREATE TABLE IF NOT EXISTS public.email_delivery_log (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     run_id UUID REFERENCES public.automation_runs(id) ON DELETE SET NULL,

@@ -26,6 +26,7 @@ Daily safety net (`.github/workflows/daily-health-check.yml`):
 ## Reliability and Email Safety
 
 - `EMAIL_DELIVERY_MODE=disabled` is the safe default. `dry_run` reports targets without provider calls; `live` is explicit operator-controlled mode.
+- Signup welcome and password-reset mail also require `PUBLIC_TRANSACTIONAL_EMAILS=enabled`; leave it unset while delivery is frozen.
 - Protected automation actions require `Authorization: Bearer CRON_SECRET`.
 - Scheduled messages are claimed in `email_delivery_log` before provider submission and use stable batch idempotency keys.
 - `accepted` means Resend accepted the request, not that every inbox has delivered it. `unknown` means no new idempotency key may be used until reconciliation.

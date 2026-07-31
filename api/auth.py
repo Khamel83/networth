@@ -193,6 +193,14 @@ class handler(BaseHTTPRequestHandler):
 
                 player = result.data[0] if isinstance(result.data, list) else result.data
 
+                from api.email_policy import delivery_mode, public_transactional_email_enabled
+                if not public_transactional_email_enabled():
+                    self._send_success({
+                        "message": "If an account exists, a reset link will be sent.",
+                        "email_delivery_mode": delivery_mode(),
+                    })
+                    return
+
                 reset_token = secrets.token_urlsafe(32)
                 expires = datetime.now(timezone.utc) + timedelta(hours=1)
 
