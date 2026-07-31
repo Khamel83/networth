@@ -15,18 +15,25 @@ Automated schedule (`.github/workflows/biweekly-emails.yml`):
 - 27th @ 9am PT: availability reminder
 - Last day @ 9am PT: final reminder
 - 1st @ 9am PT: generate pairings + send match emails
-- 1st @ 12pm PT: health-check/self-heal backup
+- 1st @ 12pm PT: read-only pairing health check
 - 15th @ 9am PT: mid-month pending-match reminder
 
 Daily safety net (`.github/workflows/daily-health-check.yml`):
-- endpoint checks
-- template compile check
-- failure alert path
+- read-only endpoint checks
+- public-response privacy checks
+- GitHub step summary only; no email alert path
 
-## Reliability Hardening (March 2026)
+## Reliability and Email Safety
 
-- Protected automation actions now require `CRON_SECRET`.
-- Scheduled actions fail closed on delivery/validation errors (no silent success).
+- `EMAIL_DELIVERY_MODE=disabled` is the safe default. `dry_run` reports targets without provider calls; `live` is explicit operator-controlled mode.
+- Signup welcome and password-reset mail also require `PUBLIC_TRANSACTIONAL_EMAILS=enabled`; leave it unset while delivery is frozen.
+- Protected automation actions require `Authorization: Bearer CRON_SECRET`.
+- Scheduled messages are claimed in `email_delivery_log` before provider submission and use stable batch idempotency keys.
+- `accepted` means Resend accepted the request, not that every inbox has delivered it. `unknown` means no new idempotency key may be used until reconciliation.
+- A provider timeout or post-provider audit failure produces a reconciliation state instead of a false send failure.
+- `email_log` is legacy-only during the reviewed migration; `email_delivery_log` is canonical.
+- Public `/api/players` is leaderboard-only. `/api/pairings` requires a cron secret or verified admin session.
+- Workflows never replay a send to verify deployment; deployment checks use safe GET/OPTIONS requests only.
 - Pairings generation has preflight checks, lock semantics, and strict postchecks.
 - Pairings generation now uses an exact fresh-matching solver (for league sizes up to 20) so avoidable repeat pairs are eliminated.
 - `reconcile_month` endpoint exists for safe month reconciliation (`POST /api/system`).
@@ -34,9 +41,10 @@ Daily safety net (`.github/workflows/daily-health-check.yml`):
   - `automation_runs`
   - `automation_events`
   - `email_delivery_log`
+  - `issue_reports`
 
 Migration:
-- `migrations/02_reliability_automation.sql`
+- `migrations/04_email_automation_hardening.sql` (run only after the documented read-only schema inventory)
 
 ## Tech Stack
 
@@ -61,6 +69,7 @@ Vercel env vars:
 - `SUPABASE_URL`
 - `SUPABASE_ANON_KEY`
 - `RESEND_API_KEY`
+- `EMAIL_DELIVERY_MODE` = `disabled` (safe default; use `dry_run` for target counts; `live` only after explicit approval)
 - `ADMIN_EMAIL`
 - `CRON_SECRET`
 - `SITE_URL` = `https://www.networthtennis.com`
@@ -73,7 +82,9 @@ GitHub Actions secrets:
 
 - `GET /api/system` -> service/database health
 - `GET /api/email` -> email system status
-- `GET /api/pairings` -> current month pairings
+- `GET /api/players` -> public leaderboard fields only
+- `GET /api/pairings` -> pairing details; cron/admin authorization required
+- `POST /api/email` with `action: reconcile_email_delivery` -> protected delivery repair using the original batch key
 - `POST /api/system` with `{"action":"reconcile_month","dry_run":true}` (auth required)
 
 ## Pairing Rules (Current)
