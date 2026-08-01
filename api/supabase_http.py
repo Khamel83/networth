@@ -91,6 +91,11 @@ class SelectBuilder:
         self.filters.append((column, 'neq', value))
         return self
 
+    def gte(self, column: str, value: Any) -> 'SelectBuilder':
+        """Filter by greater-than-or-equal"""
+        self.filters.append((column, 'gte', value))
+        return self
+
     def order(self, column: str, desc: bool = False, nulls: str = None) -> 'SelectBuilder':
         """Order results. nulls can be 'last' or 'first'"""
         order = f"{column}.desc" if desc else column
@@ -151,6 +156,8 @@ class SelectBuilder:
                 params[f'{column}'] = f'eq.{value}'
             elif operator == 'neq':
                 params[f'{column}'] = f'neq.{value}'
+            elif operator == 'gte':
+                params[f'{column}'] = f'gte.{value}'
             elif operator == 'in':
                 # Supabase expects: column=in.(val1,val2,val3)
                 # Handle both strings and other types

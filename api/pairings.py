@@ -13,6 +13,12 @@ from datetime import datetime, date
 from api.sentry_init import init_sentry
 from api.reliability import preflight, try_start_run, append_event, update_run
 from api.matching import build_pairing_plan
+from api.email_delivery import (
+    build_delivery_rows,
+    deliver_batch,
+    delivery_idempotency_key,
+    delivery_summary,
+)
 init_sentry()
 
 
@@ -215,6 +221,27 @@ def _load_all_match_scores(table, page_size=500):
     return _load_all_rows(table, 'matches', columns, 'created_at', page_size)
 
 
+def _is_cron_or_verified_admin(handler):
+    """Authorize pairing reads/writes for workflows or verified admins."""
+    token = handler.headers.get('Authorization', '').replace('Bearer ', '').strip()
+    cron_secret = os.environ.get('CRON_SECRET', '').strip()
+    if cron_secret and token == cron_secret:
+        return True
+
+    if token:
+        from api.auth import verify_session
+        from api.admin import verify_admin
+
+        email = verify_session(token)
+        if email and verify_admin(email):
+            return True
+        handler._send_error(403, 'Admin access required')
+        return False
+
+    handler._send_error(401, 'Unauthorized')
+    return False
+
+
 class handler(BaseHTTPRequestHandler):
     def do_OPTIONS(self):
         self.send_response(200)
@@ -226,6 +253,9 @@ class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         """Get pairings for a given period (defaults to current month)"""
         try:
+            if not _is_cron_or_verified_admin(self):
+                return
+
             from api.supabase_http import table
             from urllib.parse import urlparse, parse_qs
 
@@ -305,19 +335,14 @@ class handler(BaseHTTPRequestHandler):
         self._run_action = 'generate_pairings'
         self._run_period = None
         try:
-            from api.supabase_http import table
-
             content_length = int(self.headers.get('Content-Length', 0))
             body = self.rfile.read(content_length).decode('utf-8')
             data = json.loads(body) if body else {}
 
-            # Auth check: CRON_SECRET required (GitHub Actions or admin dashboard)
-            cron_secret = os.environ.get('CRON_SECRET', '')
-            if cron_secret:
-                auth = self.headers.get('Authorization', '').replace('Bearer ', '')
-                if auth != cron_secret:
-                    self._send_error(401, 'Unauthorized')
-                    return
+            if not _is_cron_or_verified_admin(self):
+                return
+
+            from api.supabase_http import table
 
             action = data.get('action', 'generate')
             if action == 'clear_period':
@@ -326,7 +351,7 @@ class handler(BaseHTTPRequestHandler):
                     self._send_error(400, 'period_label required for clear_period')
                     return
                 # Clear FK references and run lock before deleting assignments
-                table('email_log').delete().eq('period_label', period_label).execute()
+                table('email_delivery_log').delete().eq('period_label', period_label).execute()
                 table('automation_runs').delete().eq('action', 'generate_pairings').eq('period_label', period_label).execute()
                 del_resp = table('match_assignments').delete().eq('period_label', period_label).execute()
                 if del_resp.error:
@@ -517,13 +542,11 @@ class handler(BaseHTTPRequestHandler):
             # 7. Send match assignment emails — only reached after all validation passes
             emails_sent = 0
             email_errors = []
+            delivery_results = []
             try:
-                import time
-                from api.email import send_email, get_match_assignment_email_html
-                for i, p in enumerate(pairings):
-                    # Rate limit: Resend allows 2 req/sec, add delay between emails
-                    if i > 0:
-                        time.sleep(0.6)
+                from api.email import SENDER_EMAIL, send_bulk_emails, get_match_assignment_email_html
+                email_jobs = []
+                for p in pairings:
                     p1 = p['player1']
                     p2 = p['player2']
                     html = get_match_assignment_email_html(
@@ -537,45 +560,99 @@ class handler(BaseHTTPRequestHandler):
                     )
                     subject = f"{p1['name']}, meet {p2['name']} - You're matched for {period_label}!"
                     # Reply-to first player so they can coordinate
-                    reply_to = p1['email']
-                    result = send_email(
-                        [p1['email'], p2['email']],
-                        subject,
-                        html,
-                        reply_to=reply_to
+                    email_jobs.append((p, {
+                        'from': SENDER_EMAIL,
+                        'to': [p1['email'], p2['email']],
+                        'subject': subject,
+                        'html': html,
+                        'reply_to': p1['email'],
+                    }))
+
+                # Make provider batch order a function of persisted
+                # assignment IDs. Reconciliation orders the same ledger rows
+                # by message key, so replaying the original idempotency key
+                # uses the same message order as the first submission.
+                email_jobs.sort(key=lambda item: str(
+                    assignment_id_map.get(frozenset([
+                        item[0]['player1']['id'],
+                        item[0]['player2']['id'],
+                    ])) or ''
+                ))
+
+                for start in range(0, len(email_jobs), 100):
+                    # Process every pairing in bounded batches; no early break
+                    # after a delivery result so reconciliation sees all rows.
+                    batch_jobs = email_jobs[start:start + 100]
+                    batch_messages = [message for _, message in batch_jobs]
+                    logical_messages = []
+                    for pairing, message in batch_jobs:
+                        p1 = pairing['player1']
+                        p2 = pairing['player2']
+                        assignment_id = assignment_id_map.get(
+                            frozenset([p1['id'], p2['id']])
+                        )
+                        logical_messages.append({
+                            'logical_id': assignment_id,
+                            'recipient_emails': message['to'],
+                        })
+                    provider_batch_key = delivery_idempotency_key(
+                        'generate_pairings', period_label, f'batch:{start // 100}'
                     )
-                    if result.get('success'):
-                        emails_sent += 1
-                        # Track email ID in match_assignments and universal email_log
-                        assignment_id = assignment_id_map.get(frozenset([p1['id'], p2['id']]))
-                        if assignment_id:
-                            table('match_assignments').update({
-                                'match_email_id': result.get('id'),
-                            }).eq('id', assignment_id).execute()
-                            table('email_log').insert({
-                                'action': 'generate_pairings',
-                                'to_emails': [p1['email'], p2['email']],
-                                'period_label': period_label,
-                                'match_id': assignment_id,
-                                'resend_email_id': result.get('id'),
-                            }).execute()
-                    else:
-                        email_errors.append(f"{p1['name']} & {p2['name']}: {result.get('error')}")
-                        # Continue to attempt all remaining pairings (no break)
+                    ledger_rows = build_delivery_rows(
+                        'generate_pairings',
+                        period_label,
+                        logical_messages,
+                        'match_assignment',
+                        provider_batch_key,
+                        run_id=self._run_id,
+                    )
+                    result = deliver_batch(
+                        batch_messages,
+                        ledger_rows,
+                        provider_sender=send_bulk_emails,
+                    )
+                    delivery_results.append((batch_jobs, result))
+                    emails_sent += result.get('sent', 0)
+                    email_errors.extend(result.get('errors', []))
+
+                    if result.get('outcome') == 'accepted':
+                        for (pairing, _message), delivery in zip(
+                            batch_jobs, result.get('deliveries', [])
+                        ):
+                            p1 = pairing['player1']
+                            p2 = pairing['player2']
+                            assignment_id = assignment_id_map.get(
+                                frozenset([p1['id'], p2['id']])
+                            )
+                            if assignment_id:
+                                table('match_assignments').update({
+                                    'match_email_id': delivery['id'],
+                                }).eq('id', assignment_id).execute()
             except Exception as e:
                 email_errors.append(f"Email system error: {str(e)}")
 
-            if email_errors:
+            outcomes = {result.get('outcome') for _, result in delivery_results}
+            if 'pre_send_failure' in outcomes or (
+                email_errors and not outcomes
+            ):
                 append_event(self._run_id, 'email_delivery', 'error', 'Match email delivery failed', {
                     'emails_sent': emails_sent,
                     'pairings_created': len(assignments),
                     'errors': email_errors,
                 })
                 self._send_error(500, f"Email delivery failed: {emails_sent}/{len(assignments)} sent: {email_errors[0]}",
-                                 extra={"sent": emails_sent, "failed": len(email_errors), "errors": email_errors})
+                                 extra={
+                                     "sent": emails_sent,
+                                     "failed": len(email_errors),
+                                     "errors": email_errors,
+                                     "reconciliation_required": False,
+                                 })
                 return
 
-            if emails_sent != len(assignments):
+            reconciliation_required = bool(
+                outcomes & {'accepted_needs_reconciliation', 'unknown_needs_reconciliation'}
+            )
+            if emails_sent != len(assignments) and not reconciliation_required and 'delivery_disabled' not in outcomes:
                 append_event(self._run_id, 'postcheck', 'error', 'Postcheck failed: sent count mismatch', {
                     'emails_sent': emails_sent,
                     'pairings_created': len(assignments),
@@ -583,21 +660,48 @@ class handler(BaseHTTPRequestHandler):
                 self._send_error(500, f"Postcheck failed: sent {emails_sent} emails for {len(assignments)} pairings")
                 return
 
+            # 8. Record delivery outcome; unknown/partial provider results stay
+            # repairable under the same batch idempotency key.
+            if 'unknown_needs_reconciliation' in outcomes:
+                delivery_outcome = 'unknown_needs_reconciliation'
+            elif 'accepted_needs_reconciliation' in outcomes:
+                delivery_outcome = 'accepted_needs_reconciliation'
+            elif 'delivery_disabled' in outcomes:
+                delivery_outcome = 'delivery_disabled'
+            else:
+                delivery_outcome = 'accepted'
+
+            delivery_summaries = [
+                result.get('delivery_summary', {})
+                for _, result in delivery_results
+            ]
+            combined_delivery_summary = {
+                state: sum(summary.get(state, 0) for summary in delivery_summaries)
+                for state in ('pending', 'accepted', 'failed', 'unknown')
+            }
             append_event(self._run_id, 'postcheck', 'info', 'Pairings run completed', {
                 'pairings_created': len(assignments),
                 'emails_sent': emails_sent,
                 'rating_model': 'elo-two-set-v1',
+                'delivery_outcome': delivery_outcome,
+                'reconciliation_required': reconciliation_required,
             })
-            update_run(self._run_id, 'succeeded', summary={
+            update_run(self._run_id, 'repairing' if reconciliation_required else 'succeeded', summary={
                 'period': period_label,
                 'pairings_created': len(assignments),
                 'emails_sent': emails_sent,
                 'rating_model': 'elo-two-set-v1',
+                'delivery_outcome': delivery_outcome,
+                'reconciliation_required': reconciliation_required,
             })
             self._send_success({
                 'period': period_label,
                 'pairings_created': len(assignments),
                 'emails_sent': emails_sent,
+                'would_send': len(assignments) if delivery_outcome == 'delivery_disabled' else 0,
+                'delivery_outcome': delivery_outcome,
+                'reconciliation_required': reconciliation_required,
+                'delivery_summary': combined_delivery_summary,
                 'email_errors': email_errors if email_errors else None,
                 'players_available': len([p for p in players if is_player_available(p)]),
                 'players_unavailable': len([p for p in players if not is_player_available(p)]),

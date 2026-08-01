@@ -1,34 +1,22 @@
-# Tennis League Email Automation
-# ================================
-# Schedule:
-# - 27th of month at 9am PT: Monthly availability reminder
-# - Last day of month at 9am PT: Final availability reminder
-# - 1st of month at 9am PT: Generate pairings (emails sent automatically)
-# - 1st of month at 12pm PT: Health check (self-healing if pairings failed)
-# - 15th of month at 9am PT: Mid-month match reminder
+# Scheduled automation for Net Worth Tennis.
 #
-# Note: Emails are sent via Resend (noreply@networthtennis.com)
-# Requires RESEND_API_KEY env var in Vercel
-# CRON_SECRET must match between GitHub Actions and Vercel
+# The workflow is deliberately delivery-gated: it performs a read-only GET
+# against /api/email first and exits cleanly for disabled or dry-run delivery.
+# No workflow retry creates a new provider idempotency key.
 
 name: Tennis League Emails
 
 on:
   schedule:
-    # 27th of month at 9am PT (5pm UTC) - Monthly availability reminder
     - cron: '0 17 27 * *'
-    # 28-31 of month at 9am PT (5pm UTC) - Final availability reminder (last day check)
     - cron: '0 17 28-31 * *'
-    # 1st of month at 9am PT (5pm UTC) - Generate pairings
     - cron: '0 17 1 * *'
-    # 1st of month at 12pm PT (8pm UTC) - Health check / self-healing backup
     - cron: '0 20 1 * *'
-    # 15th of month at 9am PT (5pm UTC) - Mid-month match reminder
     - cron: '0 17 15 * *'
   workflow_dispatch:
     inputs:
       action:
-        description: 'Which email action to run'
+        description: 'Which automation action to run'
         required: true
         default: 'generate_pairings'
         type: choice
@@ -39,501 +27,180 @@ on:
           - mid_month_reminder
           - health_check
 
+permissions:
+  contents: read
+
+env:
+  TZ: America/Los_Angeles
+
 jobs:
-  # Gate-check: Skip execution on days 28-30 when not the actual last day
-  # This saves GitHub Actions minutes by not running unnecessary workflow jobs
   gate-check:
     runs-on: ubuntu-latest
     outputs:
-      should_run: ${{ steps.check.outputs.should_run }}
+      action: ${{ steps.select.outputs.action }}
+      period: ${{ steps.select.outputs.period }}
     steps:
-      - name: Check if today is last day
-        id: check
+      - name: Select action in Pacific time
+        id: select
+        shell: bash
         run: |
+          set -euo pipefail
+          export TZ=America/Los_Angeles
+          PERIOD="$(date '+%B %Y')"
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            # Always allow manual triggers
-            echo "should_run=true" >> $GITHUB_OUTPUT
+            ACTION="${{ inputs.action }}"
           else
-            LAST_DAY=$(date -d "$(date +%Y-%m-01) +1 month -1 day" +%-d)
-            TODAY=$(date +%-d)
-            if [ "$TODAY" = "$LAST_DAY" ] || [ "$TODAY" = "27" ] || [ "$TODAY" = "1" ] || [ "$TODAY" = "15" ]; then
-              echo "should_run=true" >> $GITHUB_OUTPUT
-            else
-              echo "should_run=false" >> $GITHUB_OUTPUT
-            fi
-          fi
-
-  determine-action:
-    needs: gate-check
-    if: needs.gate-check.outputs.should_run == 'true'
-    runs-on: ubuntu-latest
-    outputs:
-      action: ${{ steps.set-action.outputs.action }}
-      is_last_day: ${{ steps.set-action.outputs.is_last_day }}
-    steps:
-      - name: Determine which action to run
-        id: set-action
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "action=${{ github.event.inputs.action }}" >> $GITHUB_OUTPUT
-            echo "is_last_day=false" >> $GITHUB_OUTPUT
-          else
-            DAY=$(date +%-d)
-            HOUR=$(date +%H | sed 's/^0//')  # Remove leading zero
-            MONTH=$(date +%m)
-            YEAR=$(date +%Y)
-
-            # Check if today is last day of month
-            LAST_DAY=$(date -d "$YEAR-$MONTH-01 +1 month -1 day" +%-d)
-
+            DAY="$(date +%-d)"
+            HOUR="$(date +%H | sed 's/^0//')"
+            LAST_DAY="$(date -d "$(date +%Y-%m-01) +1 month -1 day" +%-d)"
             if [ "$DAY" = "27" ]; then
-              echo "action=monthly_availability" >> $GITHUB_OUTPUT
-              echo "is_last_day=false" >> $GITHUB_OUTPUT
+              ACTION=monthly_availability
             elif [ "$DAY" = "$LAST_DAY" ]; then
-              echo "action=final_availability" >> $GITHUB_OUTPUT
-              echo "is_last_day=true" >> $GITHUB_OUTPUT
+              ACTION=final_availability
+            elif [ "$DAY" = "1" ] && [ "$HOUR" -ge 12 ]; then
+              ACTION=health_check
             elif [ "$DAY" = "1" ]; then
-              # On the 1st, check hour to distinguish main run (9am/17UTC) from health check (12pm/20UTC)
-              if [ "$HOUR" -ge 19 ]; then
-                echo "action=health_check" >> $GITHUB_OUTPUT
-                echo "is_last_day=false" >> $GITHUB_OUTPUT
-              else
-                echo "action=generate_pairings" >> $GITHUB_OUTPUT
-                echo "is_last_day=false" >> $GITHUB_OUTPUT
-              fi
+              ACTION=generate_pairings
             elif [ "$DAY" = "15" ]; then
-              echo "action=mid_month_reminder" >> $GITHUB_OUTPUT
-              echo "is_last_day=false" >> $GITHUB_OUTPUT
+              ACTION=mid_month_reminder
             else
-              # For days 28-30 that aren't the last day, skip
-              echo "action=skip" >> $GITHUB_OUTPUT
-              echo "is_last_day=false" >> $GITHUB_OUTPUT
+              ACTION=skip
             fi
           fi
+          echo "action=$ACTION" >> "$GITHUB_OUTPUT"
+          echo "period=$PERIOD" >> "$GITHUB_OUTPUT"
+          {
+            echo "## Scheduled automation gate"
+            echo "- Pacific date: $(date --iso-8601=seconds)"
+            echo "- Action: $ACTION"
+            echo "- Period: $PERIOD"
+          } >> "$GITHUB_STEP_SUMMARY"
 
-  monthly-availability:
-    needs: [gate-check, determine-action]
-    if: needs.gate-check.outputs.should_run == 'true' && needs.determine-action.outputs.action == 'monthly_availability'
+  run-automation:
+    needs: gate-check
+    if: needs.gate-check.outputs.action != 'skip'
     runs-on: ubuntu-latest
+    env:
+      ACTION: ${{ needs.gate-check.outputs.action }}
+      PERIOD: ${{ needs.gate-check.outputs.period }}
+      SITE_URL: ${{ secrets.SITE_URL }}
     steps:
-      - name: Log action
+      - name: Read delivery mode without sending
+        id: delivery-mode
+        shell: bash
         run: |
-          echo "Running: MONTHLY AVAILABILITY REMINDER (27th)"
-          echo "Sending reminder to all players to update their availability for next month"
-
-      - name: Verify CRON_SECRET auth works
-        id: verify-auth
-        run: |
-          echo "Testing CRON_SECRET auth before sending emails..."
-          # Use an invalid action to test auth without side effects
-          # 400 = auth passed (action is invalid)
-          # 401 = auth failed (CRON_SECRET mismatch)
-          # 500 = CRON_SECRET not configured in Vercel
-          TEST_STATUS=$(curl -s -o /tmp/auth_test.json -w "%{http_code}" \
-            -X POST "${{ secrets.SITE_URL }}/api/email" \
-            -H "Content-Type: application/json" \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            -d '{"action":"test_auth_check"}')
-          echo "Auth test HTTP status: $TEST_STATUS"
-          cat /tmp/auth_test.json
-          if [ "$TEST_STATUS" = "401" ]; then
-            echo "::error::CRON_SECRET auth failed (401). CRON_SECRET in GitHub Actions does not match Vercel."
-            echo "::error::To fix: Copy CRON_SECRET from GitHub Settings > Secrets and variables > Actions"
-            echo "::error::Then paste it into Vercel > Settings > Environment Variables and redeploy."
-            exit 1
-          elif [ "$TEST_STATUS" = "500" ]; then
-            echo "::error::CRON_SECRET not configured in Vercel (500)."
-            echo "::error::To fix: Add CRON_SECRET to Vercel > Settings > Environment Variables and redeploy."
-            exit 1
-          elif [ "$TEST_STATUS" != "400" ] && [ "$TEST_STATUS" != "200" ]; then
-            echo "::error::Unexpected auth test response: HTTP $TEST_STATUS"
-            exit 1
-          fi
-          echo "✓ CRON_SECRET auth verified"
-
-      - name: Send monthly availability emails
-        run: |
-          HTTP_STATUS=$(curl -s -o /tmp/response.json -w "%{http_code}" \
-            -X POST "${{ secrets.SITE_URL }}/api/email" \
-            -H "Content-Type: application/json" \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            -d '{"action": "send_availability_check"}')
-          RESPONSE=$(cat /tmp/response.json)
-          echo "HTTP $HTTP_STATUS: $RESPONSE"
-
-          if [ "$HTTP_STATUS" = "409" ]; then
-            echo "::notice::HTTP 409 - Run already exists for send_availability_check (already succeeded). Skipping."
-            exit 0
-          fi
-
-          if [ "$HTTP_STATUS" = "504" ] || [ "$HTTP_STATUS" = "502" ]; then
-            echo "Got $HTTP_STATUS — verifying via email_log before declaring failure..."
-            sleep 5
-            CHECK=$(curl -s -X POST "${{ secrets.SITE_URL }}/api/email" \
-              -H "Content-Type: application/json" \
-              -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-              -d '{"action":"check_recent_send","email_action":"send_availability_check"}')
-            echo "email_log check: $CHECK"
-            if [ "$(echo "$CHECK" | jq -r '.already_sent')" = "true" ]; then
-              SENT=$(echo "$CHECK" | jq -r '.sent // 0')
-              echo "::notice::Confirmed: $SENT emails delivered (email_log). 504 was a response timeout, not a real failure."
-              exit 0
-            fi
-            echo "::error::HTTP $HTTP_STATUS and email_log shows no sends today. Real failure."
-            exit 1
-          fi
-
+          set -euo pipefail
+          HTTP_STATUS=$(curl -sS -o /tmp/email-status.json -w "%{http_code}" "$SITE_URL/api/email")
+          MODE=$(jq -r '.delivery_mode // "disabled"' /tmp/email-status.json)
+          echo "GET /api/email -> HTTP $HTTP_STATUS, delivery_mode=$MODE"
+          {
+            echo "## Delivery gate"
+            echo "- GET /api/email: HTTP $HTTP_STATUS"
+            echo "- delivery_mode: `$MODE`"
+          } >> "$GITHUB_STEP_SUMMARY"
           if [ "$HTTP_STATUS" -lt 200 ] || [ "$HTTP_STATUS" -ge 300 ]; then
-            echo "::error::HTTP $HTTP_STATUS: $RESPONSE"
+            echo "::error::Unable to establish delivery mode"
             exit 1
           fi
-
-          SENT=$(echo "$RESPONSE" | jq -r '.sent // 0')
-          echo "::notice::Emails sent: $SENT"
-
-          if [ "$(echo "$RESPONSE" | jq -r '.success')" != "true" ]; then
-            echo "::error::API returned failure: $RESPONSE"
-            exit 1
-          fi
-
-  final-availability:
-    needs: [gate-check, determine-action]
-    if: needs.gate-check.outputs.should_run == 'true' && needs.determine-action.outputs.action == 'final_availability'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Log action
-        run: |
-          echo "Running: FINAL AVAILABILITY REMINDER (Last day of month)"
-          echo "Sending final reminder to update playing status before pairings are created"
-
-      - name: Verify CRON_SECRET auth works
-        id: verify-auth
-        run: |
-          echo "Testing CRON_SECRET auth before sending emails..."
-          TEST_STATUS=$(curl -s -o /tmp/auth_test.json -w "%{http_code}" \
-            -X POST "${{ secrets.SITE_URL }}/api/email" \
-            -H "Content-Type: application/json" \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            -d '{"action":"test_auth_check"}')
-          echo "Auth test HTTP status: $TEST_STATUS"
-          if [ "$TEST_STATUS" = "401" ]; then
-            echo "::error::CRON_SECRET auth failed (401). Verify secrets match between GitHub and Vercel."
-            exit 1
-          elif [ "$TEST_STATUS" = "500" ]; then
-            echo "::error::CRON_SECRET not configured in Vercel (500)."
-            exit 1
-          elif [ "$TEST_STATUS" != "400" ] && [ "$TEST_STATUS" != "200" ]; then
-            echo "::error::Unexpected auth test response: HTTP $TEST_STATUS"
-            exit 1
-          fi
-          echo "✓ CRON_SECRET auth verified"
-
-      - name: Send final availability emails
-        run: |
-          HTTP_STATUS=$(curl -s -o /tmp/response.json -w "%{http_code}" \
-            -X POST "${{ secrets.SITE_URL }}/api/email" \
-            -H "Content-Type: application/json" \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            -d '{"action": "send_final_reminder"}')
-          RESPONSE=$(cat /tmp/response.json)
-          echo "HTTP $HTTP_STATUS: $RESPONSE"
-
-          if [ "$HTTP_STATUS" = "409" ]; then
-            echo "::notice::HTTP 409 - Run already exists for send_final_reminder (already succeeded). Skipping."
-            exit 0
-          fi
-
-          if [ "$HTTP_STATUS" = "504" ] || [ "$HTTP_STATUS" = "502" ]; then
-            echo "Got $HTTP_STATUS — verifying via email_log before declaring failure..."
-            sleep 5
-            CHECK=$(curl -s -X POST "${{ secrets.SITE_URL }}/api/email" \
-              -H "Content-Type: application/json" \
-              -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-              -d '{"action":"check_recent_send","email_action":"send_final_reminder"}')
-            echo "email_log check: $CHECK"
-            if [ "$(echo "$CHECK" | jq -r '.already_sent')" = "true" ]; then
-              SENT=$(echo "$CHECK" | jq -r '.sent // 0')
-              echo "::notice::Confirmed: $SENT emails delivered (email_log). 504 was a response timeout, not a real failure."
-              exit 0
-            fi
-            echo "::error::HTTP $HTTP_STATUS and email_log shows no sends today. Real failure."
-            exit 1
-          fi
-
-          if [ "$HTTP_STATUS" -lt 200 ] || [ "$HTTP_STATUS" -ge 300 ]; then
-            echo "::error::HTTP $HTTP_STATUS: $RESPONSE"
-            exit 1
-          fi
-
-          SENT=$(echo "$RESPONSE" | jq -r '.sent // 0')
-          echo "::notice::Emails sent: $SENT"
-
-          if [ "$(echo "$RESPONSE" | jq -r '.success')" != "true" ]; then
-            echo "::error::API returned failure: $RESPONSE"
-            exit 1
-          fi
-
-  generate-pairings:
-    needs: [gate-check, determine-action]
-    if: needs.gate-check.outputs.should_run == 'true' && needs.determine-action.outputs.action == 'generate_pairings'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Log action
-        run: |
-          echo "Running: GENERATE PAIRINGS (with retry logic)"
-          echo "This will:"
-          echo "  1. Generate new pairings for this month"
-          echo "  2. Send match assignment emails to all paired players"
-          echo "  3. Retry up to 3 times if it fails"
-
-      - name: Verify CRON_SECRET auth works
-        id: verify-auth
-        run: |
-          echo "Testing CRON_SECRET auth before generating pairings..."
-          # Use /api/email test_auth_check — same CRON_SECRET, safe no-side-effect test
-          # 400 = auth passed (action is invalid but recognized as protected)
-          # 401 = auth failed (CRON_SECRET mismatch)
-          TEST_STATUS=$(curl -s -o /tmp/auth_test.json -w "%{http_code}" \
-            -X POST "${{ secrets.SITE_URL }}/api/email" \
-            -H "Content-Type: application/json" \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            -d '{"action":"test_auth_check"}')
-          echo "Auth test HTTP status: $TEST_STATUS"
-          cat /tmp/auth_test.json
-          if [ "$TEST_STATUS" = "401" ]; then
-            echo "::error::CRON_SECRET auth failed (401). Verify secrets match between GitHub and Vercel."
-            exit 1
-          elif [ "$TEST_STATUS" != "400" ] && [ "$TEST_STATUS" != "200" ]; then
-            echo "::error::Unexpected auth test response: HTTP $TEST_STATUS"
-            exit 1
-          fi
-          echo "✓ CRON_SECRET auth verified"
-
-      - name: Generate pairings and send emails (with retry)
-        run: |
-          MAX_RETRIES=3
-          RETRY_COUNT=0
-          SUCCESS=false
-
-          while [ $RETRY_COUNT -lt $MAX_RETRIES ] && [ "$SUCCESS" = "false" ]; do
-            RETRY_COUNT=$((RETRY_COUNT + 1))
-            echo "Attempt $RETRY_COUNT of $MAX_RETRIES..."
-
-            # Wait before retry (exponential backoff: 10s, 30s, 90s)
-            if [ $RETRY_COUNT -gt 1 ]; then
-              WAIT_TIME=$((10 * (3 ** (RETRY_COUNT - 2))))
-              echo "Waiting ${WAIT_TIME}s before retry..."
-              sleep $WAIT_TIME
-            fi
-
-            HTTP_STATUS=$(curl -s -o /tmp/response.json -w "%{http_code}" \
-              -X POST "${{ secrets.SITE_URL }}/api/pairings" \
-              -H "Content-Type: application/json" \
-              -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-              -d '{}')
-            RESPONSE=$(cat /tmp/response.json)
-            echo "HTTP $HTTP_STATUS: $RESPONSE"
-
-            if [ "$HTTP_STATUS" = "409" ]; then
-              echo "::notice::HTTP 409 - Pairings already generated for this month. Skipping."
-              SUCCESS=true
-              break
-            fi
-
-            API_SUCCESS=$(echo "$RESPONSE" | jq -r '.success // false')
-            PAIRINGS=$(echo "$RESPONSE" | jq -r '.pairings_created // 0')
-            EMAILS=$(echo "$RESPONSE" | jq -r '.emails_sent // 0')
-
-            if [ "$HTTP_STATUS" -ge 200 ] && [ "$HTTP_STATUS" -lt 300 ] && [ "$API_SUCCESS" = "true" ] && [ "$PAIRINGS" -gt 0 ]; then
-              SUCCESS=true
-              echo "::notice::SUCCESS! Pairings created: $PAIRINGS, Emails sent: $EMAILS"
-            else
-              echo "::warning::Attempt $RETRY_COUNT failed. HTTP: $HTTP_STATUS, API success: $API_SUCCESS, Pairings: $PAIRINGS"
-            fi
-          done
-
-          if [ "$SUCCESS" = "false" ]; then
-            echo "::error::All retry attempts failed. Health check will run at 12pm PT to recover."
-            exit 1
-          fi
-
-  mid-month-reminder:
-    needs: [gate-check, determine-action]
-    if: needs.gate-check.outputs.should_run == 'true' && needs.determine-action.outputs.action == 'mid_month_reminder'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Log action
-        run: |
-          echo "Running: MID-MONTH MATCH REMINDER (15th)"
-          echo "Sending friendly reminder to players who haven't played their match yet"
-
-      - name: Verify CRON_SECRET auth works
-        id: verify-auth
-        run: |
-          echo "Testing CRON_SECRET auth before sending reminders..."
-          TEST_STATUS=$(curl -s -o /tmp/auth_test.json -w "%{http_code}" \
-            -X POST "${{ secrets.SITE_URL }}/api/email" \
-            -H "Content-Type: application/json" \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            -d '{"action":"test_auth_check"}')
-          echo "Auth test HTTP status: $TEST_STATUS"
-          if [ "$TEST_STATUS" = "401" ]; then
-            echo "::error::CRON_SECRET auth failed (401). Verify secrets match between GitHub and Vercel."
-            exit 1
-          elif [ "$TEST_STATUS" = "500" ]; then
-            echo "::error::CRON_SECRET not configured in Vercel (500)."
-            exit 1
-          elif [ "$TEST_STATUS" != "400" ] && [ "$TEST_STATUS" != "200" ]; then
-            echo "::error::Unexpected auth test response: HTTP $TEST_STATUS"
-            exit 1
-          fi
-          echo "✓ CRON_SECRET auth verified"
-
-      - name: Send mid-month reminder emails
-        run: |
-          HTTP_STATUS=$(curl -s -o /tmp/response.json -w "%{http_code}" \
-            -X POST "${{ secrets.SITE_URL }}/api/email" \
-            -H "Content-Type: application/json" \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            -d '{"action": "send_midmonth_reminders"}')
-          RESPONSE=$(cat /tmp/response.json)
-          echo "HTTP $HTTP_STATUS: $RESPONSE"
-
-          if [ "$HTTP_STATUS" = "409" ]; then
-            echo "::notice::HTTP 409 - Run already exists for send_midmonth_reminders (already succeeded). Skipping."
-            exit 0
-          fi
-
-          if [ "$HTTP_STATUS" = "504" ] || [ "$HTTP_STATUS" = "502" ]; then
-            echo "Got $HTTP_STATUS — verifying via email_log before declaring failure..."
-            sleep 5
-            CHECK=$(curl -s -X POST "${{ secrets.SITE_URL }}/api/email" \
-              -H "Content-Type: application/json" \
-              -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-              -d '{"action":"check_recent_send","email_action":"send_midmonth_reminders"}')
-            echo "email_log check: $CHECK"
-            if [ "$(echo "$CHECK" | jq -r '.already_sent')" = "true" ]; then
-              SENT=$(echo "$CHECK" | jq -r '.sent // 0')
-              echo "::notice::Confirmed: $SENT emails delivered (email_log). 504 was a response timeout, not a real failure."
-              exit 0
-            fi
-            echo "::error::HTTP $HTTP_STATUS and email_log shows no sends today. Real failure."
-            exit 1
-          fi
-
-          if [ "$HTTP_STATUS" -lt 200 ] || [ "$HTTP_STATUS" -ge 300 ]; then
-            echo "::error::HTTP $HTTP_STATUS: $RESPONSE"
-            exit 1
-          fi
-
-          SENT=$(echo "$RESPONSE" | jq -r '.sent // 0')
-          echo "::notice::Emails sent: $SENT"
-
-          if [ "$(echo "$RESPONSE" | jq -r '.success')" != "true" ]; then
-            echo "::error::API returned failure: $RESPONSE"
-            exit 1
-          fi
-
-  health-check:
-    needs: [gate-check, determine-action]
-    if: needs.gate-check.outputs.should_run == 'true' && needs.determine-action.outputs.action == 'health_check'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Log action
-        run: |
-          echo "Running: HEALTH CHECK (self-healing backup)"
-          echo "This checks if pairings were created and retries if needed"
-
-      - name: Check pairings and regenerate if missing
-        run: |
-          YEAR=$(date +%Y)
-          MONTH=$(date +%B)
-          PERIOD="$MONTH $YEAR"
-
-          # Check if pairings exist for this month
-          HTTP_STATUS=$(curl -s -o /tmp/check.json -w "%{http_code}" \
-            "${{ secrets.SITE_URL }}/api/pairings")
-          CHECK_RESPONSE=$(cat /tmp/check.json)
-          echo "Health check GET: HTTP $HTTP_STATUS"
-          if [ "$HTTP_STATUS" -lt 200 ] || [ "$HTTP_STATUS" -ge 300 ]; then
-            echo "::error::Failed to check pairings: HTTP $HTTP_STATUS: $CHECK_RESPONSE"
-            exit 1
-          fi
-          EXISTING_COUNT=$(echo "$CHECK_RESPONSE" | jq -r '.count // 0')
-
-          echo "::notice::Current pairings for $PERIOD: $EXISTING_COUNT"
-
-          if [ "$EXISTING_COUNT" -eq 0 ]; then
-            echo "::warning::No pairings found! Attempting recovery..."
-
-            # Try to generate pairings with retry
-            MAX_RETRIES=3
-            RETRY_COUNT=0
-            SUCCESS=false
-
-            while [ $RETRY_COUNT -lt $MAX_RETRIES ] && [ "$SUCCESS" = "false" ]; do
-              RETRY_COUNT=$((RETRY_COUNT + 1))
-              echo "Recovery attempt $RETRY_COUNT of $MAX_RETRIES..."
-
-              if [ $RETRY_COUNT -gt 1 ]; then
-                WAIT_TIME=$((10 * (3 ** (RETRY_COUNT - 2))))
-                echo "Waiting ${WAIT_TIME}s before retry..."
-                sleep $WAIT_TIME
-              fi
-
-              HTTP_STATUS=$(curl -s -o /tmp/recovery.json -w "%{http_code}" \
-                -X POST "${{ secrets.SITE_URL }}/api/pairings" \
-                -H "Content-Type: application/json" \
-                -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-                -d '{}')
-              RESPONSE=$(cat /tmp/recovery.json)
-              echo "HTTP $HTTP_STATUS: $RESPONSE"
-
-              if [ "$HTTP_STATUS" = "409" ]; then
-                echo "::notice::HTTP 409 - Pairings already generated (duplicate-run protection). Recovery not needed."
-                SUCCESS=true
-                break
-              fi
-
-              API_SUCCESS=$(echo "$RESPONSE" | jq -r '.success // false')
-              PAIRINGS=$(echo "$RESPONSE" | jq -r '.pairings_created // 0')
-              EMAILS=$(echo "$RESPONSE" | jq -r '.emails_sent // 0')
-
-              if [ "$HTTP_STATUS" -ge 200 ] && [ "$HTTP_STATUS" -lt 300 ] && [ "$API_SUCCESS" = "true" ] && [ "$PAIRINGS" -gt 0 ]; then
-                SUCCESS=true
-                echo "::notice::RECOVERY SUCCESSFUL! Pairings created: $PAIRINGS, Emails sent: $EMAILS"
-              else
-                echo "::warning::Recovery attempt $RETRY_COUNT failed. HTTP: $HTTP_STATUS, API success: $API_SUCCESS"
-              fi
-            done
-
-            if [ "$SUCCESS" = "false" ]; then
-              echo "::error::Health check failed to recover. Manual intervention required!"
-              exit 1
-            fi
+          echo "mode=$MODE" >> "$GITHUB_OUTPUT"
+          if [ "$MODE" != "live" ]; then
+            echo "delivery_disabled=true" >> "$GITHUB_OUTPUT"
+            echo "No sender POST will run while delivery_mode=$MODE."
+            echo "::notice::delivery_disabled; no email action executed."
           else
-            echo "::notice::Pairings already exist. No action needed."
+            echo "delivery_disabled=false" >> "$GITHUB_OUTPUT"
           fi
 
-  notify-failure:
-    needs:
-      - gate-check
-      - determine-action
-      - monthly-availability
-      - final-availability
-      - generate-pairings
-      - mid-month-reminder
-      - health-check
-    if: failure()
-    runs-on: ubuntu-latest
-    steps:
-      - name: Send failure alert to admin
+      - name: Check pairings health (read-only)
+        if: steps.delivery-mode.outputs.delivery_disabled == 'true' && env.ACTION == 'health_check'
+        shell: bash
         run: |
-          curl --fail-with-body -sL -X POST "${{ secrets.SITE_URL }}/api/email" \
+          set -euo pipefail
+          HTTP_STATUS=$(curl -sS -o /tmp/pairings.json -w "%{http_code}" \
+            "$SITE_URL/api/pairings?period=$(python3 -c 'import urllib.parse,os; print(urllib.parse.quote(os.environ["PERIOD"]))')" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}")
+          echo "Read-only pairings health: HTTP $HTTP_STATUS: $(cat /tmp/pairings.json)"
+          echo "- Pairings health: HTTP $HTTP_STATUS (read-only)" >> "$GITHUB_STEP_SUMMARY"
+          [ "$HTTP_STATUS" -ge 200 ] && [ "$HTTP_STATUS" -lt 300 ]
+
+      - name: Execute live automation action
+        if: steps.delivery-mode.outputs.delivery_disabled == 'false' && env.ACTION != 'health_check'
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "$ACTION" = "generate_pairings" ]; then
+            ENDPOINT="$SITE_URL/api/pairings"
+            BODY=$(jq -nc --arg period "$PERIOD" '{period_label:$period}')
+          else
+            ENDPOINT="$SITE_URL/api/email"
+            case "$ACTION" in
+              monthly_availability) EMAIL_ACTION=send_availability_check ;;
+              final_availability) EMAIL_ACTION=send_final_reminder ;;
+              mid_month_reminder) EMAIL_ACTION=send_midmonth_reminders ;;
+              *) echo "::error::Unknown action $ACTION"; exit 1 ;;
+            esac
+            BODY=$(jq -nc --arg action "$EMAIL_ACTION" --arg period "$PERIOD" \
+              '{action:$action,period_label:$period}')
+          fi
+
+          HTTP_STATUS=$(curl -sS -o /tmp/action.json -w "%{http_code}" \
+            -X POST "$ENDPOINT" \
             -H "Content-Type: application/json" \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            -d '{
-              "action": "send_admin_alert",
-              "subject": "🚨 Net Worth: Scheduled Automation Failed",
-              "message": "A scheduled monthly automation action failed.\n\nWorkflow: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-            }'
+            -d "$BODY")
+          RESPONSE=$(cat /tmp/action.json)
+          OUTCOME=$(jq -r '.outcome // "pre_send_failure"' /tmp/action.json)
+          SUMMARY=$(jq -c '.delivery_summary // {}' /tmp/action.json)
+          RECONCILIATION=$(jq -r '.reconciliation_required // false' /tmp/action.json)
+          echo "HTTP $HTTP_STATUS: $RESPONSE"
+          {
+            echo "## Automation result"
+            echo "- Action: $ACTION"
+            echo "- Period: $PERIOD"
+            echo "- HTTP status: $HTTP_STATUS"
+            echo "- Outcome: `$OUTCOME`"
+            echo "- reconciliation_required: `$RECONCILIATION`"
+            echo "- delivery_summary: `$SUMMARY`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "$HTTP_STATUS" = "409" ]; then
+            if [ "$ACTION" = "generate_pairings" ]; then
+              TARGET_ACTION=generate_pairings
+            else
+              TARGET_ACTION="$EMAIL_ACTION"
+            fi
+            RECON=$(curl -sS -X POST "$SITE_URL/api/email" \
+              -H "Content-Type: application/json" \
+              -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+              -d "$(jq -nc --arg period "$PERIOD" --arg target "$TARGET_ACTION" \
+                '{action:"reconcile_email_delivery",email_action:$target,period_label:$period}')")
+            echo "Protected reconciliation response: $RECON"
+            echo "- Protected reconciliation: `$(echo "$RECON" | jq -c '.')`" >> "$GITHUB_STEP_SUMMARY"
+            OUTCOME=$(echo "$RECON" | jq -r '.outcome // "pre_send_failure"')
+          fi
+
+          case "$OUTCOME" in
+            accepted|already_complete)
+              exit 0 ;;
+            accepted_needs_reconciliation|unknown_needs_reconciliation|manual_review_required|delivery_disabled)
+              echo "::warning::Outcome requires reconciliation or manual review: $OUTCOME"
+              exit 0 ;;
+            *)
+              echo "::error::Automation failed before a confirmed provider outcome: $OUTCOME"
+              exit 1 ;;
+          esac
+
+      - name: Check pairings health live (read-only)
+        if: steps.delivery-mode.outputs.delivery_disabled == 'false' && env.ACTION == 'health_check'
+        shell: bash
+        run: |
+          set -euo pipefail
+          HTTP_STATUS=$(curl -sS -o /tmp/pairings.json -w "%{http_code}" \
+            "$SITE_URL/api/pairings?period=$(python3 -c 'import urllib.parse,os; print(urllib.parse.quote(os.environ["PERIOD"]))')" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}")
+          RESPONSE=$(cat /tmp/pairings.json)
+          echo "Read-only pairings health: HTTP $HTTP_STATUS: $RESPONSE"
+          echo "- Pairings health: HTTP $HTTP_STATUS (read-only)" >> "$GITHUB_STEP_SUMMARY"
+          if [ "$HTTP_STATUS" -lt 200 ] || [ "$HTTP_STATUS" -ge 300 ]; then
+            exit 1
+          fi

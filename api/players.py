@@ -31,6 +31,11 @@ SAMPLE_PLAYERS = [
     {"id": 16, "rank": 16, "name": "Katie Morey", "skill_level": "3.5 Intermediate", "total_games": 24, "matches_played": 2, "trend": "neutral"},
 ]
 
+PUBLIC_PLAYER_FIELDS = (
+    'id', 'name', 'skill_level', 'rank', 'total_games',
+    'matches_played', 'trend', 'membership_tier', 'avatar_url', 'rms_band',
+)
+
 
 class handler(BaseHTTPRequestHandler):
     def do_OPTIONS(self):
@@ -48,12 +53,7 @@ class handler(BaseHTTPRequestHandler):
             # Filter out admin from player lists
             # Order by total_games descending with NULLS LAST (so 0-game players rank at bottom)
             # Explicit column list — never return password_hash or reset tokens
-            SAFE_COLUMNS = (
-                'id,name,email,phone,skill_level,rank,total_games,matches_played,'
-                'trend,membership_tier,avatar_url,rms_band,is_admin,'
-                'avail_weekday_early,avail_weekday_day,avail_weekday_late,'
-                'avail_weekend_early,avail_weekend_day,avail_weekend_late,is_active'
-            )
+            SAFE_COLUMNS = ','.join(PUBLIC_PLAYER_FIELDS)
             admin_email = os.environ.get('ADMIN_EMAIL', 'khamel@khamel.com')
             result = table('players').select(SAFE_COLUMNS).eq('is_active', True).neq('email', admin_email).order('total_games', desc=True, nulls='last').execute()
 
@@ -72,9 +72,13 @@ class handler(BaseHTTPRequestHandler):
             self.send_header('Content-Type', 'application/json')
             self.send_header('Access-Control-Allow-Origin', '*')
             self.end_headers()
+            public_players = [
+                {field: player.get(field) for field in PUBLIC_PLAYER_FIELDS}
+                for player in (result.data or [])
+            ]
             self.wfile.write(json.dumps({
                 "success": True,
-                "players": result.data,
+                "players": public_players,
                 "source": "supabase"
             }).encode())
 

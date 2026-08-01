@@ -7,6 +7,10 @@ Women's tennis ladder for East Side LA. Monthly pairings, games-won ranking syst
 **Live**: www.networthtennis.com
 **Stack**: Vercel (static + Python functions) + Supabase + Resend
 
+**Email safety invariant:** `EMAIL_DELIVERY_MODE` defaults to `disabled`. No test,
+deployment check, workflow, or operator action may use live delivery without a
+separate explicit approval.
+
 ---
 
 ## Quick Reference
@@ -18,16 +22,19 @@ Women's tennis ladder for East Side LA. Monthly pairings, games-won ranking syst
 ### To add a player:
 Players self-register via join page → immediately active → can log in right away
 
-### To test emails:
-- Emails only send if `RESEND_API_KEY` is set in Vercel
-- Check status: `GET /api/email` returns "ready" or "not_configured"
-- Check Resend API key is valid: `POST /api/system` with `action: check_email_connectivity`
+### To inspect email delivery without sending:
+- `GET /api/email` returns the current `delivery_mode`; disabled and dry-run never contact Resend.
+- `GET /api/system` is a health check. The provider connectivity probe is protected by `CRON_SECRET` and is read-only.
+- Never use a workflow replay or a test email as deployment verification.
+- Unauthenticated signup/reset mail has a second opt-in, `PUBLIC_TRANSACTIONAL_EMAILS=enabled`, in addition to `EMAIL_DELIVERY_MODE=live`.
 
 ### Key files:
 - `api/pairings.py` - Pairing orchestration, validation, and match emails
 - `api/matching.py` - General-graph maximum-weight pairing solver
 - `api/ratings.py` - Deterministic uncertainty-aware ratings from valid two-set results
 - `api/email.py` - Resend API sender + 8 email templates (including admin alerts)
+- `api/email_delivery.py` - Canonical delivery ledger and stable-key reconciliation
+- `api/email_policy.py` - Disabled-by-default delivery and protected-action policy
 - `api/join.py` - Player registration (handles re-registration of inactive accounts)
 - `api/admin.py` - Admin dashboard API (approve/reject/pause players, payment tracking)
 - `api/auth.py` - Password-based authentication + reset token flow
@@ -35,7 +42,7 @@ Players self-register via join page → immediately active → can log in right 
 - `api/supabase_http.py` - Custom Supabase REST client (lightweight alternative to SDK)
 - `api/system.py` - Health check, bug reports, and email connectivity check
 - `.github/workflows/biweekly-emails.yml` - Scheduled email automation
-- `.github/workflows/daily-health-check.yml` - Daily health check with email alerts
+- `.github/workflows/daily-health-check.yml` - Daily read-only health check
 - `.github/workflows/tests.yml` - CI/CD test runner
 - `supabase-final-setup.sql` - Database schema, triggers, and functions
 
@@ -69,13 +76,13 @@ User visits site
     → Vercel serves static HTML from /public
     → JS fetches from /api/* endpoints
     → API reads/writes to Supabase
-    → Resend API sends emails (via api/email.py)
+    → Resend API sends emails only when EMAIL_DELIVERY_MODE=live (via api/email.py)
 
 Authentication Flow
     → User logs in with email + password on /login
     → API verifies password hash from players table
     → Frontend stores local session token + player object in localStorage
-    → Subsequent requests pass `Authorization: Bearer {email}`
+    → Subsequent requests pass `Authorization: Bearer {session token}`
 
 Automated Emails (GitHub Actions)
     → 27th of month: Availability check (Players only, not Social Butterflies)
@@ -99,11 +106,13 @@ Automated Emails (GitHub Actions)
 - Free tier: 3,000 emails/month (we use ~100)
 
 ### Rate Limits & Reliability:
-- Resend allows **2 requests/second** on free tier — 0.6s sleep between bulk sends
+- Scheduled bulk sends use Resend's batch endpoint (up to 100 individualized emails per request), with one stable provider idempotency key per batch
+- `email_delivery_log` is the canonical message-level ledger with `pending`, `accepted`, `failed`, and `unknown` states
+- Every message is claimed before provider submission; provider acceptance and audit persistence are reported separately
+- A timeout or incomplete provider response marks the whole batch `unknown`; a recorded provider failure is `failed`; reconciliation retries either state with the exact same batch key or returns `manual_review_required`
 - `send_email()` auto-retries once on `RateLimitError` (429) with 1s sleep
-- All bulk send error responses include `sent` + `failed` counts even on partial failure
-- Every successful bulk send writes a row to the `email_log` table
-- Resend API key validity is checked daily via `check_email_connectivity` (catches stale keys before pairing day)
+- All scheduled responses include `outcome`, `delivery_summary`, and `reconciliation_required`
+- `email_log` is retained only as a legacy migration source until its row counts are verified
 
 ### 8 Email Templates (in api/email.py)
 
@@ -148,10 +157,14 @@ match_assignments
 match_feedback
   - would_play_again (for silent blocking)
 
-email_log
-  - action, to_emails[], period_label, match_id, resend_email_id, sent_at
-  - Universal audit log: every bulk send writes a row
-  - Query: SELECT * FROM email_log WHERE action='generate_pairings' AND period_label='April 2026'
+email_delivery_log (canonical)
+  - action, period_label, message_key, recipient_emails[], template
+  - delivery_status (pending/accepted/failed/unknown)
+  - idempotency_key (shared by one provider batch), provider_id, accepted_at
+
+issue_reports
+  - reporter_email, reporter_name, page_path, message, status, timestamps
+  - Public issue reports are queued here; they never send an implicit admin email
 ```
 
 ---
@@ -164,7 +177,7 @@ Players log in with email + password. Password reset via emailed link (`/reset-p
 ### Critical Lessons Learned:
 - **Email case sensitivity:** Always `.lower()` emails before storing/comparing
 - **No reload after auth:** Don't use `window.location.reload()` after setting localStorage - set variables directly and update UI
-- **Cold start timeouts:** Vercel functions need `maxDuration: 30` in vercel.json for Supabase calls
+- **Function timeouts:** Vercel Hobby functions max out at 60 seconds; scheduled bulk email work must stay bounded below that limit
 
 ---
 
@@ -246,8 +259,8 @@ checkbox.addEventListener('change', async () => {
 {
   "functions": {
     "api/*.py": {
-      "runtime": "@vercel/python@4.3.1",
-      "maxDuration": 30  // Extended for Supabase cold starts
+      "runtime": "@vercel/python@6.51.1",
+      "maxDuration": 60
     }
   }
 }
@@ -535,7 +548,7 @@ if (response.status === 401) {
   - `email_log` table: every successful bulk send writes a row (action, to_emails, period_label, match_id, resend_email_id)
   - `match_assignments.match_email_id`: stores Resend ID of the original match email for traceability
   - `match_assignments.reminder_sent_at/reminder_email_id`: idempotency for mid-month reminders (re-runs skip already-sent pairs)
-  - `POST /api/system` with `action: check_email_connectivity` — validates Resend API key daily (catches stale keys before pairing day)
+  - `POST /api/system` with `action: check_email_connectivity` — formerly validated the Resend API key daily; it is now cron-protected and no-ops unless live delivery is explicitly enabled
   - Fixed CI auth check: grep for secret template literal was always failing (every commit since March 4); simplified to `grep -q "Authorization: Bearer"`
   - 69/69 tests passing
 - **Security hardening (March 27)** — Full RLS + session token overhaul:
@@ -556,8 +569,9 @@ if (response.status === 401) {
 ### 21. Vercel 504 False Alarm on Bulk Email
 **Symptom:** GitHub Actions shows failure, admin gets alert, but all emails were delivered
 **Cause:** Bulk send to 28 players takes ~31s (0.6s sleep × emails + network). Old `maxDuration: 30` killed the function AFTER all emails sent but before it could return 200. GitHub Actions saw 504 → fired alert.
-**Fix:** `maxDuration: 60` in vercel.json. Workflow now catches 504, queries `email_log` via `check_recent_send`, exits 0 if emails confirmed sent.
-**Rule:** Always set `maxDuration` based on worst-case bulk operation time, not just DB query time.
+**First fix:** `maxDuration: 60` in vercel.json plus a workflow fallback that queries `email_log` via `check_recent_send`.
+**Follow-up fix:** The fallback had a `timezone` scope collision and called an unimplemented `gte` query method; scheduled bulk sends also remained serial. The current implementation uses Resend batch sends, bulk audit writes, stable idempotency keys, and a working reconciliation query.
+**Rule:** Keep scheduled bulk work bounded below the platform limit and reconcile provider-side acceptance before raising a failure alert.
 
 ### 22. Python dict.get() Doesn't Use Default When Key Exists But Is None
 **Symptom:** Pairings generation crashes with `TypeError: '<' not supported between instances of 'NoneType' and 'int'`
