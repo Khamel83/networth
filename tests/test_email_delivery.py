@@ -249,6 +249,54 @@ def test_disabled_pairing_batch_queues_pending_rows_without_provider_call():
     provider.assert_not_called()
 
 
+def test_dry_run_pairing_batch_does_not_claim_rows():
+    from api.email_delivery import deliver_batch
+
+    table = _table_with_insert()
+    provider = Mock()
+
+    result = deliver_batch(
+        messages=[{'to': ['p1@example.com']}],
+        ledger_rows=_message_rows(),
+        provider_sender=provider,
+        table_client=table,
+        mode='dry_run',
+        queue_when_disabled=True,
+    )
+
+    assert result['success'] is True
+    assert result['outcome'] == 'delivery_disabled'
+    assert result['would_send'] == 1
+    table.insert.assert_not_called()
+    provider.assert_not_called()
+
+
+def test_disabled_pairing_retry_reuses_existing_pending_claim():
+    from api.email_delivery import deliver_batch
+
+    rows = _message_rows()
+    table = _table_with_insert(error='HTTP 409: duplicate message key')
+    table.select.return_value.eq.return_value.eq.return_value.eq.return_value.execute.return_value = SimpleNamespace(
+        data=[dict(rows[0], id='ledger-1', delivery_status='pending')], error=None
+    )
+    provider = Mock()
+
+    result = deliver_batch(
+        messages=[{'to': ['p1@example.com']}],
+        ledger_rows=rows,
+        provider_sender=provider,
+        table_client=table,
+        mode='disabled',
+        queue_when_disabled=True,
+    )
+
+    assert result['success'] is True
+    assert result['outcome'] == 'delivery_disabled'
+    assert result['delivery_summary']['pending'] == 1
+    table.update.assert_not_called()
+    provider.assert_not_called()
+
+
 def test_reconciliation_query_returns_pending_unknown_and_failed_rows():
     from api.email_delivery import find_reconciliation_required
 

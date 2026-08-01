@@ -140,7 +140,32 @@ def _reopen_failed_claim(rows, table_client=None):
     return reopened
 
 
-def claim_pending_messages(messages, run_id=None, table_client=None):
+def _reuse_existing_pending_claim(rows, table_client=None):
+    """Return an already-queued pending claim without changing its state."""
+    existing_rows = []
+    for row in rows:
+        try:
+            query = _table(table_client).select(
+                'id,action,period_label,message_key,delivery_status,idempotency_key,recipient_emails,template'
+            )
+            result = _execute(_row_filter(query, row))
+        except Exception:
+            return None
+        if result.error or not result.data:
+            return None
+        existing = result.data[0]
+        if existing.get('delivery_status') != 'pending':
+            return None
+        existing_rows.append(existing)
+    return existing_rows
+
+
+def claim_pending_messages(
+    messages,
+    run_id=None,
+    table_client=None,
+    allow_existing_pending=False,
+):
     """Insert pending rows before provider submission.
 
     The message-key unique index makes a duplicate claim a hard pre-send stop.
@@ -177,6 +202,15 @@ def claim_pending_messages(messages, run_id=None, table_client=None):
                     'rows': reopened,
                     'summary': delivery_summary(reopened),
                 }
+            if allow_existing_pending:
+                existing = _reuse_existing_pending_claim(rows, table_client=table_client)
+                if existing:
+                    return {
+                        'success': True,
+                        'outcome': 'claimed',
+                        'rows': existing,
+                        'summary': delivery_summary(existing),
+                    }
         return {
             'success': False,
             'outcome': 'pre_send_failure',
@@ -287,7 +321,7 @@ def deliver_batch(
     provider_batch_key = rows[0].get('idempotency_key') if rows else None
 
     if selected_mode != 'live':
-        if queue_when_disabled:
+        if selected_mode == 'disabled' and queue_when_disabled:
             if not rows or len(rows) != len(messages or []) or any(
                 row.get('idempotency_key') != provider_batch_key for row in rows
             ):
@@ -300,7 +334,11 @@ def deliver_batch(
                     'idempotency_key': provider_batch_key,
                 }
 
-            claim = claim_pending_messages(rows, table_client=table_client)
+            claim = claim_pending_messages(
+                rows,
+                table_client=table_client,
+                allow_existing_pending=True,
+            )
             if not claim['success']:
                 return {
                     **claim,
