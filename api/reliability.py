@@ -48,23 +48,9 @@ def try_start_run(action: str, period_label: str, metadata: Optional[Dict[str, A
     try:
         from api.supabase_http import table
 
-        # Lock rule: one running/succeeded run per action+period.
-        existing = table('automation_runs')\
-            .select('id, status')\
-            .eq('action', action)\
-            .eq('period_label', period_label)\
-            .in_('status', ['running', 'succeeded'])\
-            .order('started_at', desc=True)\
-            .limit(1)\
-            .execute()
-        if existing.error:
-            if _is_missing_table_error(existing.error):
-                return None, None
-            return None, f"Failed lock check: {existing.error}"
-        if existing.data:
-            status = existing.data[0].get('status')
-            return None, f"Run already exists for {action} {period_label} (status={status})"
-
+        # Lock rule is enforced by the partial unique index on action+period for
+        # active statuses. Insert directly so concurrent invocations cannot both
+        # pass a read-then-insert check.
         created = table('automation_runs').insert({
             "action": action,
             "period_label": period_label,
@@ -76,6 +62,8 @@ def try_start_run(action: str, period_label: str, metadata: Optional[Dict[str, A
         if created.error:
             if _is_missing_table_error(created.error):
                 return None, None
+            if _is_unique_conflict(created.error):
+                return None, f"Run already exists for {action} {period_label}"
             return None, f"Failed to start run: {created.error}"
 
         run_id = None
@@ -136,6 +124,16 @@ def _is_missing_table_error(error: Any) -> bool:
         ("does not exist" in lowered) or
         ("could not find the table" in lowered) or
         ("relation" in lowered and "not found" in lowered)
+    )
+
+
+def _is_unique_conflict(error: Any) -> bool:
+    text = str(error or '').lower()
+    return (
+        '23505' in text or
+        'duplicate key' in text or
+        'unique constraint' in text or
+        'already exists' in text
     )
 
 

@@ -1,6 +1,6 @@
 # Adaptive Monthly Pairing System
 
-Status: design draft for approval
+Status: implemented on `codex/redesign`; pending deployment-branch merge and database migration verification
 Target branch: `codex/redesign`
 Deployment branch: unchanged; this work must not touch `main`/`master`.
 
@@ -155,9 +155,9 @@ The following are required invariants and tests:
 - Validate the complete plan before writing assignments or invoking any email path.
 - Do not dispatch a GitHub workflow or send a test email during implementation.
 
-## Acceptance criteria
+## Acceptance criteria / implementation check
 
-The design is ready to implement when one final approval confirms this bundle. Implementation is complete only when:
+Implementation is complete only when:
 
 - the 20-Player limit and greedy fallback are gone;
 - the same hard rules pass for dynamic rosters through at least 100 Players;

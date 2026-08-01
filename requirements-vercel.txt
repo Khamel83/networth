@@ -1,3 +1,2 @@
-supabase>=2.0.0
-Pillow>=10.0.0
-networkx>=3.2,<4
+# Vercel uses the pinned production manifest in requirements.txt.
+# This file is retained only as an operator pointer.
