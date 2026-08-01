@@ -610,6 +610,7 @@ class handler(BaseHTTPRequestHandler):
                         batch_messages,
                         ledger_rows,
                         provider_sender=send_bulk_emails,
+                        queue_when_disabled=True,
                     )
                     delivery_results.append((batch_jobs, result))
                     emails_sent += result.get('sent', 0)
