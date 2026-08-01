@@ -34,7 +34,7 @@ Daily safety net (`.github/workflows/daily-health-check.yml`):
 - `email_log` is legacy-only during the reviewed migration; `email_delivery_log` is canonical.
 - Public `/api/players` is leaderboard-only. `/api/pairings` requires a cron secret or verified admin session.
 - Workflows never replay a send to verify deployment; deployment checks use safe GET/OPTIONS requests only.
-- Pairing generation may run while email delivery is disabled; it creates assignments and records `emails_sent=0` without contacting Resend. Email-only actions remain skipped.
+- Pairing generation may run while email delivery is disabled; it creates assignments, queues their delivery rows as pending, and records `emails_sent=0` without contacting Resend. Those pairing messages can be reconciled only after explicit delivery enablement. Email-only actions remain skipped.
 - Pairings generation has preflight checks, lock semantics, and strict postchecks.
 - Pairings generation now uses a general-graph maximum-weight solver for dynamic rosters through 100 players, so avoidable repeat pairs are eliminated without a size-based greedy fallback.
 - Pairing quality uses a deterministic uncertainty-aware rating rebuilt from valid two-set match history; no new player data is required.

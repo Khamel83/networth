@@ -897,6 +897,7 @@ class TestEmailReliability:
         email_section = content[email_section_start:email_section_end]
 
         assert 'send_bulk_emails' in email_section
+        assert 'queue_when_disabled=True' in email_section
         assert 'time.sleep(0.6)' not in email_section
 
     def test_send_email_retries_on_429(self):

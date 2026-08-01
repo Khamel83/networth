@@ -273,13 +273,51 @@ def deliver_batch(
     provider_sender,
     table_client=None,
     mode=None,
+    queue_when_disabled=False,
 ):
-    """Claim, submit, and record one provider batch without false failures."""
+    """Claim, submit, and record one provider batch without false failures.
+
+    Pairing generation can intentionally create assignments while delivery is
+    disabled.  Its pending ledger rows must survive that safety gate so an
+    explicitly enabled operator can reconcile them later.  Other email flows
+    keep the historical no-claim behavior unless they opt in explicitly.
+    """
     rows = list(ledger_rows or [])
     selected_mode = mode or delivery_mode()
     provider_batch_key = rows[0].get('idempotency_key') if rows else None
 
     if selected_mode != 'live':
+        if queue_when_disabled:
+            if not rows or len(rows) != len(messages or []) or any(
+                row.get('idempotency_key') != provider_batch_key for row in rows
+            ):
+                return {
+                    'success': False,
+                    'outcome': 'pre_send_failure',
+                    'error': 'Batch messages and ledger rows do not match one idempotency key',
+                    'sent': 0,
+                    'failed': len(messages or []),
+                    'idempotency_key': provider_batch_key,
+                }
+
+            claim = claim_pending_messages(rows, table_client=table_client)
+            if not claim['success']:
+                return {
+                    **claim,
+                    'sent': 0,
+                    'failed': len(messages or []),
+                    'idempotency_key': provider_batch_key,
+                }
+
+            result = blocked_delivery_result(len(messages or []), selected_mode)
+            result.update({
+                'outcome': 'delivery_disabled',
+                'idempotency_key': provider_batch_key,
+                'queued': len(claim['rows']),
+                'delivery_summary': claim['summary'],
+            })
+            return result
+
         result = blocked_delivery_result(len(messages or []), selected_mode)
         result.update({
             'outcome': 'delivery_disabled',
