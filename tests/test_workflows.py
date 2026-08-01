@@ -29,6 +29,8 @@ def test_scheduled_automation_uses_pacific_time_and_delivery_gate():
     assert 'reconciliation_required' in source
     assert 'delivery_summary' in source
     assert 'GITHUB_STEP_SUMMARY' in source
+    assert "env.ACTION == 'generate_pairings'" in source
+    assert 'pairing generation may still run without sending' in source
 
 
 def test_pairings_health_get_has_cron_auth_and_period():

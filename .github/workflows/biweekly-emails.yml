@@ -105,8 +105,8 @@ jobs:
           echo "mode=$MODE" >> "$GITHUB_OUTPUT"
           if [ "$MODE" != "live" ]; then
             echo "delivery_disabled=true" >> "$GITHUB_OUTPUT"
-            echo "No sender POST will run while delivery_mode=$MODE."
-            echo "::notice::delivery_disabled; no email action executed."
+            echo "Email delivery is disabled; pairing generation may still run without sending."
+            echo "::notice::delivery_disabled; email actions will be skipped."
           else
             echo "delivery_disabled=false" >> "$GITHUB_OUTPUT"
           fi
@@ -123,8 +123,8 @@ jobs:
           echo "- Pairings health: HTTP $HTTP_STATUS (read-only)" >> "$GITHUB_STEP_SUMMARY"
           [ "$HTTP_STATUS" -ge 200 ] && [ "$HTTP_STATUS" -lt 300 ]
 
-      - name: Execute live automation action
-        if: steps.delivery-mode.outputs.delivery_disabled == 'false' && env.ACTION != 'health_check'
+      - name: Execute automation action
+        if: env.ACTION == 'generate_pairings' || (steps.delivery-mode.outputs.delivery_disabled == 'false' && env.ACTION != 'health_check')
         shell: bash
         run: |
           set -euo pipefail
