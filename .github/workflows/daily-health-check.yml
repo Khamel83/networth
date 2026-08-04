@@ -19,7 +19,7 @@ jobs:
       - name: Check public pages and safe APIs
         shell: bash
         env:
-          SITE_URL: https://networthtennis.com
+          SITE_URL: https://www.networthtennis.com
         run: |
           set -euo pipefail
           export TZ=America/Los_Angeles

@@ -52,3 +52,9 @@ def test_daily_health_check_is_read_only_and_timezone_correct():
     assert '-X POST' not in source
     assert 'No POST' in source
     assert 'GITHUB_STEP_SUMMARY' in source
+
+
+def test_daily_health_check_uses_canonical_site_host():
+    source, _ = _workflow('daily-health-check.yml')
+    assert 'SITE_URL: https://www.networthtennis.com' in source
+    assert 'SITE_URL: https://networthtennis.com' not in source
