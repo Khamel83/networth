@@ -2,6 +2,18 @@
 
 > Works in any project on any machine. Claude plans, workers execute, Argus searches, Janitor runs in the background.
 
+## PAIRINGS RELIABILITY — HARD REQUIREMENT
+
+Monthly pairing picks and match-email delivery are a production-critical obligation. A month with no picks, no match emails, or a green workflow that hides either is an unacceptable production incident.
+
+For every pairing automation change or recovery, the completion criteria are:
+
+1. Select the scheduled action from `github.event.schedule`; never infer it from the runner's current clock hour.
+2. Require live delivery before creating assignments.
+3. Require a positive pairing count and confirmed match-email count equal to the created assignments.
+4. Fail loudly and require reconciliation for every other outcome; verify persisted assignments and provider/ledger evidence before declaring success.
+5. Keep a regression test for delayed schedule events and silent-success prevention.
+
 ---
 
 ## OPERATORS

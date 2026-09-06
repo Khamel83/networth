@@ -53,6 +53,17 @@ jobs:
           check_get pairings "$SITE_URL/api/pairings?period=$ENCODED_PERIOD" \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
 
+          # The pairing workflow must have completed by the second Pacific
+          # calendar day. This catches a skipped, delayed, or no-op first-day
+          # run even when the scheduled workflow itself reports success.
+          DAY="$(date +%-d)"
+          if [ "$DAY" -ge 2 ] && jq -e \
+            '.success == true and (.pairings | type == "array") and (.pairings | length == 0)' \
+            /tmp/health-pairings.json >/dev/null; then
+            echo "::error::No pairings exist for $PERIOD after the monthly generation window"
+            errors=$((errors + 1))
+          fi
+
           if ! grep -q 'report-issue.js' /tmp/health-homepage.json; then
             echo "::error::Homepage is missing report-issue.js"
             errors=$((errors + 1))
@@ -64,7 +75,7 @@ jobs:
             echo "## Daily read-only health check"
             echo "- Pacific time: $(date --iso-8601=seconds)"
             echo "- Period: $PERIOD"
-            echo "- Email API delivery_mode: `$MODE`"
+            echo "- Email API delivery_mode: \`$MODE\`"
             echo "- No POST, workflow dispatch, provider probe, or email alert was performed."
           } >> "$GITHUB_STEP_SUMMARY"
 

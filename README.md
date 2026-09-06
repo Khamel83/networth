@@ -15,6 +15,7 @@ Automated schedule (`.github/workflows/biweekly-emails.yml`):
 - 27th @ 9am PT: availability reminder
 - Last day @ 9am PT: final reminder
 - 1st @ 9am PT: generate pairings + send match emails
+- Daily after the 1st: read-only watchdog fails if the current month's pairings are missing
 - 1st @ 12pm PT: read-only pairing health check
 - 15th @ 9am PT: mid-month pending-match reminder
 
