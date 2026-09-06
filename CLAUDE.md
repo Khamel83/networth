@@ -11,6 +11,15 @@ Women's tennis ladder for East Side LA. Monthly pairings, games-won ranking syst
 deployment check, workflow, or operator action may use live delivery without a
 separate explicit approval.
 
+**Pairings reliability invariant (non-negotiable):** Monthly pairing picks and
+match-email delivery are production-critical. A month with no pairings, no
+match emails, or a green/no-op workflow is an unacceptable production
+incident. Scheduled pairing selection must use `github.event.schedule`, not
+the runner's current hour. A pairing run requires live delivery, a positive
+pairing count, and confirmed match-email count equal to created assignments;
+unresolved outcomes must fail loudly and require reconciliation. Status,
+welcome, or availability emails never prove that match picks were delivered.
+
 ---
 
 ## Quick Reference
@@ -249,6 +258,17 @@ checkbox.addEventListener('change', async () => {
 - Canonical domain is `https://www.networthtennis.com`; non-www redirects to www.
 - Reliability migration `migrations/02_reliability_automation.sql` must be applied in Supabase.
 - New reconcile endpoint: `POST /api/system` with `action: reconcile_month`.
+
+### Pairing Reliability Incident (September 2026)
+
+This is a production incident, not an acceptable degraded mode. The September
+1 scheduled workflow ran successfully twice, but its clock-based gate selected
+`health_check` for both delayed runs. The read-only pairing check returned zero
+pairings, so no match-assignment emails were sent even though unrelated
+availability and welcome emails existed. Pairing automation must never silently
+complete without picks and match-email confirmation. Any recurrence requires
+an explicit failure, operator-visible reconciliation state, and verification of
+the database assignments plus provider/ledger outcome.
 
 ---
 

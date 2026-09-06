@@ -30,7 +30,23 @@ def test_scheduled_automation_uses_pacific_time_and_delivery_gate():
     assert 'delivery_summary' in source
     assert 'GITHUB_STEP_SUMMARY' in source
     assert "env.ACTION == 'generate_pairings'" in source
-    assert 'pairing generation may still run without sending' in source
+    assert 'non-pairing email actions will be skipped' in source
+
+
+def test_scheduled_action_uses_triggering_cron_not_runner_clock():
+    source, _ = _workflow('biweekly-emails.yml')
+    assert 'github.event.schedule' in source
+    assert 'SCHEDULE=' in source
+    assert '0 17 1 * *' in source
+    assert '0 20 1 * *' in source
+    assert 'HOUR=' not in source
+    assert 'date +%H' not in source
+
+
+def test_pairing_schedule_fails_closed_when_delivery_is_not_live():
+    source, _ = _workflow('biweekly-emails.yml')
+    assert 'Pairing generation requires live delivery' in source
+    assert 'env.ACTION == \'generate_pairings\'' in source
 
 
 def test_pairings_health_get_has_cron_auth_and_period():
@@ -52,6 +68,13 @@ def test_daily_health_check_is_read_only_and_timezone_correct():
     assert '-X POST' not in source
     assert 'No POST' in source
     assert 'GITHUB_STEP_SUMMARY' in source
+
+
+def test_daily_health_check_fails_when_monthly_pairings_are_missing():
+    source, _ = _workflow('daily-health-check.yml')
+    assert 'DAY="$(date +%-d)"' in source
+    assert 'No pairings exist for' in source
+    assert '.pairings | length == 0' in source
 
 
 def test_daily_health_check_uses_canonical_site_host():

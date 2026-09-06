@@ -13,8 +13,9 @@ These processes run without any human intervention:
 | 27th of month, 9am PT | Availability check emails sent | GitHub Actions |
 | Last day of month, 9am PT | Final reminder emails sent | GitHub Actions |
 | 1st of month, 9am PT | Pairings generated + match emails sent | GitHub Actions |
-| 1st of month, 12pm PT | Health-check/self-heal backup | GitHub Actions |
+| 1st of month, 1pm PDT / noon PST | Read-only post-generation pairing check | GitHub Actions |
 | 15th of month, 9am PT | Mid-month reminder emails sent | GitHub Actions |
+| Daily, from the 2nd of each month | Read-only watchdog fails if current-month pairings are missing | GitHub Actions |
 | On player signup | Welcome email sent | Automatic |
 | On match score submitted | Rankings recalculated | Automatic |
 

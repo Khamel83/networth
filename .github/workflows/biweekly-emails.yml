@@ -1,7 +1,8 @@
 # Scheduled automation for Net Worth Tennis.
 #
 # The workflow is deliberately delivery-gated: it performs a read-only GET
-# against /api/email first and exits cleanly for disabled or dry-run delivery.
+# against /api/email first. Pairing generation fails closed unless delivery is
+# live, and every accepted pairing run must confirm its assignments and sends.
 # No workflow retry creates a new provider idempotency key.
 
 name: Tennis League Emails
@@ -50,22 +51,25 @@ jobs:
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             ACTION="${{ inputs.action }}"
           else
+            # GitHub may delay scheduled workflows. Select by the cron event
+            # that fired this run, not by the runner's current clock hour.
+            SCHEDULE="${{ github.event.schedule }}"
             DAY="$(date +%-d)"
-            HOUR="$(date +%H | sed 's/^0//')"
             LAST_DAY="$(date -d "$(date +%Y-%m-01) +1 month -1 day" +%-d)"
-            if [ "$DAY" = "27" ]; then
-              ACTION=monthly_availability
-            elif [ "$DAY" = "$LAST_DAY" ]; then
-              ACTION=final_availability
-            elif [ "$DAY" = "1" ] && [ "$HOUR" -ge 12 ]; then
-              ACTION=health_check
-            elif [ "$DAY" = "1" ]; then
-              ACTION=generate_pairings
-            elif [ "$DAY" = "15" ]; then
-              ACTION=mid_month_reminder
-            else
-              ACTION=skip
-            fi
+            case "$SCHEDULE" in
+              '0 17 27 * *') ACTION=monthly_availability ;;
+              '0 17 28-31 * *')
+                if [ "$DAY" = "$LAST_DAY" ]; then
+                  ACTION=final_availability
+                else
+                  ACTION=skip
+                fi
+                ;;
+              '0 17 1 * *') ACTION=generate_pairings ;;
+              '0 20 1 * *') ACTION=health_check ;;
+              '0 17 15 * *') ACTION=mid_month_reminder ;;
+              *) ACTION=skip ;;
+            esac
           fi
           echo "action=$ACTION" >> "$GITHUB_OUTPUT"
           echo "period=$PERIOD" >> "$GITHUB_OUTPUT"
@@ -96,7 +100,7 @@ jobs:
           {
             echo "## Delivery gate"
             echo "- GET /api/email: HTTP $HTTP_STATUS"
-            echo "- delivery_mode: `$MODE`"
+            echo "- delivery_mode: \`$MODE\`"
           } >> "$GITHUB_STEP_SUMMARY"
           if [ "$HTTP_STATUS" -lt 200 ] || [ "$HTTP_STATUS" -ge 300 ]; then
             echo "::error::Unable to establish delivery mode"
@@ -104,8 +108,12 @@ jobs:
           fi
           echo "mode=$MODE" >> "$GITHUB_OUTPUT"
           if [ "$MODE" != "live" ]; then
+            if [ "$ACTION" = "generate_pairings" ]; then
+              echo "::error::Pairing generation requires live delivery; no assignments were created."
+              exit 1
+            fi
             echo "delivery_disabled=true" >> "$GITHUB_OUTPUT"
-            echo "Email delivery is disabled; pairing generation may still run without sending."
+            echo "Email delivery is disabled; non-pairing email actions will be skipped."
             echo "::notice::delivery_disabled; email actions will be skipped."
           else
             echo "delivery_disabled=false" >> "$GITHUB_OUTPUT"
@@ -152,15 +160,16 @@ jobs:
           OUTCOME=$(jq -r '.outcome // "pre_send_failure"' /tmp/action.json)
           SUMMARY=$(jq -c '.delivery_summary // {}' /tmp/action.json)
           RECONCILIATION=$(jq -r '.reconciliation_required // false' /tmp/action.json)
+          RECONCILED=false
           echo "HTTP $HTTP_STATUS: $RESPONSE"
           {
             echo "## Automation result"
             echo "- Action: $ACTION"
             echo "- Period: $PERIOD"
             echo "- HTTP status: $HTTP_STATUS"
-            echo "- Outcome: `$OUTCOME`"
-            echo "- reconciliation_required: `$RECONCILIATION`"
-            echo "- delivery_summary: `$SUMMARY`"
+            echo "- Outcome: \`$OUTCOME\`"
+            echo "- reconciliation_required: \`$RECONCILIATION\`"
+            echo "- delivery_summary: \`$SUMMARY\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
           if [ "$HTTP_STATUS" = "409" ]; then
@@ -175,8 +184,27 @@ jobs:
               -d "$(jq -nc --arg period "$PERIOD" --arg target "$TARGET_ACTION" \
                 '{action:"reconcile_email_delivery",email_action:$target,period_label:$period}')")
             echo "Protected reconciliation response: $RECON"
-            echo "- Protected reconciliation: `$(echo "$RECON" | jq -c '.')`" >> "$GITHUB_STEP_SUMMARY"
+            echo "- Protected reconciliation: \`$(echo "$RECON" | jq -c '.')\`" >> "$GITHUB_STEP_SUMMARY"
             OUTCOME=$(echo "$RECON" | jq -r '.outcome // "pre_send_failure"')
+            RECONCILED=true
+          fi
+
+          if [ "$ACTION" = "generate_pairings" ] && [ "$OUTCOME" = "accepted" ] && [ "$RECONCILED" = false ]; then
+            PAIRINGS_CREATED=$(jq -r '.pairings_created // 0' /tmp/action.json)
+            EMAILS_SENT=$(jq -r '.emails_sent // 0' /tmp/action.json)
+            if ! [[ "$PAIRINGS_CREATED" =~ ^[0-9]+$ ]] || [ "$PAIRINGS_CREATED" -le 0 ]; then
+              echo "::error::Pairing run reported success without creating any pairings."
+              exit 1
+            fi
+            if ! [[ "$EMAILS_SENT" =~ ^[0-9]+$ ]] || [ "$EMAILS_SENT" -ne "$PAIRINGS_CREATED" ]; then
+              echo "::error::Pairing run created $PAIRINGS_CREATED pairings but confirmed only $EMAILS_SENT match emails."
+              exit 1
+            fi
+          fi
+
+          if [ "$ACTION" = "generate_pairings" ] && [ "$OUTCOME" != "accepted" ] && [ "$OUTCOME" != "already_complete" ]; then
+            echo "::error::Pairing run requires operator reconciliation: $OUTCOME"
+            exit 1
           fi
 
           case "$OUTCOME" in
