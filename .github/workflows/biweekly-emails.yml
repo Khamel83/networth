@@ -127,9 +127,16 @@ jobs:
           HTTP_STATUS=$(curl -sS -o /tmp/pairings.json -w "%{http_code}" \
             "$SITE_URL/api/pairings?period=$(python3 -c 'import urllib.parse,os; print(urllib.parse.quote(os.environ["PERIOD"]))')" \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}")
-          echo "Read-only pairings health: HTTP $HTTP_STATUS: $(cat /tmp/pairings.json)"
+          RESPONSE=$(cat /tmp/pairings.json)
+          echo "Read-only pairings health: HTTP $HTTP_STATUS: $RESPONSE"
           echo "- Pairings health: HTTP $HTTP_STATUS (read-only)" >> "$GITHUB_STEP_SUMMARY"
-          [ "$HTTP_STATUS" -ge 200 ] && [ "$HTTP_STATUS" -lt 300 ]
+          if [ "$HTTP_STATUS" -lt 200 ] || [ "$HTTP_STATUS" -ge 300 ]; then
+            exit 1
+          fi
+          if ! jq -e '.success == true and (.pairings | type == "array") and (.pairings | length > 0)' /tmp/pairings.json >/dev/null; then
+            echo "::error::No pairings found for $PERIOD during the pairing health check"
+            exit 1
+          fi
 
       - name: Execute automation action
         if: env.ACTION == 'generate_pairings' || (steps.delivery-mode.outputs.delivery_disabled == 'false' && env.ACTION != 'health_check')
@@ -230,5 +237,9 @@ jobs:
           echo "Read-only pairings health: HTTP $HTTP_STATUS: $RESPONSE"
           echo "- Pairings health: HTTP $HTTP_STATUS (read-only)" >> "$GITHUB_STEP_SUMMARY"
           if [ "$HTTP_STATUS" -lt 200 ] || [ "$HTTP_STATUS" -ge 300 ]; then
+            exit 1
+          fi
+          if ! jq -e '.success == true and (.pairings | type == "array") and (.pairings | length > 0)' /tmp/pairings.json >/dev/null; then
+            echo "::error::No pairings found for $PERIOD during the pairing health check"
             exit 1
           fi

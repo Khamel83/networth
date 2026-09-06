@@ -49,6 +49,12 @@ def test_pairing_schedule_fails_closed_when_delivery_is_not_live():
     assert 'env.ACTION == \'generate_pairings\'' in source
 
 
+def test_pairings_health_checks_require_nonempty_pairings():
+    source, _ = _workflow('biweekly-emails.yml')
+    assert source.count('.pairings | length > 0') >= 2
+    assert source.count('No pairings found for') >= 2
+
+
 def test_pairings_health_get_has_cron_auth_and_period():
     source, _ = _workflow('biweekly-emails.yml')
     assert '/api/pairings?period=' in source
