@@ -446,7 +446,7 @@
                     <h1 class="join-logo">net worth</h1>
                     <p class="join-subtitle">Join the League</p>
                     <p style="font-size: 0.9rem; color: var(--text-muted); margin-top: 1rem; line-height: 1.6;">
-                        Send your membership fee via Venmo @NCOFFEN (Natalie) then create your player profile here. If you join after the month has started, you'll be matched in the next month.
+                        <a href="https://venmo.com/u/ncoffen?txn=pay&amp;amount=35.00&amp;note=Net%20Worth%20Tennis%20Player%20membership" target="_blank" rel="noopener noreferrer" style="color: var(--text-white); font-weight: 600;">Pay $35 Player membership via Venmo @NCOFFEN (Natalie)</a>, then create your player profile here. If you join after the month has started, you'll be matched in the next month.
                     </p>
                 </div>
 
@@ -493,7 +493,9 @@
                                 <input type="radio" id="tier-social" name="membership_tier" value="social_butterfly">
                                 <label for="tier-social" class="tier-label">
                                     <div class="tier-name">Social Butterfly - $45</div>
-                                    <div class="tier-description">All the social events and community, with no matches assigned.</div>
+                                    <div class="tier-description">
+                                        All the social events and community, with no matches assigned. <a href="https://venmo.com/u/ncoffen?txn=pay&amp;amount=45.00&amp;note=Net%20Worth%20Tennis%20Social%20Butterfly%20membership" target="_blank" rel="noopener noreferrer" style="color: var(--text-white); font-weight: 600;">Pay $45 Social Butterfly fee via Venmo</a>.
+                                    </div>
                                 </label>
                             </div>
                         </div>
@@ -571,7 +573,7 @@
                     <h2>You're In!</h2>
                     <p>We're so pumped for you to join us!</p>
                     <div class="venmo-info">
-                        <p>Please send your membership fee via Venmo to <strong>@NCOFFEN (Natalie)</strong>.</p>
+                        <p>Please send your membership fee via <a id="success-venmo-link" href="https://venmo.com/u/ncoffen?txn=pay&amp;amount=35.00&amp;note=Net%20Worth%20Tennis%20Player%20membership" target="_blank" rel="noopener noreferrer" style="color: var(--text-white); font-weight: 600;">Venmo @NCOFFEN (Natalie)</a>.</p>
                         <p style="margin-top: 1rem;"><strong>You can sign in now!</strong></p>
                     </div>
                 </div>
@@ -597,6 +599,9 @@
         const successSection = document.getElementById('success-section');
         const availabilitySection = document.getElementById('availability-section');
         const tierRadios = document.querySelectorAll('input[name="membership_tier"]');
+        const venmoPlayerUrl = 'https://venmo.com/u/ncoffen?txn=pay&amount=35.00&note=Net%20Worth%20Tennis%20Player%20membership';
+        const venmoSocialUrl = 'https://venmo.com/u/ncoffen?txn=pay&amount=45.00&note=Net%20Worth%20Tennis%20Social%20Butterfly%20membership';
+        const successVenmoLink = document.getElementById('success-venmo-link');
 
         // Toggle availability section based on tier selection
         tierRadios.forEach(radio => {
@@ -701,6 +706,11 @@
                 const data = await response.json();
 
                 if (data.success) {
+                    const isSocialButterfly = membershipTier === 'social_butterfly';
+                    successVenmoLink.href = isSocialButterfly ? venmoSocialUrl : venmoPlayerUrl;
+                    successVenmoLink.textContent = isSocialButterfly
+                        ? 'Venmo @NCOFFEN (Natalie) for $45'
+                        : 'Venmo @NCOFFEN (Natalie) for $35';
                     formSection.style.display = 'none';
                     successSection.style.display = 'block';
                 } else {
