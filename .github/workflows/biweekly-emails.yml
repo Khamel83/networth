@@ -164,7 +164,10 @@ jobs:
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
             -d "$BODY")
           RESPONSE=$(cat /tmp/action.json)
-          OUTCOME=$(jq -r '.outcome // "pre_send_failure"' /tmp/action.json)
+          # Pairing generation returns the provider outcome as
+          # delivery_outcome; accept the generic outcome field used by the
+          # other email actions as well.
+          OUTCOME=$(jq -r '.outcome // .delivery_outcome // "pre_send_failure"' /tmp/action.json)
           SUMMARY=$(jq -c '.delivery_summary // {}' /tmp/action.json)
           RECONCILIATION=$(jq -r '.reconciliation_required // false' /tmp/action.json)
           RECONCILED=false
