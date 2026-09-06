@@ -112,7 +112,7 @@ Replace the main instruction with:
 
 ```html
 <p style="font-size: 0.9rem; color: var(--text-muted); margin-top: 1rem; line-height: 1.6;">
-    Pay the $35 Player membership fee via <a href="https://venmo.com/u/ncoffen?txn=pay&amp;amount=35.00&amp;note=Net%20Worth%20Tennis%20Player%20membership" target="_blank" rel="noopener noreferrer" style="color: var(--text-white); font-weight: 600;">Venmo @NCOFFEN (Natalie)</a>, then create your player profile here. If you join after the month has started, you'll be matched in the next month.
+    <a href="https://venmo.com/u/ncoffen?txn=pay&amp;amount=35.00&amp;note=Net%20Worth%20Tennis%20Player%20membership" target="_blank" rel="noopener noreferrer" style="color: var(--text-white); font-weight: 600;">Pay $35 Player membership via Venmo @NCOFFEN (Natalie)</a>, then create your player profile here. If you join after the month has started, you'll be matched in the next month.
 </p>
 ```
 
@@ -120,7 +120,7 @@ Extend only the Social Butterfly description with:
 
 ```html
 <div class="tier-description">
-    All the social events and community, with no matches assigned. <a href="https://venmo.com/u/ncoffen?txn=pay&amp;amount=45.00&amp;note=Net%20Worth%20Tennis%20Social%20Butterfly%20membership" target="_blank" rel="noopener noreferrer" style="color: var(--text-white); font-weight: 600;">Pay the $45 fee via Venmo</a>.
+    All the social events and community, with no matches assigned. <a href="https://venmo.com/u/ncoffen?txn=pay&amp;amount=45.00&amp;note=Net%20Worth%20Tennis%20Social%20Butterfly%20membership" target="_blank" rel="noopener noreferrer" style="color: var(--text-white); font-weight: 600;">Pay $45 Social Butterfly fee via Venmo</a>.
 </div>
 ```
 
