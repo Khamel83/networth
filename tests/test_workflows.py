@@ -49,6 +49,11 @@ def test_pairing_schedule_fails_closed_when_delivery_is_not_live():
     assert 'env.ACTION == \'generate_pairings\'' in source
 
 
+def test_pairing_result_accepts_endpoint_delivery_outcome():
+    source, _ = _workflow('biweekly-emails.yml')
+    assert '.outcome // .delivery_outcome // "pre_send_failure"' in source
+
+
 def test_pairings_health_checks_require_nonempty_pairings():
     source, _ = _workflow('biweekly-emails.yml')
     assert source.count('.pairings | length > 0') >= 2
