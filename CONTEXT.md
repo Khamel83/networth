@@ -59,3 +59,14 @@ _Avoid_: new player, inactive player
 **Admin flex**:
 Natalie or Ashley, who voluntarily sits out according to the league's rotation rule when the eligible roster is odd so the remaining Players can be paired.
 _Avoid_: skipped player, exception player
+<!-- janitor:begin:recent -->
+## Recent Changes
+- Accept pairing delivery outcome in workflow.
+- Fail pairing health checks on empty months and make monthly delivery fail loudly.
+- Use canonical host in daily health check.
+- Preserve dry-run and pending delivery idempotency; queue pairing delivery while email is disabled.
+- Add adaptive monthly pairing engine.
+- Harden scheduled email automation and delivery reconciliation, including migration ordering and preventing false failures.
+- Add prefilled Venmo payment links to join page (plan, tests, implementation, copy alignment).
+- Add visible support call to umpire and connect support FAQ through call umpire modal.
+<!-- janitor:end:recent -->
