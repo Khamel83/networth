@@ -61,12 +61,21 @@ Natalie or Ashley, who voluntarily sits out according to the league's rotation r
 _Avoid_: skipped player, exception player
 <!-- janitor:begin:recent -->
 ## Recent Changes
-- Accept pairing delivery outcome in workflow.
-- Fail pairing health checks on empty months and make monthly delivery fail loudly.
-- Use canonical host in daily health check.
-- Preserve dry-run and pending delivery idempotency; queue pairing delivery while email is disabled.
-- Add adaptive monthly pairing engine.
-- Harden scheduled email automation and delivery reconciliation, including migration ordering and preventing false failures.
-- Add prefilled Venmo payment links to join page (plan, tests, implementation, copy alignment).
-- Add visible support call to umpire and connect support FAQ through call umpire modal.
+
+- **Monthly Pairing Engine & Delivery Hardening**:
+  - Implemented an adaptive monthly pairing engine and preserved delivery hardening.
+  - Enabled safe pairing generation with email delivery disabled, queuing pending delivery and maintaining dry-run/pending idempotency.
+  - Configured monthly pairing delivery to fail loudly and updated pairing health checks to fail on empty months.
+  - Updated the pairing workflow to accept delivery outcomes.
+
+- **Join Page Payment Integration**:
+  - Planned, tested, and added prefilled Venmo payment links to the join page, aligning documentation copy.
+
+- **Email Automation & Ledger Fixes**:
+  - Hardened scheduled email automation and delivery reconciliation, preventing false failures.
+  - Corrected legacy email ledger migration ordering.
+
+- **Support & Health Monitoring**:
+  - Added a visible "call to umpire" support action and connected the support FAQ via the call umpire modal.
+  - Configured the daily health check to use the canonical host.
 <!-- janitor:end:recent -->
