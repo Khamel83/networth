@@ -126,6 +126,27 @@ def recover_duplicate(table, player1_id, player2_id, period, assignment):
     return close_assignment(table, assignment['id'], existing.get('id')) is None
 
 
+PLAYER_REPORT_MONTHS = 7  # current month + previous 6, matching the dashboard picker
+
+
+def validate_player_period(period_label, today=None):
+    """Players may report the current month or the previous six, never the future.
+
+    Returns an error message or None. Admins record other months from /admin.
+    """
+    try:
+        period = datetime.strptime(str(period_label or '').strip(), '%B %Y')
+    except ValueError:
+        return "Choose a valid month for this match."
+    today = today or datetime.now()
+    months_back = (today.year - period.year) * 12 + (today.month - period.month)
+    if months_back < 0:
+        return "You can't report a match for a future month."
+    if months_back >= PLAYER_REPORT_MONTHS:
+        return "That month is too far back to report. Ask Ashley or Natalie to record it."
+    return None
+
+
 def parse_admin_set_scores(data):
     """Parse admin-entered set scores.
 
@@ -429,6 +450,13 @@ class handler(BaseHTTPRequestHandler):
                     "error": INVALID_SCORE_MESSAGE
                 }).encode())
                 return
+
+            # Players (not admins) may only report recent, non-future months
+            if not is_admin:
+                period_error = validate_player_period(match_data['period_label'])
+                if period_error:
+                    self._send_json(400, {"success": False, "error": period_error})
+                    return
 
             # Validate the pairing before writing anything
             assignment = None
