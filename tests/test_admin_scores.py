@@ -33,7 +33,8 @@ class FakeTable:
 
     def select(self, columns='*'):
         if 'reported_paid' in columns and self.db.no_reported_paid:
-            self.select_error = 'HTTP 400: column players.reported_paid does not exist'
+            self.select_error = self.db.no_reported_paid if isinstance(self.db.no_reported_paid, str) \
+                else 'HTTP 400: {"code":"42703","message":"column players.reported_paid does not exist"}'
         return self
 
     def update(self, data):
@@ -288,7 +289,7 @@ def test_join_without_checkbox_leaves_reported_paid_unset():
     status, _ = _join(FakeDB(tables), JOIN_BODY)
     assert status == 200
     rosa = [p for p in tables['players'] if p['email'] == 'rosa7@gmail.com'][0]
-    assert 'reported_paid' not in rosa
+    assert rosa['reported_paid'] is False
 
 
 def test_removed_member_can_rejoin():
@@ -413,3 +414,22 @@ def test_player_cannot_log_future_month_extra_match():
         }, path='/api/matches')
     assert status == 400, data
     assert tables['matches'] == []
+
+
+def test_rejoin_clears_old_i_paid_answer():
+    tables = seed()
+    tables['players'].append({'id': 'r', 'name': 'Rosa Lee', 'email': 'rosa7@gmail.com', 'is_active': False,
+                              'total_games': 0, 'matches_played': 0,
+                              'reported_paid': True, 'reported_paid_at': '2025-01-01T00:00:00Z'})
+    status, _ = _join(FakeDB(tables), JOIN_BODY)
+    assert status == 200
+    assert tables['players'][-1]['reported_paid'] is False
+    assert tables['players'][-1]['reported_paid_at'] is None
+
+
+def test_report_does_not_hide_real_database_errors():
+    db = FakeDB(seed())
+    db.no_reported_paid = 'HTTP 503: service unavailable (reported_paid query)'
+    status, data = call_admin(db, 'do_GET', path='/api/admin?action=report&period=August%202026')
+    assert status == 500
+    assert data['success'] is False
