@@ -56,5 +56,11 @@
       "src": "/reset-password",
       "dest": "/reset-password.html"
     }
+  ],
+  "crons": [
+    {
+      "path": "/api/system?action=watchdog",
+      "schedule": "0 16 * * *"
+    }
   ]
 }

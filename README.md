@@ -30,6 +30,8 @@ Daily safety net (`.github/workflows/daily-health-check.yml`):
 - fails if the current month's pairings are missing after the 1st
 - GitHub step summary only; no email alert path
 
+Independent watchdog (Vercel Cron, not GitHub): daily at 9am PT, `GET /api/system?action=watchdog` checks that every scheduled job ran and every email was accepted, and emails the owner (`ADMIN_EMAIL`) through Resend if anything is wrong. Monthly all-clear on the 3rd.
+
 Supabase keep-alive (`.github/workflows/keep-alive.yml`): pings every 5 days so the free-tier project never pauses.
 
 ## Admin (`/admin`)
@@ -88,6 +90,7 @@ Utility modules:
 - `api/matching.py`
 - `api/email_delivery.py` (canonical delivery ledger)
 - `api/email_policy.py` (delivery gates, cron-protected actions)
+- `api/watchdog.py` (daily independent checks)
 
 ## Required Configuration
 
@@ -96,7 +99,7 @@ Vercel env vars (see `.env.example`):
 - `RESEND_API_KEY`
 - `EMAIL_DELIVERY_MODE` = `disabled` (safe default; use `dry_run` for target counts; `live` only after explicit approval)
 - `PUBLIC_TRANSACTIONAL_EMAILS` = `enabled` to allow welcome/reset mail to the person signing up
-- `ADMIN_EMAIL` (sysadmin technical alerts)
+- `ADMIN_EMAIL` (owner: receives watchdog alerts and the monthly all-clear)
 - `CRON_SECRET`
 - `SITE_URL` = `https://www.networthtennis.com`
 - `SENTRY_DSN` (optional)

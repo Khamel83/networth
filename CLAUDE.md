@@ -36,6 +36,7 @@ Players self-register via join page → immediately active → can log in right 
 - `GET /api/email` returns the current `delivery_mode`; disabled and dry-run never contact Resend.
 - `GET /api/system` is a health check. The provider connectivity probe is protected by `CRON_SECRET` and is read-only.
 - Never use a workflow replay or a test email as deployment verification.
+- **Independent watchdog (owner-approved alert path):** Vercel Cron calls `GET /api/system?action=watchdog` daily at 16:00 UTC (`vercel.json` `crons`; Vercel sends `Authorization: Bearer $CRON_SECRET`). `api/watchdog.py` checks the database's own evidence (`automation_runs`, `email_delivery_log`, `match_assignments`) that every scheduled job ran and every email was accepted, and emails `ADMIN_EMAIL` via Resend if not; an all-clear goes out on the 3rd. It deliberately does not depend on GitHub Actions. GitHub workflows themselves still never send alerts.
 - Unauthenticated signup/reset mail has a second opt-in, `PUBLIC_TRANSACTIONAL_EMAILS=enabled`, in addition to `EMAIL_DELIVERY_MODE=live`.
 - Exception (owner-approved): the new-signup notice to the two organizers (`ORGANIZER_EMAILS`) needs only `EMAIL_DELIVERY_MODE=live`, because its recipients are fixed server-side and never the signup's own address.
 
@@ -156,6 +157,7 @@ Automated Emails (GitHub Actions)
 | Rejoin Confirmation | Player rejoins | Welcome back! You're in for {Month} | |
 | Admin Alert | Health check failure / Bug report | Net Worth Alert: {subject} | Goes to admin emails |
 | New Signup Notice | Signup/re-join via `/join` | New signup: {Name} / Re-joined: {Name} | Only `ORGANIZER_EMAILS` (Natalie + Ashley), never the new member; live delivery only; best-effort, never blocks signup |
+| Watchdog Alert | Vercel Cron daily (only if a problem) + all-clear on the 3rd | Net Worth: N problem(s) need attention | Only `ADMIN_EMAIL` (owner); requires live delivery |
 | Monthly Report | Cron (2nd), `send_monthly_report` | Net Worth Tennis: {Month} report | Only `MONTHLY_REPORT_RECIPIENTS` (Natalie + Ashley), fixed in `api/email.py`; cron-protected, ledgered, skipped unless delivery is live |
 
 ---
@@ -280,7 +282,7 @@ checkbox.addEventListener('change', async () => {
 ### GitHub Repo Secrets:
 - `SITE_URL`, `CRON_SECRET`, `SUPABASE_URL`, `SUPABASE_ANON_KEY` (keep-alive only)
 
-**Public repo:** GitHub disables scheduled workflows on public repos after 60 days without activity. If the repo goes quiet, pairings stop silently. Making the repo private (or re-enabling from the Actions tab) avoids this.
+**Public repo (keep it public):** GitHub disables scheduled workflows on public repos after 60 days without activity; the Vercel watchdog emails the owner the next morning, and the fix is Actions > Enable workflow. Do not make the repo private: on this account private-repo jobs use paid GitHub-hosted minutes and failed instantly without starting (September 2026). Never commit secrets or member data; the repo is public.
 
 ### Critical Reliability Notes (March 2026)
 - Protected automation actions require `CRON_SECRET` and fail closed if it is missing.
@@ -328,6 +330,7 @@ Utility modules in `api/` (no handler, don't count toward limit):
 - `api/supabase_http.py` - Custom Supabase REST client
 - `api/reliability.py` - Automation preflight helpers
 - `api/sentry_init.py` - Sentry initialization
+- `api/watchdog.py` - Daily independent job/email checks (called by `api/system.py`)
 - `api/__init__.py` - Package init
 
 CI check uses `grep -rl "class handler" api/*.py` — counts only files with a real Vercel handler. New utility modules added to `api/` will NOT trip the check unless they define `class handler`.
@@ -656,6 +659,7 @@ if (response.status === 401) {
 - **Fixed re-joining** — re-registration of a removed (inactive) account returned "Failed to create account" because the UPDATE returned no rows; it now requests the updated row
 - **Venmo pay step on /join** — tier-aware "Pay on Venmo" button + optional "I've sent my $X" checkbox; one reminder dialog if unchecked, never blocks signup
 - **New-signup notice** — every signup (or re-join) emails Natalie + Ashley with the member's details, tier, "I paid" answer, and availability (owner-approved; fixed recipients)
+- **Independent watchdog** — daily Vercel Cron emails the owner (`ADMIN_EMAIL`) through Resend when any scheduled job didn't run or any email wasn't confirmed; monthly all-clear on the 3rd
 - **Docs + maintenance review** — README/RUNBOOK/.env.example brought current; removed the no-op, PII-risky `backup.yml`; documented the 60-day public-repo schedule shutoff
 - **Removed members** — replaced the misleading "Pending Approval" list with a collapsed Removed Members list + row-level Remove
 
