@@ -37,6 +37,7 @@ Players self-register via join page → immediately active → can log in right 
 - `GET /api/system` is a health check. The provider connectivity probe is protected by `CRON_SECRET` and is read-only.
 - Never use a workflow replay or a test email as deployment verification.
 - Unauthenticated signup/reset mail has a second opt-in, `PUBLIC_TRANSACTIONAL_EMAILS=enabled`, in addition to `EMAIL_DELIVERY_MODE=live`.
+- Exception (owner-approved): the new-signup notice to the two organizers (`ORGANIZER_EMAILS`) needs only `EMAIL_DELIVERY_MODE=live`, because its recipients are fixed server-side and never the signup's own address.
 
 ### Key files:
 - `api/pairings.py` - Pairing orchestration, validation, and match emails
@@ -152,6 +153,7 @@ Automated Emails (GitHub Actions)
 | Sit-Out Confirmation | Player pauses | You're sitting out {Month} | |
 | Rejoin Confirmation | Player rejoins | Welcome back! You're in for {Month} | |
 | Admin Alert | Health check failure / Bug report | Net Worth Alert: {subject} | Goes to admin emails |
+| New Signup Notice | Signup/re-join via `/join` | New signup: {Name} / Re-joined: {Name} | Only `ORGANIZER_EMAILS` (Natalie + Ashley), never the new member; live delivery only; best-effort, never blocks signup |
 | Monthly Report | Cron (2nd), `send_monthly_report` | Net Worth Tennis: {Month} report | Only `MONTHLY_REPORT_RECIPIENTS` (Natalie + Ashley), fixed in `api/email.py`; cron-protected, ledgered, skipped unless delivery is live |
 
 ---
@@ -645,6 +647,7 @@ if (response.status === 401) {
 - **"I paid" tracking** — join checkbox saves `players.reported_paid` / `reported_paid_at` (requires `migrations/05_reported_paid.sql`; signup and the report keep working without it). Shown as "Says paid" in the report's Unpaid list; `has_paid` remains the admin-verified flag
 - **Fixed re-joining** — re-registration of a removed (inactive) account returned "Failed to create account" because the UPDATE returned no rows; it now requests the updated row
 - **Venmo pay step on /join** — tier-aware "Pay on Venmo" button + optional "I've sent my $X" checkbox; one reminder dialog if unchecked, never blocks signup
+- **New-signup notice** — every signup (or re-join) emails Natalie + Ashley with the member's details, tier, "I paid" answer, and availability (owner-approved; fixed recipients)
 - **Removed members** — replaced the misleading "Pending Approval" list with a collapsed Removed Members list + row-level Remove
 
 ### February 2026

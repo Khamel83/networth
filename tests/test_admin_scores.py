@@ -570,3 +570,57 @@ def test_monthly_report_workflow_is_separate_gated_and_fixed_recipients():
     assert source.count('${{ inputs.period_label }}') == 1
     # the pairing workflow is untouched by the report
     assert 'send_monthly_report' not in (root / 'biweekly-emails.yml').read_text()
+
+
+# ---------- New-signup notice to organizers ----------
+
+def test_signup_notifies_only_natalie_and_ashley():
+    from api.email import ORGANIZER_EMAILS
+    assert ORGANIZER_EMAILS == ('nmcoffen@gmail.com', 'ashleybrooke.kaufman@gmail.com')
+    tables = seed()
+    with patch('api.email.send_email', return_value={'success': True, 'sent': True}) as send:
+        status, data = _join(FakeDB(tables), {**JOIN_BODY, 'reported_paid': True})
+    assert status == 200, data
+    assert data['organizers_notified'] is True
+    to, subject, html = send.call_args[0]
+    assert to == ['nmcoffen@gmail.com', 'ashleybrooke.kaufman@gmail.com']
+    assert 'rosa7@gmail.com' not in to  # never the new member's own address
+    assert subject == 'New signup: Rosa Lee'
+    assert 'Checked &quot;I paid&quot;' in html
+    assert 'password' not in html.lower()
+
+
+def test_rejoin_notice_says_rejoined():
+    tables = seed()
+    tables['players'].append({'id': 'r', 'name': 'Rosa Lee', 'email': 'rosa7@gmail.com',
+                              'is_active': False, 'total_games': 0, 'matches_played': 0})
+    with patch('api.email.send_email', return_value={'success': True, 'sent': True}) as send:
+        status, _ = _join(FakeDB(tables), JOIN_BODY)
+    assert status == 200
+    assert send.call_args[0][1] == 'Re-joined: Rosa Lee'
+
+
+def test_signup_succeeds_even_if_notice_fails():
+    tables = seed()
+    with patch('api.email.send_email', side_effect=RuntimeError('resend down')):
+        status, data = _join(FakeDB(tables), JOIN_BODY)
+    assert status == 200, data
+    assert data['organizers_notified'] is False
+    assert any(p['email'] == 'rosa7@gmail.com' for p in tables['players'])
+
+
+def test_signup_notice_blocked_when_delivery_not_live():
+    import os
+    tables = seed()
+    with patch.dict(os.environ, {'EMAIL_DELIVERY_MODE': 'disabled'}), \
+            patch('resend.Emails.send', side_effect=AssertionError('provider called')):
+        status, data = _join(FakeDB(tables), JOIN_BODY)
+    assert status == 200, data
+    assert data['organizers_notified'] is False
+
+
+def test_signup_notice_escapes_names():
+    from api.email import get_new_signup_email_html
+    html = get_new_signup_email_html({'name': '<img src=x onerror=alert(1)>', 'email': 'a@b.co'})
+    assert '<img src=x' not in html
+    assert '&lt;img' in html
