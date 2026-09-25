@@ -58,9 +58,9 @@ def healthy_october():
         'match_assignments': [{'id': 1, 'period_label': 'October 2026'}, {'id': 2, 'period_label': 'October 2026'}],
         'email_delivery_log': [
             {'action': 'generate_pairings', 'period_label': 'October 2026', 'delivery_status': 'accepted',
-             'message_key': 'generate_pairings:October 2026:pair-1', 'created_at': RECENT},
+             'message_key': 'generate_pairings:October 2026:1', 'created_at': RECENT},
             {'action': 'generate_pairings', 'period_label': 'October 2026', 'delivery_status': 'accepted',
-             'message_key': 'generate_pairings:October 2026:pair-2', 'created_at': RECENT},
+             'message_key': 'generate_pairings:October 2026:2', 'created_at': RECENT},
         ],
     }
 
@@ -236,3 +236,15 @@ def test_failure_after_an_earlier_success_is_still_reported():
                                   'status': 'failed_terminal', 'started_at': '2026-10-04T19:00:00+00:00'})
     problems, _ = run_watchdog(fake(db), now=NOW)
     assert any("send_monthly_report for September 2026 ended as 'failed_terminal'" in p for p in problems)
+
+
+def test_accepted_email_for_a_different_pairing_does_not_count():
+    db = healthy_october()
+    # Pairing 2's email is missing; an unrelated accepted row must not fill the gap
+    db['email_delivery_log'][1]['message_key'] = 'generate_pairings:October 2026:999'
+    db['email_delivery_log'].append({'action': 'generate_pairings', 'period_label': 'October 2026',
+                                     'delivery_status': 'accepted',
+                                     'message_key': 'generate_pairings:October 2026:1000', 'created_at': RECENT})
+    problems, summary = run_watchdog(fake(db), now=NOW)
+    assert summary['match_emails_accepted'] == 1
+    assert any('Only 1 of 2 October 2026 match emails' in p for p in problems)
