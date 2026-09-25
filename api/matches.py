@@ -60,6 +60,72 @@ def is_duplicate_match_error(error) -> bool:
     return 'idx_unique_match_per_period' in text or '23505' in text or 'duplicate' in text.lower() or 'HTTP 409' in text
 
 
+def _same_pair(row, player1_id, player2_id):
+    return sorted((str(row.get('player1_id')), str(row.get('player2_id')))) == \
+        sorted((str(player1_id), str(player2_id)))
+
+
+def find_assignment(table, player1_id, player2_id, period, assignment_id=None):
+    """Find the pairing a score belongs to, validated against pair and period.
+
+    Returns (assignment_or_None, error). With an explicit assignment_id the
+    pairing must exist and be for these two players in this period. Without
+    one, the pair's pairing for the period is used if there is one (extra
+    matches have none).
+    """
+    found = table('match_assignments').select('id,player1_id,player2_id,period_label,status,match_id')\
+        .eq('period_label', period).execute()
+    if found.error:
+        return None, f"Failed to look up the pairing: {found.error}"
+    if assignment_id:
+        for a in found.data:
+            if str(a.get('id')) == str(assignment_id):
+                if not _same_pair(a, player1_id, player2_id):
+                    return None, "That pairing is for different players."
+                return a, None
+        return None, f"That pairing isn't in {period}."
+    for a in found.data:
+        if _same_pair(a, player1_id, player2_id):
+            return a, None
+    return None, None
+
+
+def close_assignment(table, assignment_id, match_id):
+    """Mark a pairing completed with its match. Returns an error or None."""
+    closed = table('match_assignments').update({'status': 'completed', 'match_id': match_id})\
+        .eq('id', assignment_id).returning().execute()
+    if closed.error:
+        return f"Failed to mark the pairing completed: {closed.error}"
+    if len(closed.data or []) != 1:
+        return "Failed to mark the pairing completed: pairing not found"
+    return None
+
+
+def find_recorded_match(table, player1_id, player2_id, period):
+    """The stored match for this pair and period, if any (either player order)."""
+    found = table('matches').select('*').eq('period_label', period).execute()
+    if found.error:
+        return None, found.error
+    for m in found.data:
+        if _same_pair(m, player1_id, player2_id):
+            return m, None
+    return None, None
+
+
+def recover_duplicate(table, player1_id, player2_id, period, assignment):
+    """A score already exists for this pair/period. If an earlier attempt saved
+    it but failed to close the pairing, finish closing it now so a retry heals
+    the state instead of getting stuck. Returns True if the pairing is closed."""
+    if not assignment:
+        return False
+    if assignment.get('status') == 'completed' and assignment.get('match_id'):
+        return True
+    existing, error = find_recorded_match(table, player1_id, player2_id, period)
+    if error or not existing:
+        return False
+    return close_assignment(table, assignment['id'], existing.get('id')) is None
+
+
 def parse_admin_set_scores(data):
     """Parse admin-entered set scores.
 
@@ -364,14 +430,30 @@ class handler(BaseHTTPRequestHandler):
                 }).encode())
                 return
 
+            # Validate the pairing before writing anything
+            assignment = None
+            if data.get('assignment_id'):
+                assignment, assignment_error = find_assignment(
+                    table, player1_id, player2_id, match_data['period_label'], data.get('assignment_id')
+                )
+                if assignment_error:
+                    print(f"Score pairing check failed: {assignment_error}")
+                    self._send_json(400, {"success": False, "error": assignment_error})
+                    return
+
             # Insert match — a failed insert must never look like a success
             response = table('matches').insert(match_data).execute()
             if response.error:
                 print(f"Match insert failed: {response.error}")
                 if is_duplicate_match_error(response.error):
+                    # A retry after a half-finished save closes the pairing here
+                    closed = recover_duplicate(table, player1_id, player2_id, match_data['period_label'], assignment)
                     self._send_json(409, {
                         "success": False,
-                        "error": "A score for this match has already been recorded for this month. Ask Ashley or Natalie if it needs to be corrected."
+                        "pairing_closed": closed,
+                        "error": "A score for this match has already been recorded for this month"
+                                 + (" and your pairing is now marked complete." if closed else ".")
+                                 + " Ask Ashley or Natalie if it needs to be corrected."
                     })
                 else:
                     self._send_json(500, {
@@ -388,13 +470,17 @@ class handler(BaseHTTPRequestHandler):
                 return
             match = response.data[0]
 
-            # Update match assignment status if provided
-            assignment_id = data.get('assignment_id')
-            if assignment_id:
-                table('match_assignments').update({
-                    'status': 'completed',
-                    'match_id': match['id']
-                }).eq('id', assignment_id).execute()
+            # Close the pairing; a failure here is reported, and a retry heals it
+            if assignment:
+                close_error = close_assignment(table, assignment['id'], match['id'])
+                if close_error:
+                    print(f"Score saved but pairing not closed: {close_error}")
+                    self._send_json(500, {
+                        "success": False,
+                        "score_saved": True,
+                        "error": "Your score was saved, but we couldn't update your pairing. Tap Submit again to finish, or ask Ashley or Natalie."
+                    })
+                    return
 
             # Record feedback (would_play_again)
             if 'would_play_again' in data and match:

@@ -492,7 +492,10 @@ class handler(BaseHTTPRequestHandler):
     def _record_score(self, data):
         """Admin records a score for any two players (assigned or extra match)."""
         from api.supabase_http import table
-        from api.matches import calculate_two_set_games, parse_admin_set_scores, is_duplicate_match_error
+        from api.matches import (
+            calculate_two_set_games, parse_admin_set_scores, is_duplicate_match_error,
+            find_assignment, close_assignment, recover_duplicate,
+        )
 
         player1_id = data.get('player1_id')
         player2_id = data.get('player2_id')
@@ -501,6 +504,12 @@ class handler(BaseHTTPRequestHandler):
             self._send_error(400, "Choose two different players")
             return
         scores, error = parse_admin_set_scores(data)
+        if error:
+            self._send_error(400, error)
+            return
+
+        # Resolve and validate the pairing before writing anything
+        assignment, error = find_assignment(table, player1_id, player2_id, period, data.get('assignment_id'))
         if error:
             self._send_error(400, error)
             return
@@ -523,7 +532,10 @@ class handler(BaseHTTPRequestHandler):
         if inserted.error:
             print(f"Admin record_score insert failed: {inserted.error}")
             if is_duplicate_match_error(inserted.error):
-                self._send_error(409, "A score for these two players is already recorded for this month. Use Edit to change it.")
+                # Finish closing the pairing if an earlier attempt stopped half way
+                closed = recover_duplicate(table, player1_id, player2_id, period, assignment)
+                self._send_error(409, "A score for these two players is already recorded for this month"
+                                 + (" (pairing now marked completed)" if closed else "") + ". Use Edit to change it.")
             else:
                 self._send_error(500, "Failed to save the score")
             return
@@ -533,24 +545,12 @@ class handler(BaseHTTPRequestHandler):
             return
         match = inserted.data[0]
 
-        # Close out the matching assignment so the players stop seeing it as pending
-        assignment_id = data.get('assignment_id')
-        if not assignment_id:
-            found = table('match_assignments').select('id,player1_id,player2_id').eq('period_label', period).execute()
-            if found.error:
-                self._send_error(500, f"Score saved, but failed to look up the pairing: {found.error}")
-                return
-            for a in found.data:
-                if _pair_key(a.get('player1_id'), a.get('player2_id')) == _pair_key(player1_id, player2_id):
-                    assignment_id = a.get('id')
-                    break
-        if assignment_id:
-            closed = table('match_assignments').update({
-                'status': 'completed',
-                'match_id': match.get('id'),
-            }).eq('id', assignment_id).execute()
-            if closed.error:
-                self._send_error(500, f"Score saved, but failed to mark the pairing completed: {closed.error}")
+        # Close out the pairing so the players stop seeing it as pending
+        if assignment:
+            close_error = close_assignment(table, assignment['id'], match.get('id'))
+            if close_error:
+                print(f"Admin score saved but pairing not closed: {close_error}")
+                self._send_error(500, "Score saved, but the pairing wasn't marked completed. Save again to finish.")
                 return
 
         self._send_success({'message': 'Score recorded', 'match': _match_view(match)})
