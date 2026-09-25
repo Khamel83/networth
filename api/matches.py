@@ -47,6 +47,42 @@ def calculate_two_set_games(set1_p1, set1_p2, set2_p1, set2_p2):
     )
 
 
+INVALID_SCORE_MESSAGE = (
+    "That score doesn't match league rules. Each set must end 6-0 through 6-4, "
+    "7-5, or 6-6 (no tiebreakers). If your match ended early or was a forfeit, "
+    "ask Ashley or Natalie to record it from the admin page."
+)
+
+
+def is_duplicate_match_error(error) -> bool:
+    """Whether a Supabase error is the one-match-per-pair-per-month constraint."""
+    text = str(error or '')
+    return 'idx_unique_match_per_period' in text or '23505' in text or 'duplicate' in text.lower() or 'HTTP 409' in text
+
+
+def parse_admin_set_scores(data):
+    """Parse admin-entered set scores.
+
+    Admins may record matches that ended early or were forfeited "as-is"
+    (see Rules), so any whole number 0-7 per set is accepted. A completely
+    blank 0-0, 0-0 score is rejected as an accidental submission.
+    Returns (scores_dict, error_message).
+    """
+    scores = {}
+    for field in ('set1_p1', 'set1_p2', 'set2_p1', 'set2_p2'):
+        value = data.get(field)
+        try:
+            value = int(value)
+        except (TypeError, ValueError):
+            return None, "Enter a number for every set score."
+        if not 0 <= value <= 7:
+            return None, "Each set score must be between 0 and 7."
+        scores[field] = value
+    if not any(scores.values()):
+        return None, "Enter the score (0-0, 0-0 is not a result)."
+    return scores, None
+
+
 class handler(BaseHTTPRequestHandler):
     def do_OPTIONS(self):
         self.send_response(200)
@@ -324,12 +360,25 @@ class handler(BaseHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(json.dumps({
                     "success": False,
-                    "error": "Enter two complete valid set scores before submitting the match."
+                    "error": INVALID_SCORE_MESSAGE
                 }).encode())
                 return
 
-            # Insert match
+            # Insert match — a failed insert must never look like a success
             response = table('matches').insert(match_data).execute()
+            if response.error:
+                print(f"Match insert failed: {response.error}")
+                if is_duplicate_match_error(response.error):
+                    self._send_json(409, {
+                        "success": False,
+                        "error": "A score for this match has already been recorded for this month. Ask Ashley or Natalie if it needs to be corrected."
+                    })
+                else:
+                    self._send_json(500, {
+                        "success": False,
+                        "error": "We couldn't save your score. Please try again, or ask Ashley or Natalie to record it."
+                    })
+                return
             match = response.data[0] if response.data else None
 
             # Update match assignment status if provided
@@ -370,7 +419,7 @@ class handler(BaseHTTPRequestHandler):
         except Exception as e:
             error_msg = str(e)
             # Detect unique constraint violation (duplicate match for same players/period)
-            if 'idx_unique_match_per_period' in error_msg or '23505' in error_msg or 'duplicate' in error_msg.lower():
+            if is_duplicate_match_error(error_msg):
                 self.send_response(409)
                 self.send_header('Content-Type', 'application/json')
                 self.send_header('Access-Control-Allow-Origin', '*')
@@ -388,6 +437,13 @@ class handler(BaseHTTPRequestHandler):
                     "success": False,
                     "error": error_msg
                 }).encode())
+
+    def _send_json(self, status, payload):
+        self.send_response(status)
+        self.send_header('Content-Type', 'application/json')
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.end_headers()
+        self.wfile.write(json.dumps(payload).encode())
 
     def _send_demo_response(self, data):
         """Send response when database not available (demo mode)"""

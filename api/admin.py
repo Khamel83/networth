@@ -55,6 +55,93 @@ def get_next_month_first():
     return date(today.year, today.month + 1, 1)
 
 
+def _pair_key(a, b):
+    return tuple(sorted((str(a), str(b))))
+
+
+def _match_view(m):
+    """Admin-facing summary of a stored match row."""
+    return {
+        'id': m.get('id'),
+        'player1_id': m.get('player1_id'),
+        'player2_id': m.get('player2_id'),
+        'set1_p1': m.get('set1_p1'), 'set1_p2': m.get('set1_p2'),
+        'set2_p1': m.get('set2_p1'), 'set2_p2': m.get('set2_p2'),
+        'player1_games': m.get('player1_games'),
+        'player2_games': m.get('player2_games'),
+        'is_forfeit': bool(m.get('is_forfeit')),
+        'period_label': m.get('period_label'),
+    }
+
+
+def _games_credit(m):
+    """Games the update_player_games() trigger credited for a match row."""
+    if not m:
+        return 0, 0
+    if m.get('is_forfeit'):
+        return 6, 0
+    return int(m.get('player1_games') or 0), int(m.get('player2_games') or 0)
+
+
+def build_period_data(period):
+    """Pairings, recorded scores, and extra matches for one period label.
+
+    Returns (data, error). Every query is checked so a failed read is never
+    shown to admins as "no matches".
+    """
+    from api.supabase_http import table
+
+    assignments = table('match_assignments').select('*').eq('period_label', period).execute()
+    if assignments.error:
+        return None, f"Failed to fetch pairings: {assignments.error}"
+    matches = table('matches').select('*').eq('period_label', period).execute()
+    if matches.error:
+        return None, f"Failed to fetch matches: {matches.error}"
+    players = table('players').select('id, name, email, phone').execute()
+    if players.error:
+        return None, f"Failed to fetch player details: {players.error}"
+
+    players_map = {p['id']: p for p in players.data}
+    matches_by_id = {m.get('id'): m for m in matches.data}
+    matches_by_pair = {_pair_key(m.get('player1_id'), m.get('player2_id')): m for m in matches.data}
+    used_match_ids = set()
+
+    pairings = []
+    for pairing in assignments.data:
+        p1 = players_map.get(pairing.get('player1_id'), {})
+        p2 = players_map.get(pairing.get('player2_id'), {})
+        match = matches_by_id.get(pairing.get('match_id')) or matches_by_pair.get(
+            _pair_key(pairing.get('player1_id'), pairing.get('player2_id'))
+        )
+        if match:
+            used_match_ids.add(match.get('id'))
+        pairings.append({
+            'id': pairing.get('id'),
+            'player1_id': pairing.get('player1_id'),
+            'player1_name': p1.get('name', 'Unknown'),
+            'player1_email': p1.get('email', ''),
+            'player1_phone': p1.get('phone', ''),
+            'player2_id': pairing.get('player2_id'),
+            'player2_name': p2.get('name', 'Unknown'),
+            'player2_email': p2.get('email', ''),
+            'player2_phone': p2.get('phone', ''),
+            'status': pairing.get('status', 'pending'),
+            'period_label': pairing.get('period_label'),
+            'match': _match_view(match) if match else None,
+        })
+
+    extra_matches = []
+    for m in matches.data:
+        if m.get('id') in used_match_ids:
+            continue
+        view = _match_view(m)
+        view['player1_name'] = players_map.get(m.get('player1_id'), {}).get('name', 'Unknown')
+        view['player2_name'] = players_map.get(m.get('player2_id'), {}).get('name', 'Unknown')
+        extra_matches.append(view)
+
+    return {'period': period, 'pairings': pairings, 'extra_matches': extra_matches}, None
+
+
 class handler(BaseHTTPRequestHandler):
     def do_OPTIONS(self):
         self.send_response(200)
@@ -137,49 +224,55 @@ class handler(BaseHTTPRequestHandler):
                 self._send_success({'players': players})
 
             elif action == 'pairings':
-                # Get pairings with player details
+                # Pairings with recorded scores for a period
                 # Supports optional 'period' query param (e.g., "January 2026")
                 # Default: current month
-                today = date.today()
-                period = params.get('period', [today.strftime('%B %Y')])[0]
-
-                result = table('match_assignments')\
-                    .select('*')\
-                    .eq('period_label', period)\
-                    .execute()
-                if result.error:
-                    self._send_error(500, f"Failed to fetch pairings: {result.error}")
+                period = params.get('period', [date.today().strftime('%B %Y')])[0]
+                period_data, error = build_period_data(period)
+                if error:
+                    self._send_error(500, error)
                     return
+                self._send_success(period_data)
 
-                # Get all players to enrich pairings
-                players_result = table('players').select('id, name, email, phone').execute()
-                if players_result.error:
-                    self._send_error(500, f"Failed to fetch player details for pairings: {players_result.error}")
+            elif action == 'report':
+                # Monthly report: results, unreported matches, standings, unpaid members
+                period = params.get('period', [date.today().strftime('%B %Y')])[0]
+                period_data, error = build_period_data(period)
+                if error:
+                    self._send_error(500, error)
                     return
-                players_map = {p['id']: p for p in players_result.data}
-
-                # Enrich pairings with player info
-                enriched_pairings = []
-                for pairing in result.data:
-                    p1 = players_map.get(pairing.get('player1_id'), {})
-                    p2 = players_map.get(pairing.get('player2_id'), {})
-                    enriched_pairings.append({
-                        'id': pairing.get('id'),
-                        'player1_id': pairing.get('player1_id'),
-                        'player1_name': p1.get('name', 'Unknown'),
-                        'player1_email': p1.get('email', ''),
-                        'player1_phone': p1.get('phone', ''),
-                        'player2_id': pairing.get('player2_id'),
-                        'player2_name': p2.get('name', 'Unknown'),
-                        'player2_email': p2.get('email', ''),
-                        'player2_phone': p2.get('phone', ''),
-                        'status': pairing.get('status', 'pending'),
-                        'period_label': pairing.get('period_label')
-                    })
-
+                roster = table('players').select(
+                    'id,name,email,total_games,matches_played,is_active,membership_tier,has_paid'
+                ).eq('is_active', True).order('total_games', desc=True, nulls='last').execute()
+                if roster.error:
+                    self._send_error(500, f"Failed to fetch roster: {roster.error}")
+                    return
+                pairings = period_data['pairings']
+                reported = [p for p in pairings if p['match']]
+                standings = [
+                    {'rank': i + 1, 'name': p.get('name'), 'total_games': p.get('total_games') or 0,
+                     'matches_played': p.get('matches_played') or 0}
+                    for i, p in enumerate(r for r in roster.data if r.get('membership_tier') == 'player')
+                ]
+                unpaid = [
+                    {'name': p.get('name'), 'email': p.get('email'),
+                     'membership_tier': p.get('membership_tier')}
+                    for p in roster.data
+                    if not p.get('has_paid') and p.get('membership_tier') != 'admin'
+                ]
                 self._send_success({
-                    'period': period,
-                    'pairings': enriched_pairings
+                    **period_data,
+                    'summary': {
+                        'pairings': len(pairings),
+                        'reported': len(reported),
+                        'unreported': len(pairings) - len(reported),
+                        'extra_matches': len(period_data['extra_matches']),
+                        'active_members': len(roster.data),
+                        'unpaid_members': len(unpaid),
+                    },
+                    'unreported': [p for p in pairings if not p['match']],
+                    'standings': standings,
+                    'unpaid': unpaid,
                 })
 
             elif action == 'player':
@@ -230,6 +323,11 @@ class handler(BaseHTTPRequestHandler):
 
             action = data.get('action')
             player_id = data.get('player_id')
+
+            if action == 'record_score':
+                return self._record_score(data)
+            if action == 'update_score':
+                return self._update_score(data)
 
             if not player_id:
                 self._send_error(400, "player_id required")
@@ -355,6 +453,120 @@ class handler(BaseHTTPRequestHandler):
         except Exception as e:
             print(f"Admin error: {e}")
             self._send_error(500, "An unexpected error occurred")
+
+    def _record_score(self, data):
+        """Admin records a score for any two players (assigned or extra match)."""
+        from api.supabase_http import table
+        from api.matches import calculate_two_set_games, parse_admin_set_scores, is_duplicate_match_error
+
+        player1_id = data.get('player1_id')
+        player2_id = data.get('player2_id')
+        period = (data.get('period_label') or '').strip() or date.today().strftime('%B %Y')
+        if not player1_id or not player2_id or str(player1_id) == str(player2_id):
+            self._send_error(400, "Choose two different players")
+            return
+        scores, error = parse_admin_set_scores(data)
+        if error:
+            self._send_error(400, error)
+            return
+
+        player1_games, player2_games = calculate_two_set_games(
+            scores['set1_p1'], scores['set1_p2'], scores['set2_p1'], scores['set2_p2']
+        )
+        match_data = {
+            'player1_id': player1_id,
+            'player2_id': player2_id,
+            **scores,
+            'player1_games': player1_games,
+            'player2_games': player2_games,
+            'period_type': 'month',
+            'period_label': period,
+            'is_forfeit': False,
+        }
+        # Insert fires update_player_games(), which adds both players' games
+        inserted = table('matches').insert(match_data).execute()
+        if inserted.error:
+            print(f"Admin record_score insert failed: {inserted.error}")
+            if is_duplicate_match_error(inserted.error):
+                self._send_error(409, "A score for these two players is already recorded for this month. Use Edit to change it.")
+            else:
+                self._send_error(500, "Failed to save the score")
+            return
+        match = inserted.data[0] if inserted.data else None
+
+        # Close out the matching assignment so the players stop seeing it as pending
+        assignment_id = data.get('assignment_id')
+        if not assignment_id:
+            found = table('match_assignments').select('id,player1_id,player2_id').eq('period_label', period).execute()
+            if found.error:
+                self._send_error(500, f"Score saved, but failed to look up the pairing: {found.error}")
+                return
+            for a in found.data:
+                if _pair_key(a.get('player1_id'), a.get('player2_id')) == _pair_key(player1_id, player2_id):
+                    assignment_id = a.get('id')
+                    break
+        if assignment_id:
+            closed = table('match_assignments').update({
+                'status': 'completed',
+                'match_id': match.get('id') if match else None,
+            }).eq('id', assignment_id).execute()
+            if closed.error:
+                self._send_error(500, f"Score saved, but failed to mark the pairing completed: {closed.error}")
+                return
+
+        self._send_success({'message': 'Score recorded', 'match': _match_view(match or match_data)})
+
+    def _update_score(self, data):
+        """Admin corrects an existing score and adjusts both players' totals."""
+        from api.supabase_http import table
+        from api.matches import calculate_two_set_games, parse_admin_set_scores
+
+        match_id = data.get('match_id')
+        if not match_id:
+            self._send_error(400, "match_id required")
+            return
+        scores, error = parse_admin_set_scores(data)
+        if error:
+            self._send_error(400, error)
+            return
+
+        existing = table('matches').select('*').eq('id', match_id).execute()
+        if existing.error:
+            self._send_error(500, f"Failed to fetch match: {existing.error}")
+            return
+        if not existing.data:
+            self._send_error(404, "Match not found")
+            return
+        old = existing.data[0]
+
+        player1_games, player2_games = calculate_two_set_games(
+            scores['set1_p1'], scores['set1_p2'], scores['set2_p1'], scores['set2_p2']
+        )
+        new = {**scores, 'player1_games': player1_games, 'player2_games': player2_games, 'is_forfeit': False}
+
+        # The games trigger only runs on INSERT, so apply the difference by hand
+        old_p1, old_p2 = _games_credit(old)
+        deltas = {old['player1_id']: player1_games - old_p1, old['player2_id']: player2_games - old_p2}
+
+        updated = table('matches').update(new).eq('id', match_id).execute()
+        if updated.error:
+            self._send_error(500, f"Failed to update match: {updated.error}")
+            return
+
+        for pid, delta in deltas.items():
+            if not delta:
+                continue
+            current = table('players').select('id,total_games').eq('id', pid).execute()
+            if current.error or not current.data:
+                self._send_error(500, f"Score updated, but failed to adjust games for player {pid}. Fix totals manually.")
+                return
+            total = int(current.data[0].get('total_games') or 0) + delta
+            adjusted = table('players').update({'total_games': max(total, 0)}).eq('id', pid).execute()
+            if adjusted.error:
+                self._send_error(500, f"Score updated, but failed to adjust games for player {pid}. Fix totals manually.")
+                return
+
+        self._send_success({'message': 'Score updated', 'match': _match_view({**old, **new})})
 
     def _send_success(self, data):
         self.send_response(200)

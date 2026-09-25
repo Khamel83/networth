@@ -26,6 +26,7 @@ welcome, or availability emails never prove that match picks were delivered.
 
 ### To change colors/copy/branding:
 - Website CSS: Variables at top of each `public/*.html` file
+- Logo: `public/logo.webp` (hero/page logos), `public/logo-small.webp` (headers/footers), `public/favicon.png`, `public/apple-touch-icon.png` — all cut from the crystal tennis-ball artwork as transparent circles
 - Email templates: `api/email.py` (all 7 templates with inline styles)
 
 ### To add a player:
@@ -60,11 +61,17 @@ Players self-register via join page → immediately active → can log in right 
 ## Admin Dashboard (`/admin`)
 
 ### Features:
-- **Stats row**: Pending, Players, Social, Active, Paused, Matches counts
-- **Current Pairings**: Shows this month's matches with player names, emails, phones, status
-- **Pending Approval**: New signups awaiting Venmo verification
-- **All Members**: Searchable table with Paid checkbox, tier badge, status
+- **Stats row**: Removed, Players, Social, Active, Paused, Matches counts
+- **Pairings & Scores**: Month picker (last 12 months); each pairing shows its score or "Not reported" with Enter score / Edit; "+ Record a match" for extra matches
+- **Monthly Report**: Month picker (defaults to last month), results, unreported pairings, standings, unpaid members; CSV download and Print
+- **Removed Members**: Collapsed list of inactive accounts with Restore. Signups are active immediately, so inactive = removed by an admin (not "pending")
+- **All Members**: Searchable table with Paid checkbox, tier badge, status, Edit and Remove
 - **Generate Pairings**: Manual trigger for monthly pairing generation
+
+### Admin score rules:
+- Admin entries accept 0–7 per set so matches that ended early or were forfeited can be recorded as-is; players still must enter a rules-valid score
+- `record_score` inserts a match (the INSERT trigger adds games) and closes the pairing
+- `update_score` edits a match and applies the games difference to both players by hand (the trigger only fires on INSERT)
 
 ### Payment Tracking:
 - `has_paid` boolean in database
@@ -74,7 +81,11 @@ Players self-register via join page → immediately active → can log in right 
 ### Admin Actions:
 - `GET /api/admin?action=players` - List all players with has_paid
 - `GET /api/admin?action=pairings` - Current month pairings with player details
+- `GET /api/admin?action=pairings&period=September%202026` - Pairings with recorded scores + extra matches
+- `GET /api/admin?action=report&period=...` - Monthly report data
 - `POST /api/admin` with `action: update_payment` - Toggle payment status
+- `POST /api/admin` with `action: record_score` / `update_score` - Enter or correct a score
+- `POST /api/admin` with `action: deactivate` / `activate` - Remove / restore a member
 
 ---
 
@@ -616,6 +627,15 @@ if (response.status === 401) {
 - **Fixed preflight auth test** — pairings preflight was hitting /api/pairings with {} (actually ran pairings); now uses /api/email test_auth_check like all other jobs
 - **April pairings generated** — 13 pairings, 13 emails sent, 0 repeats confirmed
 - **CRON_SECRET synced** — Vercel + GitHub + vault all matching
+
+### September 2026
+- **New logo** — crystal tennis-ball artwork replaces the text wordmark in headers, hero, login/join/reset, footers, and favicon
+- **Admin score entry/correction** — admins can enter or fix any score from the admin page, including past months
+- **Fixed silent score-save failures** — `POST /api/matches` never checked the insert result, so a failed or duplicate save told the player "Score submitted!" and closed the pairing with nothing saved. It now returns 409/500 and leaves the pairing open
+- **Clearer score error** — invalid player scores now explain the allowed set scores and point to an admin for early-ended matches
+- **Monthly report** — in the admin page (view, CSV, print). Automatic monthly email not yet built (needs email-policy sign-off)
+- **Venmo pay step on /join** — tier-aware "Pay on Venmo" button + optional "I've sent my $X" checkbox; one reminder dialog if unchecked, never blocks signup
+- **Removed members** — replaced the misleading "Pending Approval" list with a collapsed Removed Members list + row-level Remove
 
 ### February 2026
 - **Report Issue feature** - Users can report bugs from dashboard via `/api/report_issue` (sends admin alert email)

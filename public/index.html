@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="icon" type="image/png" href="/favicon.png">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
     <title>Net Worth | Women's Tennis League - LA East Side</title>
     <meta name="description" content="A women's tennis league on LA's East Side. Tennis. Events. Community.">
 
@@ -884,13 +885,19 @@
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
+
+        /* Brand logo image */
+        .logo-img { display: block; width: 44px; height: 44px; border-radius: 50%; }
+        .footer-logo-img { display: block; width: 36px; height: 36px; border-radius: 50%; }
+        .page-logo-img { display: block; width: 120px; height: 120px; margin: 0 auto; border-radius: 50%; }
+        .hero-logo { display: block; width: clamp(200px, 40vw, 360px); height: auto; margin: 0 auto; border-radius: 50%; filter: drop-shadow(0 18px 30px rgba(0,0,0,0.25)); }
     </style>
 </head>
 <body data-page="home">
     <!-- Header -->
     <header class="site-header site-header--fixed" data-site-nav>
         <div class="site-header-inner">
-            <a href="/" class="logo" aria-label="Net Worth home">net worth</a>
+            <a href="/" class="logo" aria-label="Net Worth home"><img src="/logo-small.webp" alt="net worth" class="logo-img" width="44" height="44"></a>
             <button class="site-menu-toggle" type="button" data-menu-toggle aria-controls="site-menu" aria-expanded="false" aria-label="Open navigation">
                 <span class="menu-icon" aria-hidden="true"></span>
             </button>
@@ -921,8 +928,7 @@
     <section class="hero">
         <p class="hero-eyebrow">A Women's Tennis League on LA's East Side</p>
         <h1 class="hero-title">
-            <span>net</span>
-            <span>worth</span>
+            <img src="/logo.webp" alt="net worth" class="hero-logo" width="360" height="360">
         </h1>
         <p class="hero-tagline">Tennis. Events. Community.</p>
         <div class="hero-cta">
@@ -1121,7 +1127,7 @@
     <!-- Footer -->
     <footer>
         <div class="footer-content">
-            <span class="footer-logo">net worth</span>
+            <span class="footer-logo"><img src="/logo-small.webp" alt="net worth" class="footer-logo-img" width="36" height="36"></span>
             <nav class="footer-links">
                 <a href="/#how-it-works" class="footer-link">How It Works</a>
                 <a href="/#courts" class="footer-link">Courts</a>
