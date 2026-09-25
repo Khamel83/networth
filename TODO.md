@@ -16,3 +16,8 @@
 
 No pending or uncompleted tasks are documented in the provided remote evidence or commit summaries.
 <!-- janitor:end:todo -->
+
+## Owner follow-ups (outside the janitor block)
+
+- [ ] Decide: make the GitHub repo private, or accept re-enabling scheduled workflows after 60 quiet days (see RUNBOOK.md > Maintenance Checklist)
+- [ ] Yearly: domain renewal, Resend domain check, CSV export of players/matches, reset Paid boxes at renewal
