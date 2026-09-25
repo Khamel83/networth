@@ -118,15 +118,19 @@ def run_watchdog(table, now=None):
                 if ledger.error:
                     problems.append(f"Could not read {this_month} match-email records: {ledger.error}")
                 else:
-                    # Count each pairing once (message_key is one per pairing), so
-                    # duplicate rows can't make an incomplete month look complete
-                    accepted = len({
-                        row.get('message_key') or f"row-{i}"
-                        for i, row in enumerate(ledger.data)
-                        if row.get('delivery_status') == 'accepted'
-                    })
+                    # Each pairing's email is keyed generate_pairings:<period>:<assignment id>;
+                    # require an accepted email for every actual pairing, not just a count
+                    accepted_keys = {
+                        row.get('message_key') for row in ledger.data
+                        if row.get('delivery_status') == 'accepted' and row.get('message_key')
+                    }
+                    missing = [
+                        p for p in pairs.data
+                        if f"generate_pairings:{this_month}:{p.get('id')}" not in accepted_keys
+                    ]
+                    accepted = count - len(missing)
                     summary['match_emails_accepted'] = accepted
-                    if accepted < count:
+                    if missing:
                         problems.append(
                             f"Only {accepted} of {count} {this_month} match emails were confirmed sent."
                         )
