@@ -26,7 +26,7 @@ welcome, or availability emails never prove that match picks were delivered.
 
 ### To change colors/copy/branding:
 - Website CSS: Variables at top of each `public/*.html` file
-- Logo: `public/logo.webp` (hero/page logos), `public/logo-small.webp` (headers/footers), `public/favicon.png`, `public/apple-touch-icon.png` — all cut from the crystal tennis-ball artwork as transparent circles
+- Logo: animated sparkle `public/logo.webp` (hero/page logos) and `public/logo-small.webp` (headers/footers), with `*-still.webp` served via `<picture>` to `prefers-reduced-motion` users; static `public/favicon.png` and `public/apple-touch-icon.png`. All cut from the crystal tennis-ball GIF as transparent circles
 - Email templates: `api/email.py` (all 7 templates with inline styles)
 
 ### To add a player:
@@ -162,6 +162,7 @@ players
   - favorite_players, avatar_url
   - membership_tier (player | social_butterfly | admin)
   - has_paid (boolean, for admin payment tracking)
+  - reported_paid, reported_paid_at (member's own "I paid" checkbox at signup)
 
 matches
   - player1_id, player2_id
@@ -634,6 +635,8 @@ if (response.status === 401) {
 - **Fixed silent score-save failures** — `POST /api/matches` never checked the insert result, so a failed or duplicate save told the player "Score submitted!" and closed the pairing with nothing saved. It now returns 409/500 and leaves the pairing open
 - **Clearer score error** — invalid player scores now explain the allowed set scores and point to an admin for early-ended matches
 - **Monthly report** — in the admin page (view, CSV, print). Automatic monthly email not yet built (needs email-policy sign-off)
+- **"I paid" tracking** — join checkbox saves `players.reported_paid` / `reported_paid_at` (requires `migrations/05_reported_paid.sql`; signup and the report keep working without it). Shown as "Says paid" in the report's Unpaid list; `has_paid` remains the admin-verified flag
+- **Fixed re-joining** — re-registration of a removed (inactive) account returned "Failed to create account" because the UPDATE returned no rows; it now requests the updated row
 - **Venmo pay step on /join** — tier-aware "Pay on Venmo" button + optional "I've sent my $X" checkbox; one reminder dialog if unchecked, never blocks signup
 - **Removed members** — replaced the misleading "Pending Approval" list with a collapsed Removed Members list + row-level Remove
 

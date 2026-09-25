@@ -778,7 +778,7 @@
 <body>
     <header class="header">
         <div class="header-left">
-            <a href="/" class="logo"><img src="/logo-small.webp" alt="net worth" class="logo-img" width="44" height="44"></a>
+            <a href="/" class="logo"><picture><source srcset="/logo-small-still.webp" media="(prefers-reduced-motion: reduce)"><img src="/logo-small.webp" alt="net worth" class="logo-img" width="44" height="44"></picture></a>
             <span class="admin-badge">Admin</span>
         </div>
         <div class="user-menu">
@@ -1861,9 +1861,10 @@
                 </tbody></table></div>
 
                 <h3 class="sub-title">Unpaid members</h3>
+                <p class="score-hint">"Paid" is Natalie's check in All Members. "Says paid" is the box the member ticked when joining &mdash; check Venmo, then tick Paid.${r.reported_paid_tracked ? '' : ' (Not tracked yet: run migrations/05_reported_paid.sql in Supabase.)'}</p>
                 ${r.unpaid.length ? `
                 <div class="table-wrapper"><table class="data-table"><tbody>
-                    ${r.unpaid.map(p => `<tr><td>${escapeHtml(p.name)}</td><td class="hide-mobile">${escapeHtml(p.email)}</td><td>${p.membership_tier === 'social_butterfly' ? 'Social ($45)' : 'Player ($35)'}</td></tr>`).join('')}
+                    ${r.unpaid.map(p => `<tr><td>${escapeHtml(p.name)}</td><td class="hide-mobile">${escapeHtml(p.email)}</td><td>${p.membership_tier === 'social_butterfly' ? 'Social ($45)' : 'Player ($35)'}</td><td>${p.reported_paid ? '<span class="status-badge status-active">Says paid</span>' : (p.reported_paid === false ? '<span class="status-badge status-paused">Not yet</span>' : '')}</td></tr>`).join('')}
                 </tbody></table></div>` : '<p class="empty-state">Everyone is marked paid</p>'}
             `;
         }
@@ -1889,7 +1890,7 @@
             reportData.extra_matches.forEach(m => rows.push(['Extra match', m.player1_name, m.player2_name, formatScore(m), '']));
             reportData.standings.forEach(p => rows.push([`Games won in ${reportData.period}`, p.name, '', p.total_games, `#${p.rank}, ${p.matches_played} matches`]));
             reportData.season_standings.forEach(p => rows.push(['Season standings (as of today)', p.name, '', p.total_games, `#${p.rank}, ${p.matches_played} matches`]));
-            reportData.unpaid.forEach(p => rows.push(['Unpaid', p.name, '', '', p.email]));
+            reportData.unpaid.forEach(p => rows.push(['Unpaid', p.name, '', p.reported_paid ? 'Says paid' : (p.reported_paid === false ? 'Not yet' : ''), p.email]));
             const csv = rows.map(r => r.map(q).join(',')).join('\n');
             const blob = new Blob([csv], { type: 'text/csv' });
             const a = document.createElement('a');
