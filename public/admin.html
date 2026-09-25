@@ -1056,6 +1056,7 @@
 
         let allPlayers = [];
         let pendingPlayers = [];
+        let renderedPlayers = [];  // rows currently shown in All Members (after search)
         let currentPlayer = null;
 
         // Load players
@@ -1113,7 +1114,7 @@
             }
 
             section.classList.remove('hidden');
-            container.innerHTML = players.map(p => {
+            container.innerHTML = players.map((p, i) => {
                 const tierDisplay = p.membership_tier === 'social_butterfly' ? 'Social Butterfly' : 'Player';
                 return `
                     <div class="pending-player">
@@ -1123,7 +1124,7 @@
                             <div class="pending-meta">${tierDisplay}</div>
                         </div>
                         <div class="pending-actions">
-                            <button class="btn-approve" onclick="approvePlayer('${p.id}', '${escapeHtml(p.name)}')">Restore</button>
+                            <button class="btn-approve" data-member-action="restore" data-index="${i}">Restore</button>
                         </div>
                     </div>
                 `;
@@ -1242,7 +1243,8 @@
                 return;
             }
 
-            tbody.innerHTML = players.map(p => {
+            renderedPlayers = players;
+            tbody.innerHTML = players.map((p, i) => {
                 let statusBadge = '';
                 if (p.is_admin) {
                     statusBadge = '<span class="status-badge status-admin">Admin</span>';
@@ -1280,8 +1282,8 @@
                         <td>${statusBadge}</td>
                         <td class="hide-mobile">${p.membership_tier === 'social_butterfly' ? '-' : (p.total_games || 0)}</td>
                         <td>
-                            <button class="btn-action" onclick='openEditModal(${JSON.stringify(p).replace(/'/g, "&#39;")})'>Edit</button>
-                            ${p.is_admin ? '' : `<button class="btn-action" onclick='removePlayer(${JSON.stringify(p.id)}, ${JSON.stringify(p.name || "").replace(/'/g, "&#39;")})'>Remove</button>`}
+                            <button class="btn-action" data-member-action="edit" data-index="${i}">Edit</button>
+                            ${p.is_admin ? '' : `<button class="btn-action" data-member-action="remove" data-index="${i}">Remove</button>`}
                         </td>
                     </tr>
                 `;
@@ -1435,6 +1437,23 @@
         document.getElementById('score-modal').addEventListener('click', (e) => {
             if (e.target.classList.contains('modal-backdrop')) {
                 closeScoreModal();
+            }
+        });
+
+        // Member buttons carry only a row index; names never enter inline JS
+        document.addEventListener('click', (e) => {
+            const btn = e.target.closest('[data-member-action]');
+            if (!btn) return;
+            const action = btn.dataset.memberAction;
+            const index = Number(btn.dataset.index);
+            if (action === 'restore') {
+                const p = pendingPlayers[index];
+                if (p) approvePlayer(p.id, p.name);
+            } else {
+                const p = renderedPlayers[index];
+                if (!p) return;
+                if (action === 'edit') openEditModal(p);
+                if (action === 'remove') removePlayer(p.id, p.name);
             }
         });
 

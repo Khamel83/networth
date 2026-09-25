@@ -276,6 +276,19 @@ class Result:
         return self
 
 
+def rpc(function_name: str, params: Dict[str, Any]) -> 'Result':
+    """Call a Postgres function via PostgREST (/rest/v1/rpc/<name>)"""
+    url = _build_url(f'rpc/{function_name}')
+    response = httpx.post(url, headers=_get_headers(), json=params)
+    return Result(response)
+
+
+def is_missing_function_error(error) -> bool:
+    """Whether an rpc() error means the function isn't installed yet"""
+    text = str(error or '')
+    return 'PGRST202' in text or 'Could not find the function' in text or text.startswith('HTTP 404')
+
+
 def table(table_name: str) -> Table:
     """Get a table client"""
     return Table(table_name)
