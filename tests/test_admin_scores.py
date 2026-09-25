@@ -64,6 +64,9 @@ class FakeTable:
     def returning(self):
         return self
 
+    def or_(self, *_args):
+        return self
+
     def neq(self, *_args):
         return self
 
@@ -433,3 +436,20 @@ def test_report_does_not_hide_real_database_errors():
     status, data = call_admin(db, 'do_GET', path='/api/admin?action=report&period=August%202026')
     assert status == 500
     assert data['success'] is False
+
+
+def test_dashboard_hides_pairing_once_its_match_is_recorded():
+    # Match saved but the pairing close failed: pairing still "pending"
+    import api.matches as matches
+    tables = _seed_with_match()
+    with patch('api.supabase_http.table', FakeDB(tables)), \
+            patch('api.auth.verify_session', return_value='a@example.net'):
+        status, data = make_handler(matches, 'do_GET', path='/api/matches?action=outstanding')
+    assert status == 200, data
+    assert data['matches'] == []
+
+    tables['matches'].clear()
+    with patch('api.supabase_http.table', FakeDB(tables)), \
+            patch('api.auth.verify_session', return_value='a@example.net'):
+        status, data = make_handler(matches, 'do_GET', path='/api/matches?action=outstanding')
+    assert [m['opponent_name'] for m in data['matches']] == ['Christina']

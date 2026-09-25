@@ -283,6 +283,22 @@ class handler(BaseHTTPRequestHandler):
                 .eq('status', 'pending')\
                 .execute()
 
+            # A pairing whose match is already recorded isn't outstanding, even if
+            # closing it failed earlier (self-reconciling; no retry needed)
+            recorded_pairs = set()
+            periods = {a.get('period_label') for a in assignments_result.data or []}
+            for period in periods:
+                recorded = table('matches').select('player1_id,player2_id').eq('period_label', period).execute()
+                if recorded.error:
+                    print(f"Outstanding check could not read matches: {recorded.error}")
+                    continue
+                for m in recorded.data:
+                    recorded_pairs.add((period, frozenset((str(m.get('player1_id')), str(m.get('player2_id'))))))
+            assignments_result.data = [
+                a for a in assignments_result.data or []
+                if (a.get('period_label'), frozenset((str(a.get('player1_id')), str(a.get('player2_id'))))) not in recorded_pairs
+            ]
+
             # Get all players for enrichment
             players_result = table('players').select('id, name, email, phone, skill_level').execute()
             players_map = {p['id']: p for p in players_result.data}

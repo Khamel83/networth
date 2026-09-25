@@ -73,6 +73,7 @@ Players self-register via join page → immediately active → can log in right 
 - `record_score` inserts a match (the INSERT trigger adds games) and closes the pairing
 - `update_score` edits a match and applies the games difference to both players (the trigger only fires on INSERT). It only runs through the `admin_update_match_score` Postgres function (one transaction, row-locked; `migrations/06_admin_update_match_score.sql`). There is deliberately no REST fallback — until the migration is applied, edits return 503 and change nothing
 - Pairings are validated (players + month) before any score is written; a retry after a half-finished save closes the still-pending pairing instead of getting stuck
+- `migrations/07_close_pairing_on_match_insert.sql` closes the pairing in the same transaction as the match INSERT (and adds `match_assignments.match_id` if missing — the base schema file doesn't declare it). Until it's applied, the dashboard's outstanding list hides any pairing whose match already exists, and admin views count it as reported
 - Admin page never puts member names into inline `onclick` JS: buttons carry `data-member-action` + row index and a delegated listener looks the member up
 
 ### Payment Tracking:
