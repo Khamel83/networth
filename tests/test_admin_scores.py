@@ -152,24 +152,6 @@ def test_admin_rejects_blank_or_out_of_range_scores():
     assert db.tables['matches'] == []
 
 
-def test_admin_update_score_adjusts_totals_by_difference():
-    tables = seed()
-    tables['matches'].append({
-        'id': 'm1', 'player1_id': 'a', 'player2_id': 'c', 'period_label': 'August 2026',
-        'set1_p1': 6, 'set1_p2': 4, 'set2_p1': 6, 'set2_p2': 4,
-        'player1_games': 12, 'player2_games': 8, 'is_forfeit': False,
-    })
-    db = FakeDB(tables)
-    status, data = call_admin(db, 'do_POST', {
-        'action': 'update_score', 'match_id': 'm1', 'set1_p1': 4, 'set1_p2': 6, 'set2_p1': 6, 'set2_p2': 6,
-    })
-    assert status == 200, data
-    assert tables['matches'][0]['player1_games'] == 10
-    assert tables['matches'][0]['player2_games'] == 12
-    assert tables['players'][0]['total_games'] == 10 - 2
-    assert tables['players'][1]['total_games'] == 4 + 4
-
-
 def test_admin_duplicate_score_returns_409_not_success():
     db = FakeDB(seed(), fail_insert={'matches': 'HTTP 409: duplicate key value violates idx_unique_match_per_period'})
     status, data = call_admin(db, 'do_POST', {
@@ -232,42 +214,6 @@ def _seed_with_match():
         'player1_games': 12, 'player2_games': 8, 'is_forfeit': False,
     })
     return tables
-
-
-def test_concurrent_score_edit_is_rejected_and_totals_rolled_back():
-    tables = _seed_with_match()
-    fired = []
-
-    def someone_else_edits(name, tbls, _filters):
-        # Another admin changes the match right before our match UPDATE
-        if name == 'matches' and not fired:
-            fired.append(True)
-            tbls['matches'][0].update({'set1_p1': 6, 'set1_p2': 0, 'player1_games': 12, 'player2_games': 4})
-
-    db = FakeDB(tables, before_update=someone_else_edits)
-    status, data = call_admin(db, 'do_POST', {
-        'action': 'update_score', 'match_id': 'm1', 'set1_p1': 4, 'set1_p2': 6, 'set2_p1': 6, 'set2_p2': 6,
-    })
-    assert status == 409, data
-    assert tables['players'][0]['total_games'] == 10
-    assert tables['players'][1]['total_games'] == 4
-
-
-def test_player_total_changed_mid_edit_is_rejected_without_partial_update():
-    tables = _seed_with_match()
-
-    def total_moves(name, tbls, filters):
-        # A score insert for Christina lands between our read and conditional write
-        if name == 'players' and ('id', 'c') in filters and tbls['players'][1]['total_games'] == 4:
-            tbls['players'][1]['total_games'] = 9
-
-    db = FakeDB(tables, before_update=total_moves)
-    status, _ = call_admin(db, 'do_POST', {
-        'action': 'update_score', 'match_id': 'm1', 'set1_p1': 4, 'set1_p2': 6, 'set2_p1': 6, 'set2_p2': 6,
-    })
-    assert status == 409
-    assert tables['players'][0]['total_games'] == 10  # Alik's adjustment rolled back
-    assert tables['matches'][0]['player1_games'] == 12  # match untouched
 
 
 def test_empty_insert_result_is_not_a_saved_score():
@@ -421,4 +367,17 @@ def test_update_score_database_error_changes_nothing():
     }, rpc_result=FakeResult(data=[], error='HTTP 500: deadlock detected'))
     assert status == 500
     assert tables['players'][0]['total_games'] == 10
+    assert tables['matches'][0]['player1_games'] == 12
+
+
+def test_update_score_without_migration_changes_nothing():
+    # No non-atomic fallback: until migration 06 is applied, edits are refused
+    tables = _seed_with_match()
+    status, data = call_admin(FakeDB(tables), 'do_POST', {
+        'action': 'update_score', 'match_id': 'm1', 'set1_p1': 4, 'set1_p2': 6, 'set2_p1': 6, 'set2_p2': 4,
+    })
+    assert status == 503
+    assert '06_admin_update_match_score' in data['error']
+    assert tables['players'][0]['total_games'] == 10
+    assert tables['players'][1]['total_games'] == 4
     assert tables['matches'][0]['player1_games'] == 12

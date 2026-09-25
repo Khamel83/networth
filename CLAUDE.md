@@ -71,7 +71,7 @@ Players self-register via join page → immediately active → can log in right 
 ### Admin score rules:
 - Admin entries accept 0–7 per set so matches that ended early or were forfeited can be recorded as-is; players still must enter a rules-valid score
 - `record_score` inserts a match (the INSERT trigger adds games) and closes the pairing
-- `update_score` edits a match and applies the games difference to both players (the trigger only fires on INSERT). It calls the `admin_update_match_score` Postgres function (one transaction, row-locked; `migrations/06_admin_update_match_score.sql`) and falls back to guarded REST writes (optimistic locking + rollback) until that migration is applied
+- `update_score` edits a match and applies the games difference to both players (the trigger only fires on INSERT). It only runs through the `admin_update_match_score` Postgres function (one transaction, row-locked; `migrations/06_admin_update_match_score.sql`). There is deliberately no REST fallback — until the migration is applied, edits return 503 and change nothing
 - Pairings are validated (players + month) before any score is written; a retry after a half-finished save closes the still-pending pairing instead of getting stuck
 - Admin page never puts member names into inline `onclick` JS: buttons carry `data-member-action` + row index and a delegated listener looks the member up
 

@@ -558,14 +558,14 @@ class handler(BaseHTTPRequestHandler):
     def _update_score(self, data):
         """Admin corrects an existing score and adjusts both players' totals.
 
-        The games trigger only runs on INSERT, so totals are adjusted here.
-        Supabase REST has no multi-statement transaction, so every write is
-        conditional on the value it read (optimistic locking) and earlier
-        writes are rolled back if a later one fails. A concurrent edit gets a
-        409 instead of a double-applied or partial adjustment.
+        The games trigger only runs on INSERT, so a correction must also move
+        both players' totals. That only happens inside the
+        admin_update_match_score() Postgres function (one row-locked
+        transaction, migrations/06_admin_update_match_score.sql). There is
+        deliberately no REST fallback: separate writes can't be made atomic.
         """
-        from api.supabase_http import table
-        from api.matches import calculate_two_set_games, parse_admin_set_scores
+        from api.supabase_http import rpc, is_missing_function_error
+        from api.matches import parse_admin_set_scores
 
         match_id = data.get('match_id')
         if not match_id:
@@ -576,90 +576,26 @@ class handler(BaseHTTPRequestHandler):
             self._send_error(400, error)
             return
 
-        # Preferred path: one database transaction (migrations/06_admin_update_match_score.sql)
-        from api.supabase_http import rpc, is_missing_function_error
-        atomic = rpc('admin_update_match_score', {
+        result = rpc('admin_update_match_score', {
             'p_match_id': match_id,
             'p_set1_p1': scores['set1_p1'], 'p_set1_p2': scores['set1_p2'],
             'p_set2_p1': scores['set2_p1'], 'p_set2_p2': scores['set2_p2'],
         })
-        if not atomic.error:
-            if len(atomic.data or []) != 1:
-                self._send_error(500, "Failed to update match")
-                return
-            self._send_success({'message': 'Score updated', 'match': _match_view(atomic.data[0])})
-            return
-        if not is_missing_function_error(atomic.error):
-            print(f"admin_update_match_score failed: {atomic.error}")
-            if 'P0002' in str(atomic.error) or 'match not found' in str(atomic.error):
+        if result.error:
+            print(f"admin_update_match_score failed: {result.error}")
+            if is_missing_function_error(result.error):
+                self._send_error(503, "Editing scores needs a one-time database update: run "
+                                      "migrations/06_admin_update_match_score.sql in Supabase. Nothing was changed.")
+            elif 'P0002' in str(result.error) or 'match not found' in str(result.error):
                 self._send_error(404, "Match not found")
             else:
                 self._send_error(500, "Failed to update match; nothing was changed")
             return
-        print("admin_update_match_score not installed; using guarded REST fallback")
-
-        existing = table('matches').select('*').eq('id', match_id).execute()
-        if existing.error:
-            self._send_error(500, f"Failed to fetch match: {existing.error}")
-            return
-        if not existing.data:
-            self._send_error(404, "Match not found")
-            return
-        old = existing.data[0]
-
-        player1_games, player2_games = calculate_two_set_games(
-            scores['set1_p1'], scores['set1_p2'], scores['set2_p1'], scores['set2_p2']
-        )
-        new = {**scores, 'player1_games': player1_games, 'player2_games': player2_games, 'is_forfeit': False}
-        old_fields = {k: old.get(k) for k in new}
-
-        old_p1, old_p2 = _games_credit(old)
-        deltas = [(old['player1_id'], player1_games - old_p1), (old['player2_id'], player2_games - old_p2)]
-
-        # 1. Apply the player total changes, each conditional on the total we read
-        applied = []
-
-        def rollback_totals():
-            for pid, before, after in reversed(applied):
-                undone = table('players').update({'total_games': before})\
-                    .eq('id', pid).eq('total_games', after).returning().execute()
-                if undone.error or len(undone.data or []) != 1:
-                    # Never silent: surface exactly what needs a manual fix
-                    print(f"ROLLBACK FAILED: player {pid} total_games should be {before}, "
-                          f"was set to {after} (match {match_id} unchanged)")
-
-        for pid, delta in deltas:
-            if not delta:
-                continue
-            current = table('players').select('id,total_games').eq('id', pid).execute()
-            if current.error or not current.data:
-                rollback_totals()
-                self._send_error(500, "Failed to read player totals; nothing was changed")
-                return
-            before = int(current.data[0].get('total_games') or 0)
-            after = max(before + delta, 0)
-            adjusted = table('players').update({'total_games': after}).eq('id', pid).eq('total_games', before).returning().execute()
-            if adjusted.error or len(adjusted.data or []) != 1:
-                rollback_totals()
-                self._send_error(409, "Player totals changed while saving; nothing was changed. Please try again.")
-                return
-            applied.append((pid, before, after))
-
-        # 2. Update the match only if nobody else edited it since we read it
-        update = table('matches').update(new).eq('id', match_id)
-        for key, value in old_fields.items():
-            if value is not None:
-                update = update.eq(key, value)
-        updated = update.returning().execute()
-        if updated.error or len(updated.data or []) != 1:
-            rollback_totals()
-            if updated.error:
-                self._send_error(500, "Failed to update match; nothing was changed")
-            else:
-                self._send_error(409, "This score was changed by someone else; nothing was changed. Reload and try again.")
+        if len(result.data or []) != 1:
+            self._send_error(500, "Failed to update match")
             return
 
-        self._send_success({'message': 'Score updated', 'match': _match_view({**old, **new})})
+        self._send_success({'message': 'Score updated', 'match': _match_view(result.data[0])})
 
     def _send_success(self, data):
         self.send_response(200)

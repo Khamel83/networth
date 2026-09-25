@@ -4,8 +4,9 @@
 -- that as separate REST writes can't be all-or-nothing; this function does
 -- the match update and both total adjustments in one transaction, with the
 -- match row locked so concurrent edits serialize.
--- api/admin.py calls it via /rest/v1/rpc and falls back to guarded REST
--- writes until this migration is applied. Safe to re-run.
+-- api/admin.py calls it via /rest/v1/rpc. There is no fallback: until this
+-- is applied, editing an existing score returns 503 and changes nothing
+-- (recording new scores does not need it). Safe to re-run.
 
 CREATE OR REPLACE FUNCTION public.admin_update_match_score(
     p_match_id UUID,
