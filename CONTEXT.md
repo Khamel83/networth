@@ -60,22 +60,24 @@ _Avoid_: new player, inactive player
 Natalie or Ashley, who voluntarily sits out according to the league's rotation rule when the eligible roster is odd so the remaining Players can be paired.
 _Avoid_: skipped player, exception player
 <!-- janitor:begin:recent -->
-## Recent Changes
-
-- **Monthly Pairing Engine & Delivery Hardening**:
-  - Implemented an adaptive monthly pairing engine and preserved delivery hardening.
-  - Enabled safe pairing generation with email delivery disabled, queuing pending delivery and maintaining dry-run/pending idempotency.
-  - Configured monthly pairing delivery to fail loudly and updated pairing health checks to fail on empty months.
-  - Updated the pairing workflow to accept delivery outcomes.
-
-- **Join Page Payment Integration**:
-  - Planned, tested, and added prefilled Venmo payment links to the join page, aligning documentation copy.
-
-- **Email Automation & Ledger Fixes**:
-  - Hardened scheduled email automation and delivery reconciliation, preventing false failures.
-  - Corrected legacy email ledger migration ordering.
-
-- **Support & Health Monitoring**:
-  - Added a visible "call to umpire" support action and connected the support FAQ via the call umpire modal.
-  - Configured the daily health check to use the canonical host.
+- 260e28489fdc39ced90091167f1a297e96a68ae1: Merge pull request #18 from Khamel83/claude/logo-admin-scores-qqfb3p
+- ccd1f8c39c344b5704c7a547fd3df7ffdfed905d: Email the monthly report to Natalie and Ashley
+- b9af2b83ea6405a9cb8155f9b8a8911ade36b797: Merge pull request #17 from Khamel83/claude/logo-admin-scores-qqfb3p
+- 03de7a81555041243c3ef0e876169c1984744e4c: Don't fail closing a pairing on older schema; skip reminders for recorded scores
+- d90b2e307b829a3102165fb5eb1fc6b72bfd6449: Close pairings atomically with the match insert; self-heal dashboard
+- 0354f370920e6bfc6779d0577d404228133a66a4: Reset I-paid on rejoin; only fall back on a confirmed missing column
+- 44a8f0931cff0ab2208b318fe63fb18df800cf41: Limit player-reported months and neutralize CSV formulas
+- 539d49a77940ffba65e265ad0343297dc2121657: Require the atomic DB function for score corrections
+- 0659d346c35724741605ba0b77050c8abbc84bf9: Show pairing scores in the pairing's player order
+- 05387696d2b1859d8df6c9a4afb5c443ee5e1165: Atomic score correction via DB function; remove names from inline handlers
+- e2e78395606196790b991b43c40e84e6964a9bfc: Validate pairing before saving a score and heal half-finished saves
+- 84705773fd026bb98df86f41002d705fc53341e3: Animated logo and saved "I paid" checkbox
+- a8afb0efa45fe6c2120382304ec1482b6f69d7d9: Harden admin score edits and scope monthly report standings
+- 17129e7a32dd702a1ed749a79e5efebdff585a11: Add new logo, admin score entry, monthly report, and Venmo pay step
+- 90dbee9385895ad54178881cca8521ac442bfe75: fix: accept pairing delivery outcome in workflow
+- 40b45d906df9a6ceae7dc28c220c552008b426e1: fix: fail pairing health checks on empty months
+- 555490c2c1805ca55e17c72baef210a09b058ce0: fix: make monthly pairing delivery fail loudly
+- 83c69bf5746dfc58ccafb107e8118e380d137342: docs: align Venmo link plan copy
+- 6ecc65931f53617bafad3b9eb3d4266f123913e3: feat: add prefilled Venmo links to join page
+- 2883cf7d8db91620541251a9d39e9a12551cca01: test: define join page Venmo payment links
 <!-- janitor:end:recent -->
