@@ -99,6 +99,7 @@ class handler(BaseHTTPRequestHandler):
                 'rank': None
             }
 
+            rejoined = False
             try:
                 existing = table('players').select('id, is_active').eq('email', email).execute()
 
@@ -109,6 +110,7 @@ class handler(BaseHTTPRequestHandler):
                         self._send_error(400, "This email is already registered. Try logging in instead!")
                         return
 
+                    rejoined = True
                     result = table('players').update(player_data).eq('id', existing_player['id']).returning().execute()
                 else:
                     try:
@@ -135,6 +137,26 @@ class handler(BaseHTTPRequestHandler):
                     except Exception as e:
                         print(f"Could not record reported_paid: {e}")
 
+                    # Heads-up to Natalie + Ashley (fixed recipients, live delivery
+                    # only, best-effort: a failed notice never fails the signup)
+                    organizer_notice = {}
+                    try:
+                        from api.email import notify_organizers_of_signup
+                        notice_fields = {
+                            k: player_data.get(k) for k in (
+                                'name', 'email', 'phone', 'membership_tier',
+                                'avail_weekday_early', 'avail_weekday_day', 'avail_weekday_late',
+                                'avail_weekend_early', 'avail_weekend_day', 'avail_weekend_late',
+                            )
+                        }
+                        organizer_notice = notify_organizers_of_signup(
+                            {**notice_fields, 'reported_paid': reported_paid}, rejoined=rejoined
+                        )
+                        if not organizer_notice.get('sent') and not organizer_notice.get('blocked'):
+                            print(f"Organizer signup notice not sent: {organizer_notice.get('error')}")
+                    except Exception as e:
+                        print(f"Organizer signup notice failed: {e}")
+
                     email_sent = False
                     email_error = None
                     from api.email_policy import delivery_mode, public_transactional_email_enabled
@@ -157,6 +179,7 @@ class handler(BaseHTTPRequestHandler):
                         "player_created": True,
                         "is_active": True,
                         "welcome_email_sent": email_sent,
+                        "organizers_notified": bool(organizer_notice.get('sent')),
                         "email_delivery_mode": email_delivery_mode,
                         "email_error": email_error
                     })
