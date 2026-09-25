@@ -111,7 +111,13 @@ def make_handler(module, method, body=None, path='/api/admin'):
     raw = json.dumps(body or {}).encode()
     handler.rfile = io.BytesIO(raw)
     handler.headers = {'Authorization': 'Bearer tok', 'Content-Length': str(len(raw))}
-    getattr(handler, method)()
+    # Pin "today" so month-range checks don't depend on when tests run
+    from datetime import datetime
+    import api.matches as matches_module
+    real_validate = matches_module.validate_player_period
+    with patch.object(matches_module, 'validate_player_period',
+                      lambda period, today=None: real_validate(period, datetime(2026, 9, 25))):
+        getattr(handler, method)()
     return handler.send_response.call_args[0][0], json.loads(handler.wfile.getvalue())
 
 
@@ -381,3 +387,29 @@ def test_update_score_without_migration_changes_nothing():
     assert tables['players'][0]['total_games'] == 10
     assert tables['players'][1]['total_games'] == 4
     assert tables['matches'][0]['player1_games'] == 12
+
+
+def test_player_period_limits():
+    from datetime import datetime
+    from api.matches import validate_player_period
+    today = datetime(2026, 9, 25)
+    assert validate_player_period('September 2026', today) is None
+    assert validate_player_period('March 2026', today) is None
+    assert validate_player_period('February 2026', today)  # 7 months back
+    assert validate_player_period('October 2026', today)   # future
+    assert validate_player_period('Sept 2026', today)      # malformed
+    assert validate_player_period(None, today)
+
+
+def test_player_cannot_log_future_month_extra_match():
+    import api.matches as matches
+    tables = seed()
+    db = FakeDB(tables)
+    with patch('api.supabase_http.table', db), \
+            patch('api.auth.verify_session', return_value='a@example.net'):
+        status, data = make_handler(matches, 'do_POST', {
+            'player1_id': 'a', 'player2_id': 'c', 'set1_p1': 6, 'set1_p2': 4, 'set2_p1': 6, 'set2_p2': 3,
+            'period_label': 'December 2099',
+        }, path='/api/matches')
+    assert status == 400, data
+    assert tables['matches'] == []

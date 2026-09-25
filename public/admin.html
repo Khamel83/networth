@@ -1904,7 +1904,12 @@
                 showMessage('Report not loaded yet', 'error');
                 return;
             }
-            const q = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+            // Quote, and neutralize spreadsheet formulas in member-supplied text
+            const q = v => {
+                let text = String(v ?? '');
+                if (/^[=+\-@\t\r]/.test(text)) text = "'" + text;
+                return `"${text.replace(/"/g, '""')}"`;
+            };
             const rows = [['Section', 'Player 1', 'Player 2', 'Score / Games', 'Detail']];
             reportData.pairings.forEach(p => rows.push(['Pairing', p.player1_name, p.player2_name, p.match ? reportScoreFor(p) : '', p.match ? 'Reported' : 'Not reported']));
             reportData.extra_matches.forEach(m => rows.push(['Extra match', m.player1_name, m.player2_name, formatScore(m), '']));
