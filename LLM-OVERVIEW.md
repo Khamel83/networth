@@ -10,6 +10,7 @@ East Side LA women's tennis ladder (~50 members): monthly pairings, automated re
 - Monthly automation green: pairings on the 1st, reminders on the 27th / last day / 15th, daily read-only health check, Supabase keep-alive.
 - September 2026 additions: crystal-ball logo; admin score entry/editing (atomic DB function); monthly report page + email to Natalie/Ashley on the 2nd; signup notice email to Natalie/Ashley; Venmo pay step with optional "I paid" checkbox; Removed Members list.
 - Migrations 05-07 applied in production.
+- Independent daily watchdog on Vercel Cron emails the owner on any missed job or unconfirmed email.
 - Known operational risk: the repo is public, so GitHub disables scheduled workflows after 60 days without activity. See RUNBOOK.md > Maintenance Checklist.
 
 ## Architecture
