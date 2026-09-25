@@ -123,16 +123,17 @@ class handler(BaseHTTPRequestHandler):
                 if result.data and len(result.data) > 0:
                     # Best-effort: record the "I paid" checkbox. Kept out of the
                     # main write so signup never fails if migration 05 isn't applied.
-                    if data.get('reported_paid') is True:
-                        try:
-                            flagged = table('players').update({
-                                'reported_paid': True,
-                                'reported_paid_at': datetime.now(timezone.utc).isoformat(),
-                            }).eq('id', result.data[0]['id']).execute()
-                            if flagged.error:
-                                print(f"Could not record reported_paid: {flagged.error}")
-                        except Exception as e:
-                            print(f"Could not record reported_paid: {e}")
+                    # Always written so a re-joining member never keeps an old answer.
+                    reported_paid = data.get('reported_paid') is True
+                    try:
+                        flagged = table('players').update({
+                            'reported_paid': reported_paid,
+                            'reported_paid_at': datetime.now(timezone.utc).isoformat() if reported_paid else None,
+                        }).eq('id', result.data[0]['id']).execute()
+                        if flagged.error:
+                            print(f"Could not record reported_paid: {flagged.error}")
+                    except Exception as e:
+                        print(f"Could not record reported_paid: {e}")
 
                     email_sent = False
                     email_error = None

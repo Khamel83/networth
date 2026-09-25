@@ -289,6 +289,14 @@ def is_missing_function_error(error) -> bool:
     return 'PGRST202' in text or 'Could not find the function' in text or text.startswith('HTTP 404')
 
 
+def is_missing_column_error(error, column: str) -> bool:
+    """Whether an error means `column` doesn't exist yet (migration not applied)"""
+    text = str(error or '')
+    if column not in text:
+        return False
+    return '42703' in text or 'PGRST204' in text or 'does not exist' in text or 'Could not find' in text
+
+
 def table(table_name: str) -> Table:
     """Get a table client"""
     return Table(table_name)

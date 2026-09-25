@@ -244,8 +244,9 @@ class handler(BaseHTTPRequestHandler):
                 roster_columns = 'id,name,email,total_games,matches_played,is_active,membership_tier,has_paid'
                 roster = table('players').select(roster_columns + ',reported_paid,reported_paid_at')\
                     .eq('is_active', True).order('total_games', desc=True, nulls='last').execute()
+                from api.supabase_http import is_missing_column_error
                 reported_paid_tracked = not roster.error
-                if roster.error:
+                if roster.error and is_missing_column_error(roster.error, 'reported_paid'):
                     # migrations/05_reported_paid.sql not applied yet: report without it
                     print(f"Report roster without reported_paid: {roster.error}")
                     roster = table('players').select(roster_columns)\
