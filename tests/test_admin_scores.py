@@ -341,3 +341,53 @@ def test_removed_member_can_rejoin():
     status, data = _join(FakeDB(tables), JOIN_BODY)
     assert status == 200, data
     assert tables['players'][-1]['is_active'] is True
+
+
+def test_admin_rejects_assignment_for_other_players():
+    tables = seed()
+    tables['players'].append({'id': 'z', 'name': 'Zoe', 'email': 'z@example.net', 'total_games': 0,
+                              'matches_played': 0, 'is_active': True, 'membership_tier': 'player'})
+    db = FakeDB(tables)
+    status, data = call_admin(db, 'do_POST', {
+        'action': 'record_score', 'assignment_id': 'as1', 'player1_id': 'a', 'player2_id': 'z',
+        'period_label': 'August 2026', 'set1_p1': 6, 'set1_p2': 3, 'set2_p1': 6, 'set2_p2': 3,
+    })
+    assert status == 400, data
+    assert tables['matches'] == []  # nothing written
+    assert tables['match_assignments'][0]['status'] == 'pending'
+
+
+def test_retry_after_half_finished_save_closes_the_pairing():
+    # Match saved earlier, but the pairing update failed and it stayed pending
+    tables = _seed_with_match()
+    db = FakeDB(tables, fail_insert={'matches': 'HTTP 409: duplicate key value violates idx_unique_match_per_period'})
+    import api.matches as matches
+    with patch('api.supabase_http.table', db), \
+            patch('api.auth.verify_session', return_value='a@example.net'):
+        status, data = make_handler(matches, 'do_POST', {
+            'assignment_id': 'as1', 'player1_id': 'a', 'player2_id': 'c',
+            'set1_p1': 6, 'set1_p2': 4, 'set2_p1': 6, 'set2_p2': 4, 'period_label': 'August 2026',
+        }, path='/api/matches')
+    assert status == 409
+    assert data['pairing_closed'] is True
+    assert tables['match_assignments'][0]['status'] == 'completed'
+    assert tables['match_assignments'][0]['match_id'] == 'm1'
+
+
+def test_player_sees_error_when_pairing_close_fails():
+    tables = seed()
+
+    def pairing_vanishes(name, tbls, _filters):
+        if name == 'match_assignments':
+            tbls['match_assignments'].clear()
+
+    db = FakeDB(tables, before_update=pairing_vanishes)
+    import api.matches as matches
+    with patch('api.supabase_http.table', db), \
+            patch('api.auth.verify_session', return_value='a@example.net'):
+        status, data = make_handler(matches, 'do_POST', {
+            'assignment_id': 'as1', 'player1_id': 'a', 'player2_id': 'c',
+            'set1_p1': 6, 'set1_p2': 4, 'set2_p1': 6, 'set2_p2': 3, 'period_label': 'August 2026',
+        }, path='/api/matches')
+    assert status == 500
+    assert data['score_saved'] is True
