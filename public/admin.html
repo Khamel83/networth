@@ -1647,7 +1647,7 @@
                                     </td>
                                     <td>
                                         ${p.match
-                                            ? `<span class="score-text">${formatScore(p.match)}</span>`
+                                            ? `<span class="score-text">${reportScoreFor(p)}</span>`
                                             : `<span class="status-badge status-paused">Not reported</span>`}
                                     </td>
                                     <td>
@@ -1888,7 +1888,8 @@
             `;
         }
 
-        // Show a pairing's score from the pairing's player1 point of view
+        // Show a pairing's score from the pairing's player1 point of view.
+        // A match may be stored in the reverse order (whoever reported it is player1).
         function reportScoreFor(p) {
             const m = p.match;
             if (String(m.player1_id) === String(p.player1_id)) return formatScore(m);
