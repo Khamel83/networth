@@ -249,7 +249,31 @@ class handler(BaseHTTPRequestHandler):
                     return
                 pairings = period_data['pairings']
                 reported = [p for p in pairings if p['match']]
+
+                # Games won in the selected month, from that month's match rows
+                month_games = {}
+                names = {}
+                for p in pairings:
+                    names[p['player1_id']] = p['player1_name']
+                    names[p['player2_id']] = p['player2_name']
+                month_matches = [p['match'] for p in reported] + period_data['extra_matches']
+                for m in period_data['extra_matches']:
+                    names[m['player1_id']] = m['player1_name']
+                    names[m['player2_id']] = m['player2_name']
+                for m in month_matches:
+                    g1, g2 = _games_credit(m)
+                    for pid, games in ((m['player1_id'], g1), (m['player2_id'], g2)):
+                        entry = month_games.setdefault(pid, {'games': 0, 'matches': 0})
+                        entry['games'] += games
+                        entry['matches'] += 1
+                month_ranked = sorted(month_games.items(), key=lambda kv: (-kv[1]['games'], names.get(kv[0]) or ''))
                 standings = [
+                    {'rank': i + 1, 'name': names.get(pid, 'Unknown'),
+                     'total_games': v['games'], 'matches_played': v['matches']}
+                    for i, (pid, v) in enumerate(month_ranked)
+                ]
+                # Cumulative season standings as of today (not historical)
+                season_standings = [
                     {'rank': i + 1, 'name': p.get('name'), 'total_games': p.get('total_games') or 0,
                      'matches_played': p.get('matches_played') or 0}
                     for i, p in enumerate(r for r in roster.data if r.get('membership_tier') == 'player')
@@ -272,6 +296,7 @@ class handler(BaseHTTPRequestHandler):
                     },
                     'unreported': [p for p in pairings if not p['match']],
                     'standings': standings,
+                    'season_standings': season_standings,
                     'unpaid': unpaid,
                 })
 
@@ -492,7 +517,11 @@ class handler(BaseHTTPRequestHandler):
             else:
                 self._send_error(500, "Failed to save the score")
             return
-        match = inserted.data[0] if inserted.data else None
+        if len(inserted.data or []) != 1:
+            print(f"Admin record_score insert returned {len(inserted.data or [])} rows")
+            self._send_error(500, "Failed to save the score")
+            return
+        match = inserted.data[0]
 
         # Close out the matching assignment so the players stop seeing it as pending
         assignment_id = data.get('assignment_id')
@@ -508,16 +537,23 @@ class handler(BaseHTTPRequestHandler):
         if assignment_id:
             closed = table('match_assignments').update({
                 'status': 'completed',
-                'match_id': match.get('id') if match else None,
+                'match_id': match.get('id'),
             }).eq('id', assignment_id).execute()
             if closed.error:
                 self._send_error(500, f"Score saved, but failed to mark the pairing completed: {closed.error}")
                 return
 
-        self._send_success({'message': 'Score recorded', 'match': _match_view(match or match_data)})
+        self._send_success({'message': 'Score recorded', 'match': _match_view(match)})
 
     def _update_score(self, data):
-        """Admin corrects an existing score and adjusts both players' totals."""
+        """Admin corrects an existing score and adjusts both players' totals.
+
+        The games trigger only runs on INSERT, so totals are adjusted here.
+        Supabase REST has no multi-statement transaction, so every write is
+        conditional on the value it read (optimistic locking) and earlier
+        writes are rolled back if a later one fails. A concurrent edit gets a
+        409 instead of a double-applied or partial adjustment.
+        """
         from api.supabase_http import table
         from api.matches import calculate_two_set_games, parse_admin_set_scores
 
@@ -543,28 +579,48 @@ class handler(BaseHTTPRequestHandler):
             scores['set1_p1'], scores['set1_p2'], scores['set2_p1'], scores['set2_p2']
         )
         new = {**scores, 'player1_games': player1_games, 'player2_games': player2_games, 'is_forfeit': False}
+        old_fields = {k: old.get(k) for k in new}
 
-        # The games trigger only runs on INSERT, so apply the difference by hand
         old_p1, old_p2 = _games_credit(old)
-        deltas = {old['player1_id']: player1_games - old_p1, old['player2_id']: player2_games - old_p2}
+        deltas = [(old['player1_id'], player1_games - old_p1), (old['player2_id'], player2_games - old_p2)]
 
-        updated = table('matches').update(new).eq('id', match_id).execute()
-        if updated.error:
-            self._send_error(500, f"Failed to update match: {updated.error}")
-            return
+        # 1. Apply the player total changes, each conditional on the total we read
+        applied = []
 
-        for pid, delta in deltas.items():
+        def rollback_totals():
+            for pid, before, after in reversed(applied):
+                table('players').update({'total_games': before}).eq('id', pid).eq('total_games', after).execute()
+
+        for pid, delta in deltas:
             if not delta:
                 continue
             current = table('players').select('id,total_games').eq('id', pid).execute()
             if current.error or not current.data:
-                self._send_error(500, f"Score updated, but failed to adjust games for player {pid}. Fix totals manually.")
+                rollback_totals()
+                self._send_error(500, "Failed to read player totals; nothing was changed")
                 return
-            total = int(current.data[0].get('total_games') or 0) + delta
-            adjusted = table('players').update({'total_games': max(total, 0)}).eq('id', pid).execute()
-            if adjusted.error:
-                self._send_error(500, f"Score updated, but failed to adjust games for player {pid}. Fix totals manually.")
+            before = int(current.data[0].get('total_games') or 0)
+            after = max(before + delta, 0)
+            adjusted = table('players').update({'total_games': after}).eq('id', pid).eq('total_games', before).returning().execute()
+            if adjusted.error or len(adjusted.data or []) != 1:
+                rollback_totals()
+                self._send_error(409, "Player totals changed while saving; nothing was changed. Please try again.")
                 return
+            applied.append((pid, before, after))
+
+        # 2. Update the match only if nobody else edited it since we read it
+        update = table('matches').update(new).eq('id', match_id)
+        for key, value in old_fields.items():
+            if value is not None:
+                update = update.eq(key, value)
+        updated = update.returning().execute()
+        if updated.error or len(updated.data or []) != 1:
+            rollback_totals()
+            if updated.error:
+                self._send_error(500, "Failed to update match; nothing was changed")
+            else:
+                self._send_error(409, "This score was changed by someone else; nothing was changed. Reload and try again.")
+            return
 
         self._send_success({'message': 'Score updated', 'match': _match_view({**old, **new})})
 

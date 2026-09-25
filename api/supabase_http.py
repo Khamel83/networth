@@ -189,6 +189,12 @@ class UpdateBuilder:
         self.table_name = table_name
         self.data = data
         self.filters = []
+        self.return_rows = False
+
+    def returning(self) -> 'UpdateBuilder':
+        """Return updated rows so callers can detect a no-op (0 rows matched)"""
+        self.return_rows = True
+        return self
 
     def eq(self, column: str, value: Any) -> 'UpdateBuilder':
         """Filter by equality"""
@@ -199,6 +205,8 @@ class UpdateBuilder:
         """Execute the update"""
         url = _build_url(self.table_name)
         headers = _get_headers()
+        if self.return_rows:
+            headers['Prefer'] = 'return=representation'
 
         # Build query string for filters
         params = {}
