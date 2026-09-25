@@ -115,7 +115,9 @@ Small league, light touch. Nothing here is monthly.
 - Export `players` and `matches` to CSV from Supabase (Table Editor > Export) and store it somewhere private
 - Rotate `CRON_SECRET` if anyone who had it has left (update Vercel and GitHub together)
 
-**If the repo sits untouched for ~2 months:** GitHub turns off scheduled workflows on public repositories after 60 days without activity, which would silently stop pairings and emails. Either make the repository private (Settings > General > Change visibility; Vercel keeps deploying) or re-enable the workflows from the Actions tab when GitHub emails about it.
+**If the repo sits untouched for ~2 months:** GitHub turns off scheduled workflows on public repositories after 60 days without activity. The watchdog emails you the next morning when a job doesn't run; fix it with Actions tab > pick the workflow > **Enable workflow**, then run it manually.
+
+**Keep the repository public.** Making it private (tried September 2026) moves the workflows onto GitHub's paid minutes; on this account every job then failed instantly without starting. The code holds no secrets (those live in Vercel and GitHub settings).
 
 **When membership renews each year:** clear the Paid boxes in the admin page (or ask a developer to reset `has_paid` for everyone).
 

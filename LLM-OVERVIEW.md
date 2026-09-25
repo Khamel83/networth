@@ -11,7 +11,7 @@ East Side LA women's tennis ladder (~50 members): monthly pairings, automated re
 - September 2026 additions: crystal-ball logo; admin score entry/editing (atomic DB function); monthly report page + email to Natalie/Ashley on the 2nd; signup notice email to Natalie/Ashley; Venmo pay step with optional "I paid" checkbox; Removed Members list.
 - Migrations 05-07 applied in production.
 - Independent daily watchdog on Vercel Cron emails the owner on any missed job or unconfirmed email.
-- Known operational risk: the repo is public, so GitHub disables scheduled workflows after 60 days without activity. See RUNBOOK.md > Maintenance Checklist.
+- Known operational risk: the repo is public, so GitHub disables scheduled workflows after 60 days without activity; the Vercel watchdog emails the owner if a job doesn't run. Keep the repo public (private broke Actions on this account).
 
 ## Architecture
 - Vercel static site (`public/`) + Python serverless functions (`api/`, 10 of the 12 Hobby slots).
