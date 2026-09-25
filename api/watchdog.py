@@ -43,6 +43,9 @@ def expected_jobs(today):
     if 2 <= day <= 7:
         jobs.append(('generate_pairings', this_month, f'{this_month} pairings + match emails (1st)'))
         jobs.append(('send_final_reminder', prev_month, f'{prev_month} final availability reminder (last day)'))
+    if 1 <= day <= 5:
+        # The 27th job can run days late; keep checking last month's into this one
+        jobs.append(('send_availability_check', prev_month, f'{prev_month} availability check (27th)'))
     if 3 <= day <= 9:
         jobs.append(('send_monthly_report', prev_month, f'{prev_month} report to Natalie + Ashley (2nd)'))
     if 16 <= day <= 23:
@@ -82,7 +85,9 @@ def run_watchdog(table, now=None):
         elif 'succeeded' not in statuses and 'repaired' not in statuses:
             problems.append(f"{description} did not finish cleanly (status: {', '.join(sorted(s or '?' for s in statuses))}).")
 
-    # 2. Any recent job that failed and was never retried successfully
+    # 2. Any job in the last 10 days that failed and was never retried
+    #    successfully. Bounded on purpose: older failures that were fixed by
+    #    hand would otherwise alert forever; step 1 covers the current cycle.
     done = {(r.get('action'), r.get('period_label')) for r in runs if r.get('status') in ('succeeded', 'repaired')}
     reported = set()
     for r in runs:
@@ -102,12 +107,18 @@ def run_watchdog(table, now=None):
             if count == 0:
                 problems.append(f"There are no {this_month} pairings. Players have not been matched this month.")
             elif today.day <= 7:
-                ledger = table('email_delivery_log').select('delivery_status')\
+                ledger = table('email_delivery_log').select('delivery_status,message_key')\
                     .eq('action', 'generate_pairings').eq('period_label', this_month).execute()
                 if ledger.error:
                     problems.append(f"Could not read {this_month} match-email records: {ledger.error}")
                 else:
-                    accepted = sum(1 for row in ledger.data if row.get('delivery_status') == 'accepted')
+                    # Count each pairing once (message_key is one per pairing), so
+                    # duplicate rows can't make an incomplete month look complete
+                    accepted = len({
+                        row.get('message_key') or f"row-{i}"
+                        for i, row in enumerate(ledger.data)
+                        if row.get('delivery_status') == 'accepted'
+                    })
                     summary['match_emails_accepted'] = accepted
                     if accepted < count:
                         problems.append(
