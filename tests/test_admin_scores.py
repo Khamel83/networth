@@ -468,3 +468,105 @@ def test_close_pairing_works_without_match_id_column():
     db = FakeDB(tables)
     assert close_assignment(lambda name: NoMatchIdTable(db, name), 'as1', 'm1') is None
     assert tables['match_assignments'][0]['status'] == 'completed'
+
+
+# ---------- Monthly report email ----------
+
+def _call_email(db, body, env):
+    import os
+    import api.email as email
+    with patch('api.supabase_http.table', db), \
+            patch('api.email.try_start_run', return_value=('run-1', None)), \
+            patch('api.email.preflight', return_value=(True, {})), \
+            patch('api.email.append_event'), \
+            patch('api.email.update_run'), \
+            patch.dict(os.environ, env, clear=False), \
+            patch('api.email.send_bulk_emails', side_effect=AssertionError('provider called')) as provider:
+        handler = email.handler(Mock(), None, None)
+        handler.send_response = Mock()
+        handler.send_header = Mock()
+        handler.end_headers = Mock()
+        handler.wfile = io.BytesIO()
+        raw = json.dumps(body).encode()
+        handler.rfile = io.BytesIO(raw)
+        handler.headers = {'Authorization': f"Bearer {env.get('CRON_SECRET', '')}", 'Content-Length': str(len(raw))}
+        handler.do_POST()
+        return handler.send_response.call_args[0][0], json.loads(handler.wfile.getvalue()), provider
+
+
+def test_monthly_report_goes_only_to_natalie_and_ashley():
+    from api.email import MONTHLY_REPORT_RECIPIENTS
+    assert MONTHLY_REPORT_RECIPIENTS == ('nmcoffen@gmail.com', 'ashleybrooke.kaufman@gmail.com')
+
+
+def test_monthly_report_requires_cron_secret():
+    import os
+    import api.email as email
+    from api.email_policy import CRON_PROTECTED_ACTIONS
+    assert 'send_monthly_report' in CRON_PROTECTED_ACTIONS
+    with patch.dict(os.environ, {'CRON_SECRET': 'right', 'EMAIL_DELIVERY_MODE': 'live'}), \
+            patch('api.email.send_bulk_emails', side_effect=AssertionError('provider called')):
+        handler = email.handler(Mock(), None, None)
+        handler.send_response = Mock()
+        handler.send_header = Mock()
+        handler.end_headers = Mock()
+        handler.wfile = io.BytesIO()
+        raw = json.dumps({'action': 'send_monthly_report'}).encode()
+        handler.rfile = io.BytesIO(raw)
+        handler.headers = {'Authorization': 'Bearer wrong', 'Content-Length': str(len(raw))}
+        handler.do_POST()
+    assert handler.send_response.call_args[0][0] in (401, 403)
+
+
+def test_monthly_report_never_contacts_provider_when_delivery_disabled():
+    tables = {**seed(), 'email_delivery_log': []}
+    status, data, provider = _call_email(
+        FakeDB(tables), {'action': 'send_monthly_report', 'period_label': 'August 2026'},
+        {'CRON_SECRET': 's3cret', 'EMAIL_DELIVERY_MODE': 'disabled'})
+    assert status == 200, data
+    assert data['outcome'] == 'delivery_disabled'
+    assert data['sent'] == 0
+    provider.assert_not_called()
+
+
+def test_monthly_report_email_escapes_member_names():
+    from api.email import get_monthly_report_email_html
+    report = {
+        'period': 'August 2026',
+        'summary': {'pairings': 1, 'reported': 0, 'unreported': 1, 'extra_matches': 0,
+                    'active_members': 2, 'unpaid_members': 1},
+        'pairings': [], 'extra_matches': [],
+        'unreported': [{'player1_name': '<script>x</script>', 'player2_name': 'Bea'}],
+        'standings': [], 'season_standings': [],
+        'unpaid': [{'name': 'Cy', 'membership_tier': 'player', 'reported_paid': True}],
+    }
+    html = get_monthly_report_email_html(report)
+    assert '<script>x</script>' not in html
+    assert '&lt;script&gt;' in html
+    assert 'Says paid - check Venmo' in html
+
+
+def test_previous_period_label_wraps_year():
+    from datetime import datetime
+    from api.email import previous_period_label
+    assert previous_period_label(datetime(2026, 9, 2)) == 'August 2026'
+    assert previous_period_label(datetime(2027, 1, 2)) == 'December 2026'
+
+
+def test_monthly_report_workflow_is_separate_gated_and_fixed_recipients():
+    from pathlib import Path
+    import yaml
+    root = Path(__file__).resolve().parents[1] / '.github' / 'workflows'
+    source = (root / 'monthly-report.yml').read_text()
+    parsed = yaml.safe_load(source)
+    assert parsed[True]['schedule'] == [{'cron': '0 17 2 * *'}]  # 'on' parses as True
+    assert '.delivery_mode' in source
+    assert "steps.delivery-mode.outputs.live == 'true'" in source
+    assert 'send_monthly_report' in source
+    assert 'send_admin_alert' not in source
+    assert 'generate_pairings' not in source
+    # the manual month input only reaches the shell through an env var
+    assert 'PERIOD_INPUT: ${{ inputs.period_label }}' in source
+    assert source.count('${{ inputs.period_label }}') == 1
+    # the pairing workflow is untouched by the report
+    assert 'send_monthly_report' not in (root / 'biweekly-emails.yml').read_text()

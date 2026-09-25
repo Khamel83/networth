@@ -10,6 +10,7 @@ CRON_PROTECTED_ACTIONS = frozenset({
     'send_availability_check_paused_only',
     'send_final_reminder',
     'send_midmonth_reminders',
+    'send_monthly_report',
     'resend_match_emails',
     'send_admin_alert',
     'check_recent_send',
