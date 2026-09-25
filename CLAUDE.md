@@ -53,6 +53,7 @@ Players self-register via join page → immediately active → can log in right 
 - `api/system.py` - Health check, bug reports, and email connectivity check
 - `.github/workflows/biweekly-emails.yml` - Scheduled email automation
 - `.github/workflows/daily-health-check.yml` - Daily read-only health check
+- `.github/workflows/monthly-report.yml` - Monthly report email to Natalie + Ashley (kept separate from pairing automation)
 - `.github/workflows/tests.yml` - CI/CD test runner
 - `supabase-final-setup.sql` - Database schema, triggers, and functions
 
@@ -112,6 +113,8 @@ Automated Emails (GitHub Actions)
     → Last day of month: Final availability reminder (Players only)
     → 1st of month: Generate pairings + send match emails (Players only)
     → 15th of month: Mid-month reminder for pending matches
+    → 2nd of month: Monthly report for last month → Natalie + Ashley only
+      (separate workflow: .github/workflows/monthly-report.yml)
 ```
 
 ---
@@ -149,6 +152,7 @@ Automated Emails (GitHub Actions)
 | Sit-Out Confirmation | Player pauses | You're sitting out {Month} | |
 | Rejoin Confirmation | Player rejoins | Welcome back! You're in for {Month} | |
 | Admin Alert | Health check failure / Bug report | Net Worth Alert: {subject} | Goes to admin emails |
+| Monthly Report | Cron (2nd), `send_monthly_report` | Net Worth Tennis: {Month} report | Only `MONTHLY_REPORT_RECIPIENTS` (Natalie + Ashley), fixed in `api/email.py`; cron-protected, ledgered, skipped unless delivery is live |
 
 ---
 
@@ -637,7 +641,7 @@ if (response.status === 401) {
 - **Admin score entry/correction** — admins can enter or fix any score from the admin page, including past months
 - **Fixed silent score-save failures** — `POST /api/matches` never checked the insert result, so a failed or duplicate save told the player "Score submitted!" and closed the pairing with nothing saved. It now returns 409/500 and leaves the pairing open
 - **Clearer score error** — invalid player scores now explain the allowed set scores and point to an admin for early-ended matches
-- **Monthly report** — in the admin page (view, CSV, print). Automatic monthly email not yet built (needs email-policy sign-off)
+- **Monthly report** — in the admin page (view, CSV, print), and emailed on the 2nd of each month for the prior month to Natalie + Ashley only (approved by the owner). Separate workflow, delivery-gated, goes through the canonical ledger; recipients are hardcoded server-side
 - **"I paid" tracking** — join checkbox saves `players.reported_paid` / `reported_paid_at` (requires `migrations/05_reported_paid.sql`; signup and the report keep working without it). Shown as "Says paid" in the report's Unpaid list; `has_paid` remains the admin-verified flag
 - **Fixed re-joining** — re-registration of a removed (inactive) account returned "Failed to create account" because the UPDATE returned no rows; it now requests the updated row
 - **Venmo pay step on /join** — tier-aware "Pay on Venmo" button + optional "I've sent my $X" checkbox; one reminder dialog if unchecked, never blocks signup
