@@ -272,7 +272,7 @@ def _join(db, body):
 
 
 JOIN_BODY = {
-    'name': 'Rosa Lee', 'email': 'rosa7@gmail.com', 'phone': '(555) 555-5555', 'password': 'secret1',
+    'name': 'Rosa Lee', 'email': 'rosa7@example.net', 'phone': '(555) 555-5555', 'password': 'secret1',
     'membership_tier': 'player', 'avail_weekday_early': True,
 }
 
@@ -282,7 +282,7 @@ def test_join_records_reported_paid_checkbox():
     db = FakeDB(tables)
     status, data = _join(db, {**JOIN_BODY, 'reported_paid': True})
     assert status == 200, data
-    rosa = [p for p in tables['players'] if p['email'] == 'rosa7@gmail.com'][0]
+    rosa = [p for p in tables['players'] if p['email'] == 'rosa7@example.net'][0]
     assert rosa['reported_paid'] is True
     assert rosa['reported_paid_at']
 
@@ -291,13 +291,13 @@ def test_join_without_checkbox_leaves_reported_paid_unset():
     tables = seed()
     status, _ = _join(FakeDB(tables), JOIN_BODY)
     assert status == 200
-    rosa = [p for p in tables['players'] if p['email'] == 'rosa7@gmail.com'][0]
+    rosa = [p for p in tables['players'] if p['email'] == 'rosa7@example.net'][0]
     assert rosa['reported_paid'] is False
 
 
 def test_removed_member_can_rejoin():
     tables = seed()
-    tables['players'].append({'id': 'r', 'name': 'Rosa Lee', 'email': 'rosa7@gmail.com',
+    tables['players'].append({'id': 'r', 'name': 'Rosa Lee', 'email': 'rosa7@example.net',
                               'is_active': False, 'total_games': 0, 'matches_played': 0})
     status, data = _join(FakeDB(tables), JOIN_BODY)
     assert status == 200, data
@@ -421,7 +421,7 @@ def test_player_cannot_log_future_month_extra_match():
 
 def test_rejoin_clears_old_i_paid_answer():
     tables = seed()
-    tables['players'].append({'id': 'r', 'name': 'Rosa Lee', 'email': 'rosa7@gmail.com', 'is_active': False,
+    tables['players'].append({'id': 'r', 'name': 'Rosa Lee', 'email': 'rosa7@example.net', 'is_active': False,
                               'total_games': 0, 'matches_played': 0,
                               'reported_paid': True, 'reported_paid_at': '2025-01-01T00:00:00Z'})
     status, _ = _join(FakeDB(tables), JOIN_BODY)
@@ -584,7 +584,7 @@ def test_signup_notifies_only_natalie_and_ashley():
     assert data['organizers_notified'] is True
     to, subject, html = send.call_args[0]
     assert to == ['nmcoffen@gmail.com', 'ashleybrooke.kaufman@gmail.com']
-    assert 'rosa7@gmail.com' not in to  # never the new member's own address
+    assert 'rosa7@example.net' not in to  # never the new member's own address
     assert subject == 'New signup: Rosa Lee'
     assert 'Checked &quot;I paid&quot;' in html
     assert 'password' not in html.lower()
@@ -592,7 +592,7 @@ def test_signup_notifies_only_natalie_and_ashley():
 
 def test_rejoin_notice_says_rejoined():
     tables = seed()
-    tables['players'].append({'id': 'r', 'name': 'Rosa Lee', 'email': 'rosa7@gmail.com',
+    tables['players'].append({'id': 'r', 'name': 'Rosa Lee', 'email': 'rosa7@example.net',
                               'is_active': False, 'total_games': 0, 'matches_played': 0})
     with patch('api.email.send_email', return_value={'success': True, 'sent': True}) as send:
         status, _ = _join(FakeDB(tables), JOIN_BODY)
@@ -606,7 +606,7 @@ def test_signup_succeeds_even_if_notice_fails():
         status, data = _join(FakeDB(tables), JOIN_BODY)
     assert status == 200, data
     assert data['organizers_notified'] is False
-    assert any(p['email'] == 'rosa7@gmail.com' for p in tables['players'])
+    assert any(p['email'] == 'rosa7@example.net' for p in tables['players'])
 
 
 def test_signup_notice_blocked_when_delivery_not_live():
