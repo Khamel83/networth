@@ -9,6 +9,7 @@ import json
 import os
 import hashlib
 import base64
+from datetime import datetime, timezone
 
 # Initialize Sentry for error tracking
 from api.sentry_init import init_sentry
@@ -108,7 +109,7 @@ class handler(BaseHTTPRequestHandler):
                         self._send_error(400, "This email is already registered. Try logging in instead!")
                         return
 
-                    result = table('players').update(player_data).eq('id', existing_player['id']).execute()
+                    result = table('players').update(player_data).eq('id', existing_player['id']).returning().execute()
                 else:
                     try:
                         result = table('players').insert(player_data).execute()
@@ -120,6 +121,19 @@ class handler(BaseHTTPRequestHandler):
                         raise
 
                 if result.data and len(result.data) > 0:
+                    # Best-effort: record the "I paid" checkbox. Kept out of the
+                    # main write so signup never fails if migration 05 isn't applied.
+                    if data.get('reported_paid') is True:
+                        try:
+                            flagged = table('players').update({
+                                'reported_paid': True,
+                                'reported_paid_at': datetime.now(timezone.utc).isoformat(),
+                            }).eq('id', result.data[0]['id']).execute()
+                            if flagged.error:
+                                print(f"Could not record reported_paid: {flagged.error}")
+                        except Exception as e:
+                            print(f"Could not record reported_paid: {e}")
+
                     email_sent = False
                     email_error = None
                     from api.email_policy import delivery_mode, public_transactional_email_enabled

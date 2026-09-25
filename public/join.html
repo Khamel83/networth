@@ -494,7 +494,7 @@
         <div class="join-card">
             <div id="form-section">
                 <div class="join-header">
-                    <h1 class="join-logo"><img src="/logo.webp" alt="net worth" class="page-logo-img" width="120" height="120"></h1>
+                    <h1 class="join-logo"><picture><source srcset="/logo-still.webp" media="(prefers-reduced-motion: reduce)"><img src="/logo.webp" alt="net worth" class="page-logo-img" width="120" height="120"></picture></h1>
                     <p class="join-subtitle">Join the League</p>
                     <p style="font-size: 0.9rem; color: var(--text-muted); margin-top: 1rem; line-height: 1.6;">
                         <a href="https://venmo.com/u/ncoffen?txn=pay&amp;amount=35.00&amp;note=Net%20Worth%20Tennis%20Player%20membership" target="_blank" rel="noopener noreferrer" style="color: var(--text-white); font-weight: 600;">Pay $35 Player membership via Venmo @NCOFFEN (Natalie)</a>, then create your player profile here. If you join after the month has started, you'll be matched in the next month.
@@ -818,6 +818,7 @@
                         password,
                         membership_tier: membershipTier,
                         favorite_players: favoritePlayers,
+                        reported_paid: paidConfirm.checked,
                         ...availability
                     })
                 });

@@ -19,6 +19,7 @@ class FakeDB:
         self.empty_insert = set(empty_insert)
         # Hook run before an UPDATE executes, to simulate a concurrent edit
         self.before_update = before_update
+        self.no_reported_paid = False
 
     def __call__(self, name):
         return FakeTable(self, name)
@@ -28,8 +29,11 @@ class FakeTable:
     def __init__(self, db, name):
         self.db, self.name = db, name
         self.filters, self.op, self.payload = [], 'select', None
+        self.select_error = None
 
-    def select(self, *_args):
+    def select(self, columns='*'):
+        if 'reported_paid' in columns and self.db.no_reported_paid:
+            self.select_error = 'HTTP 400: column players.reported_paid does not exist'
         return self
 
     def update(self, data):
@@ -69,6 +73,8 @@ class FakeTable:
         return self
 
     def execute(self):
+        if self.select_error:
+            return FakeResult(data=[], error=self.select_error)
         if self.op == 'update' and self.db.before_update:
             self.db.before_update(self.name, self.db.tables, self.filters)
         rows = [r for r in self.db.tables[self.name]
@@ -277,3 +283,61 @@ def test_empty_insert_result_is_not_a_saved_score():
         }, path='/api/matches')
     assert status == 500
     assert db.tables['match_assignments'][0]['status'] == 'pending'
+
+
+def test_report_shows_says_paid_and_survives_missing_column():
+    tables = seed()
+    tables['players'][1]['reported_paid'] = True
+    db = FakeDB(tables)
+    status, data = call_admin(db, 'do_GET', path='/api/admin?action=report&period=August%202026')
+    assert status == 200
+    assert data['reported_paid_tracked'] is True
+    assert data['unpaid'][0]['reported_paid'] is True
+    assert data['summary']['unpaid_says_paid'] == 1
+
+    # Before migrations/05_reported_paid.sql is applied the report still loads
+    db.no_reported_paid = True
+    status, data = call_admin(db, 'do_GET', path='/api/admin?action=report&period=August%202026')
+    assert status == 200, data
+    assert data['reported_paid_tracked'] is False
+    assert data['unpaid'][0]['reported_paid'] is None
+
+
+def _join(db, body):
+    import api.join as join
+    with patch('api.supabase_http.table', db), \
+            patch('api.email_policy.public_transactional_email_enabled', return_value=False):
+        return make_handler(join, 'do_POST', body, path='/api/join')
+
+
+JOIN_BODY = {
+    'name': 'Rosa Lee', 'email': 'rosa7@gmail.com', 'phone': '(555) 555-5555', 'password': 'secret1',
+    'membership_tier': 'player', 'avail_weekday_early': True,
+}
+
+
+def test_join_records_reported_paid_checkbox():
+    tables = seed()
+    db = FakeDB(tables)
+    status, data = _join(db, {**JOIN_BODY, 'reported_paid': True})
+    assert status == 200, data
+    rosa = [p for p in tables['players'] if p['email'] == 'rosa7@gmail.com'][0]
+    assert rosa['reported_paid'] is True
+    assert rosa['reported_paid_at']
+
+
+def test_join_without_checkbox_leaves_reported_paid_unset():
+    tables = seed()
+    status, _ = _join(FakeDB(tables), JOIN_BODY)
+    assert status == 200
+    rosa = [p for p in tables['players'] if p['email'] == 'rosa7@gmail.com'][0]
+    assert 'reported_paid' not in rosa
+
+
+def test_removed_member_can_rejoin():
+    tables = seed()
+    tables['players'].append({'id': 'r', 'name': 'Rosa Lee', 'email': 'rosa7@gmail.com',
+                              'is_active': False, 'total_games': 0, 'matches_played': 0})
+    status, data = _join(FakeDB(tables), JOIN_BODY)
+    assert status == 200, data
+    assert tables['players'][-1]['is_active'] is True

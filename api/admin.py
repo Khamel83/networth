@@ -241,9 +241,15 @@ class handler(BaseHTTPRequestHandler):
                 if error:
                     self._send_error(500, error)
                     return
-                roster = table('players').select(
-                    'id,name,email,total_games,matches_played,is_active,membership_tier,has_paid'
-                ).eq('is_active', True).order('total_games', desc=True, nulls='last').execute()
+                roster_columns = 'id,name,email,total_games,matches_played,is_active,membership_tier,has_paid'
+                roster = table('players').select(roster_columns + ',reported_paid,reported_paid_at')\
+                    .eq('is_active', True).order('total_games', desc=True, nulls='last').execute()
+                reported_paid_tracked = not roster.error
+                if roster.error:
+                    # migrations/05_reported_paid.sql not applied yet: report without it
+                    print(f"Report roster without reported_paid: {roster.error}")
+                    roster = table('players').select(roster_columns)\
+                        .eq('is_active', True).order('total_games', desc=True, nulls='last').execute()
                 if roster.error:
                     self._send_error(500, f"Failed to fetch roster: {roster.error}")
                     return
@@ -280,7 +286,9 @@ class handler(BaseHTTPRequestHandler):
                 ]
                 unpaid = [
                     {'name': p.get('name'), 'email': p.get('email'),
-                     'membership_tier': p.get('membership_tier')}
+                     'membership_tier': p.get('membership_tier'),
+                     'reported_paid': bool(p.get('reported_paid')) if reported_paid_tracked else None,
+                     'reported_paid_at': p.get('reported_paid_at')}
                     for p in roster.data
                     if not p.get('has_paid') and p.get('membership_tier') != 'admin'
                 ]
@@ -293,10 +301,12 @@ class handler(BaseHTTPRequestHandler):
                         'extra_matches': len(period_data['extra_matches']),
                         'active_members': len(roster.data),
                         'unpaid_members': len(unpaid),
+                        'unpaid_says_paid': sum(1 for p in unpaid if p['reported_paid']),
                     },
                     'unreported': [p for p in pairings if not p['match']],
                     'standings': standings,
                     'season_standings': season_standings,
+                    'reported_paid_tracked': reported_paid_tracked,
                     'unpaid': unpaid,
                 })
 
