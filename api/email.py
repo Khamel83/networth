@@ -7,6 +7,7 @@ from http.server import BaseHTTPRequestHandler
 import json
 import os
 import time as _time
+from html import escape as _esc
 from datetime import datetime, timezone
 
 # Initialize Sentry for error tracking
@@ -34,6 +35,11 @@ SENDER_NAME = 'Net Worth Tennis'
 SENDER_EMAIL = f'{SENDER_NAME} <hello@networthtennis.com>'
 REPLY_TO_EMAIL = 'ashleybrooke.kaufman@gmail.com'
 RESEND_BATCH_SIZE = 100
+# Monthly report goes only to the two league organizers (not the sysadmin)
+MONTHLY_REPORT_RECIPIENTS = (
+    'nmcoffen@gmail.com',              # Natalie
+    'ashleybrooke.kaufman@gmail.com',  # Ashley
+)
 RESEND_BATCH_DELAY_SECONDS = 0.6
 
 
@@ -790,6 +796,101 @@ def get_admin_alert_email_html(subject, message):
     """
 
 
+def previous_period_label(today=None):
+    """"August 2026" when run in September 2026."""
+    today = today or datetime.now()
+    year, month = (today.year - 1, 12) if today.month == 1 else (today.year, today.month - 1)
+    return datetime(year, month, 1).strftime('%B %Y')
+
+
+def _report_score(pairing):
+    """A pairing's score from its Player 1's point of view."""
+    m = pairing['match']
+    if str(m.get('player1_id')) == str(pairing['player1_id']):
+        sets = (m.get('set1_p1'), m.get('set1_p2'), m.get('set2_p1'), m.get('set2_p2'))
+    else:
+        sets = (m.get('set1_p2'), m.get('set1_p1'), m.get('set2_p2'), m.get('set2_p1'))
+    if sets[0] is None:
+        return 'recorded'
+    return f"{sets[0]}-{sets[1]}, {sets[2]}-{sets[3]}"
+
+
+def get_monthly_report_email_html(report):
+    """Monthly league report for the organizers (Natalie + Ashley)."""
+    s = report['summary']
+    period = _esc(report['period'])
+
+    def rows(items, cells):
+        if not items:
+            return '<p style="color:#999;">None</p>'
+        body = ''.join(
+            '<tr>' + ''.join(
+                f'<td style="padding:6px 10px;border-bottom:1px solid #eee;">{_esc(str(c))}</td>' for c in cells(i)
+            ) + '</tr>'
+            for i in items
+        )
+        return f'<table style="width:100%;border-collapse:collapse;font-size:14px;">{body}</table>'
+
+    results = [p for p in report['pairings'] if p.get('match')]
+    results_html = rows(results, lambda p: (p['player1_name'], p['player2_name'], _report_score(p)))
+    if report['extra_matches']:
+        results_html += '<p style="margin:12px 0 4px;"><strong>Extra matches</strong></p>' + rows(
+            report['extra_matches'],
+            lambda m: (m['player1_name'], m['player2_name'],
+                       f"{m.get('set1_p1')}-{m.get('set1_p2')}, {m.get('set2_p1')}-{m.get('set2_p2')}"))
+    unreported_html = rows(report['unreported'], lambda p: (p['player1_name'], p['player2_name']))
+    month_html = rows(report['standings'][:10], lambda p: (f"#{p['rank']}", p['name'], f"{p['total_games']} games"))
+    season_html = rows(report['season_standings'][:10], lambda p: (f"#{p['rank']}", p['name'], f"{p['total_games']} games"))
+
+    def paid_note(p):
+        if p.get('reported_paid'):
+            return 'Says paid - check Venmo'
+        return 'Not yet' if p.get('reported_paid') is False else ''
+    unpaid_html = rows(report['unpaid'], lambda p: (
+        p['name'], 'Social ($45)' if p.get('membership_tier') == 'social_butterfly' else 'Player ($35)', paid_note(p)))
+
+    return f"""
+    <!DOCTYPE html>
+    <html>
+    <head>{get_email_styles()}</head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>{period} Report</h1>
+            </div>
+            <div class="content">
+                <p><strong>{s['reported']} of {s['pairings']}</strong> pairings reported a score
+                ({s['unreported']} not reported), plus {s['extra_matches']} extra match(es).
+                {s['active_members']} active members, {s['unpaid_members']} not marked paid.</p>
+
+                <h3>Results</h3>
+                {results_html}
+
+                <h3>Not reported yet</h3>
+                {unreported_html}
+
+                <h3>Games won in {period} (top 10)</h3>
+                {month_html}
+
+                <h3>Season standings (top 10)</h3>
+                {season_html}
+
+                <h3>Not marked paid</h3>
+                {unpaid_html}
+
+                <p style="text-align: center; margin: 30px 0;">
+                    <a href="https://www.networthtennis.com/admin" class="button">Open the full report</a>
+                </p>
+            </div>
+            <div class="footer">
+                <p>Net Worth Tennis - monthly report for league organizers</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+
+
 # =============================================================================
 # API HANDLER
 # =============================================================================
@@ -843,10 +944,15 @@ class handler(BaseHTTPRequestHandler):
                 )
                 return
 
+            if action == 'send_monthly_report' and not data.get('period_label'):
+                # The report covers the month that just ended
+                self._run_period = previous_period_label()
+
             RUN_TRACKED_ACTIONS = {
                 'send_availability_check',
                 'send_final_reminder',
                 'send_midmonth_reminders',
+                'send_monthly_report',
             }
             if action in RUN_TRACKED_ACTIONS:
                 run_id, lock_error = try_start_run(action, self._run_period, {'source': 'api/email'})
@@ -1250,6 +1356,55 @@ class handler(BaseHTTPRequestHandler):
                     },
                     'email_action': target_action,
                     'period_label': period,
+                })
+
+            elif action == 'send_monthly_report':
+                from api.admin import build_report
+
+                period = self._run_period
+                report, report_error = build_report(period)
+                if report_error:
+                    self._send_error(500, f"Failed to build report: {report_error}")
+                    return
+
+                html = get_monthly_report_email_html(report)
+                messages = [{
+                    'from': SENDER_EMAIL,
+                    'to': [recipient],
+                    'subject': f'Net Worth Tennis: {period} report',
+                    'html': html,
+                    'reply_to': REPLY_TO_EMAIL,
+                } for recipient in MONTHLY_REPORT_RECIPIENTS]
+                logical_messages = [{
+                    'logical_id': recipient,
+                    'recipient_emails': [recipient],
+                } for recipient in MONTHLY_REPORT_RECIPIENTS]
+                result = _deliver_scheduled_batches(
+                    action,
+                    period,
+                    'monthly_report',
+                    logical_messages,
+                    messages,
+                    run_id=self._run_id,
+                )
+
+                if result['outcome'] == 'pre_send_failure' and strict_mode:
+                    self._send_error(
+                        500,
+                        f"Email delivery failed: {result['errors'][0] if result['errors'] else 'unknown error'}",
+                        extra=result,
+                    )
+                    return
+                self._send_success({
+                    "message": f"Processed {period} report for {len(MONTHLY_REPORT_RECIPIENTS)} organizers",
+                    "period_label": period,
+                    "sent": result['sent'],
+                    "failed": result['failed'],
+                    "would_send": result.get('would_send', 0),
+                    "outcome": result['outcome'],
+                    "reconciliation_required": result['reconciliation_required'],
+                    "delivery_summary": result['delivery_summary'],
+                    "errors": result['errors'] or None,
                 })
 
             elif action == 'send_admin_alert':

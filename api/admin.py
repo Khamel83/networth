@@ -142,6 +142,85 @@ def build_period_data(period):
     return {'period': period, 'pairings': pairings, 'extra_matches': extra_matches}, None
 
 
+def build_report(period):
+    """Monthly report for one period label: results, unreported pairings,
+    month + season standings, unpaid members. Shared by the admin page and
+    the monthly report email. Returns (report, error)."""
+    from api.supabase_http import table
+
+    period_data, error = build_period_data(period)
+    if error:
+        return None, error
+    roster_columns = 'id,name,email,total_games,matches_played,is_active,membership_tier,has_paid'
+    roster = table('players').select(roster_columns + ',reported_paid,reported_paid_at')\
+        .eq('is_active', True).order('total_games', desc=True, nulls='last').execute()
+    from api.supabase_http import is_missing_column_error
+    reported_paid_tracked = not roster.error
+    if roster.error and is_missing_column_error(roster.error, 'reported_paid'):
+        # migrations/05_reported_paid.sql not applied yet: report without it
+        print(f"Report roster without reported_paid: {roster.error}")
+        roster = table('players').select(roster_columns)\
+            .eq('is_active', True).order('total_games', desc=True, nulls='last').execute()
+    if roster.error:
+        return None, f"Failed to fetch roster: {roster.error}"
+    pairings = period_data['pairings']
+    reported = [p for p in pairings if p['match']]
+
+    # Games won in the selected month, from that month's match rows
+    month_games = {}
+    names = {}
+    for p in pairings:
+        names[p['player1_id']] = p['player1_name']
+        names[p['player2_id']] = p['player2_name']
+    month_matches = [p['match'] for p in reported] + period_data['extra_matches']
+    for m in period_data['extra_matches']:
+        names[m['player1_id']] = m['player1_name']
+        names[m['player2_id']] = m['player2_name']
+    for m in month_matches:
+        g1, g2 = _games_credit(m)
+        for pid, games in ((m['player1_id'], g1), (m['player2_id'], g2)):
+            entry = month_games.setdefault(pid, {'games': 0, 'matches': 0})
+            entry['games'] += games
+            entry['matches'] += 1
+    month_ranked = sorted(month_games.items(), key=lambda kv: (-kv[1]['games'], names.get(kv[0]) or ''))
+    standings = [
+        {'rank': i + 1, 'name': names.get(pid, 'Unknown'),
+         'total_games': v['games'], 'matches_played': v['matches']}
+        for i, (pid, v) in enumerate(month_ranked)
+    ]
+    # Cumulative season standings as of today (not historical)
+    season_standings = [
+        {'rank': i + 1, 'name': p.get('name'), 'total_games': p.get('total_games') or 0,
+         'matches_played': p.get('matches_played') or 0}
+        for i, p in enumerate(r for r in roster.data if r.get('membership_tier') == 'player')
+    ]
+    unpaid = [
+        {'name': p.get('name'), 'email': p.get('email'),
+         'membership_tier': p.get('membership_tier'),
+         'reported_paid': bool(p.get('reported_paid')) if reported_paid_tracked else None,
+         'reported_paid_at': p.get('reported_paid_at')}
+        for p in roster.data
+        if not p.get('has_paid') and p.get('membership_tier') != 'admin'
+    ]
+    return {
+        **period_data,
+        'summary': {
+            'pairings': len(pairings),
+            'reported': len(reported),
+            'unreported': len(pairings) - len(reported),
+            'extra_matches': len(period_data['extra_matches']),
+            'active_members': len(roster.data),
+            'unpaid_members': len(unpaid),
+            'unpaid_says_paid': sum(1 for p in unpaid if p['reported_paid']),
+        },
+        'unreported': [p for p in pairings if not p['match']],
+        'standings': standings,
+        'season_standings': season_standings,
+        'reported_paid_tracked': reported_paid_tracked,
+        'unpaid': unpaid,
+    }, None
+
+
 class handler(BaseHTTPRequestHandler):
     def do_OPTIONS(self):
         self.send_response(200)
@@ -237,79 +316,11 @@ class handler(BaseHTTPRequestHandler):
             elif action == 'report':
                 # Monthly report: results, unreported matches, standings, unpaid members
                 period = params.get('period', [date.today().strftime('%B %Y')])[0]
-                period_data, error = build_period_data(period)
+                report, error = build_report(period)
                 if error:
                     self._send_error(500, error)
                     return
-                roster_columns = 'id,name,email,total_games,matches_played,is_active,membership_tier,has_paid'
-                roster = table('players').select(roster_columns + ',reported_paid,reported_paid_at')\
-                    .eq('is_active', True).order('total_games', desc=True, nulls='last').execute()
-                from api.supabase_http import is_missing_column_error
-                reported_paid_tracked = not roster.error
-                if roster.error and is_missing_column_error(roster.error, 'reported_paid'):
-                    # migrations/05_reported_paid.sql not applied yet: report without it
-                    print(f"Report roster without reported_paid: {roster.error}")
-                    roster = table('players').select(roster_columns)\
-                        .eq('is_active', True).order('total_games', desc=True, nulls='last').execute()
-                if roster.error:
-                    self._send_error(500, f"Failed to fetch roster: {roster.error}")
-                    return
-                pairings = period_data['pairings']
-                reported = [p for p in pairings if p['match']]
-
-                # Games won in the selected month, from that month's match rows
-                month_games = {}
-                names = {}
-                for p in pairings:
-                    names[p['player1_id']] = p['player1_name']
-                    names[p['player2_id']] = p['player2_name']
-                month_matches = [p['match'] for p in reported] + period_data['extra_matches']
-                for m in period_data['extra_matches']:
-                    names[m['player1_id']] = m['player1_name']
-                    names[m['player2_id']] = m['player2_name']
-                for m in month_matches:
-                    g1, g2 = _games_credit(m)
-                    for pid, games in ((m['player1_id'], g1), (m['player2_id'], g2)):
-                        entry = month_games.setdefault(pid, {'games': 0, 'matches': 0})
-                        entry['games'] += games
-                        entry['matches'] += 1
-                month_ranked = sorted(month_games.items(), key=lambda kv: (-kv[1]['games'], names.get(kv[0]) or ''))
-                standings = [
-                    {'rank': i + 1, 'name': names.get(pid, 'Unknown'),
-                     'total_games': v['games'], 'matches_played': v['matches']}
-                    for i, (pid, v) in enumerate(month_ranked)
-                ]
-                # Cumulative season standings as of today (not historical)
-                season_standings = [
-                    {'rank': i + 1, 'name': p.get('name'), 'total_games': p.get('total_games') or 0,
-                     'matches_played': p.get('matches_played') or 0}
-                    for i, p in enumerate(r for r in roster.data if r.get('membership_tier') == 'player')
-                ]
-                unpaid = [
-                    {'name': p.get('name'), 'email': p.get('email'),
-                     'membership_tier': p.get('membership_tier'),
-                     'reported_paid': bool(p.get('reported_paid')) if reported_paid_tracked else None,
-                     'reported_paid_at': p.get('reported_paid_at')}
-                    for p in roster.data
-                    if not p.get('has_paid') and p.get('membership_tier') != 'admin'
-                ]
-                self._send_success({
-                    **period_data,
-                    'summary': {
-                        'pairings': len(pairings),
-                        'reported': len(reported),
-                        'unreported': len(pairings) - len(reported),
-                        'extra_matches': len(period_data['extra_matches']),
-                        'active_members': len(roster.data),
-                        'unpaid_members': len(unpaid),
-                        'unpaid_says_paid': sum(1 for p in unpaid if p['reported_paid']),
-                    },
-                    'unreported': [p for p in pairings if not p['match']],
-                    'standings': standings,
-                    'season_standings': season_standings,
-                    'reported_paid_tracked': reported_paid_tracked,
-                    'unpaid': unpaid,
-                })
+                self._send_success(report)
 
             elif action == 'player':
                 # Get single player details

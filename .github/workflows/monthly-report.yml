@@ -1,0 +1,113 @@
+# Monthly league report to the organizers (Natalie + Ashley) only.
+#
+# Kept separate from the pairing workflow so it can never affect pairing
+# selection. Delivery-gated: a read-only GET /api/email first; if delivery
+# isn't live, nothing is sent. Recipients are fixed server-side in
+# api/email.py (MONTHLY_REPORT_RECIPIENTS); this workflow cannot change them.
+
+name: Monthly League Report
+
+on:
+  schedule:
+    # 2nd of each month, 17:00 UTC (10am PDT / 9am PST): report on last month
+    - cron: '0 17 2 * *'
+  workflow_dispatch:
+    inputs:
+      period_label:
+        description: 'Month to report on, e.g. "August 2026" (default: last month)'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  TZ: America/Los_Angeles
+  SITE_URL: https://www.networthtennis.com
+
+jobs:
+  send-report:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Select report month in Pacific time
+        id: period
+        shell: bash
+        env:
+          PERIOD_INPUT: ${{ inputs.period_label }}
+        run: |
+          set -euo pipefail
+          export TZ=America/Los_Angeles
+          if [ -n "${PERIOD_INPUT:-}" ]; then
+            if ! [[ "$PERIOD_INPUT" =~ ^[A-Z][a-z]+\ [0-9]{4}$ ]]; then
+              echo "::error::period_label must look like \"August 2026\""
+              exit 1
+            fi
+            PERIOD="$PERIOD_INPUT"
+          else
+            PERIOD="$(date -d "$(date +%Y-%m-01) -1 month" '+%B %Y')"
+          fi
+          echo "period=$PERIOD" >> "$GITHUB_OUTPUT"
+          echo "## Monthly report: $PERIOD" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Check email delivery mode (read-only)
+        id: delivery-mode
+        shell: bash
+        run: |
+          set -euo pipefail
+          HTTP_STATUS=$(curl -sS -o /tmp/email-status.json -w "%{http_code}" "$SITE_URL/api/email")
+          if [ "$HTTP_STATUS" -lt 200 ] || [ "$HTTP_STATUS" -ge 300 ]; then
+            echo "::error::GET /api/email returned HTTP $HTTP_STATUS"
+            exit 1
+          fi
+          MODE=$(jq -r '.delivery_mode // "disabled"' /tmp/email-status.json)
+          echo "- delivery_mode: \`$MODE\`" >> "$GITHUB_STEP_SUMMARY"
+          if [ "$MODE" != "live" ]; then
+            echo "::notice::Email delivery is $MODE; the monthly report will not be sent."
+            echo "live=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "live=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Send report to organizers
+        if: steps.delivery-mode.outputs.live == 'true'
+        shell: bash
+        env:
+          PERIOD: ${{ steps.period.outputs.period }}
+        run: |
+          set -euo pipefail
+          BODY=$(jq -nc --arg period "$PERIOD" '{action:"send_monthly_report",period_label:$period}')
+          HTTP_STATUS=$(curl -sS -o /tmp/report.json -w "%{http_code}" \
+            -X POST "$SITE_URL/api/email" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -d "$BODY")
+          echo "HTTP $HTTP_STATUS: $(cat /tmp/report.json)"
+          OUTCOME=$(jq -r '.outcome // "pre_send_failure"' /tmp/report.json)
+
+          if [ "$HTTP_STATUS" = "409" ]; then
+            # Already ran for this month: check the delivery ledger instead of resending
+            RECON=$(curl -sS -X POST "$SITE_URL/api/email" \
+              -H "Content-Type: application/json" \
+              -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+              -d "$(jq -nc --arg period "$PERIOD" \
+                '{action:"reconcile_email_delivery",email_action:"send_monthly_report",period_label:$period}')")
+            echo "Ledger check: $RECON"
+            OUTCOME=$(echo "$RECON" | jq -r '.outcome // "pre_send_failure"')
+          elif [ "$HTTP_STATUS" -lt 200 ] || [ "$HTTP_STATUS" -ge 300 ]; then
+            echo "::error::Monthly report failed with HTTP $HTTP_STATUS"
+            exit 1
+          fi
+
+          {
+            echo "- HTTP status: $HTTP_STATUS"
+            echo "- Outcome: \`$OUTCOME\`"
+            echo "- delivery_summary: \`$(jq -c '.delivery_summary // {}' /tmp/report.json)\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          case "$OUTCOME" in
+            accepted|already_complete)
+              exit 0 ;;
+            *)
+              echo "::error::Monthly report needs attention: $OUTCOME"
+              exit 1 ;;
+          esac
