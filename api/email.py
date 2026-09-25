@@ -1073,6 +1073,22 @@ class handler(BaseHTTPRequestHandler):
                 if matches_result.error:
                     self._send_error(500, f"Failed to load match assignments: {matches_result.error}")
                     return
+
+                # Never remind a pair whose score is already recorded, even if
+                # closing their pairing failed (only ever removes reminders)
+                recorded_result = table('matches').select('player1_id, player2_id').eq('period_label', month).execute()
+                if recorded_result.error:
+                    self._send_error(500, f"Failed to load recorded matches: {recorded_result.error}")
+                    return
+                recorded_pairs = {
+                    frozenset((str(m.get('player1_id')), str(m.get('player2_id'))))
+                    for m in recorded_result.data
+                }
+                matches_result.data = [
+                    a for a in matches_result.data
+                    if frozenset((str(a.get('player1_id')), str(a.get('player2_id')))) not in recorded_pairs
+                ]
+
                 if not matches_result.data:
                     self._send_success({"message": "No pending matches to remind", "sent": 0})
                     return

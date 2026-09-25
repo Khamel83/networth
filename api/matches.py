@@ -47,6 +47,136 @@ def calculate_two_set_games(set1_p1, set1_p2, set2_p1, set2_p2):
     )
 
 
+INVALID_SCORE_MESSAGE = (
+    "That score doesn't match league rules. Each set must end 6-0 through 6-4, "
+    "7-5, or 6-6 (no tiebreakers). If your match ended early or was a forfeit, "
+    "ask Ashley or Natalie to record it from the admin page."
+)
+
+
+def is_duplicate_match_error(error) -> bool:
+    """Whether a Supabase error is the one-match-per-pair-per-month constraint."""
+    text = str(error or '')
+    return 'idx_unique_match_per_period' in text or '23505' in text or 'duplicate' in text.lower() or 'HTTP 409' in text
+
+
+def _same_pair(row, player1_id, player2_id):
+    return sorted((str(row.get('player1_id')), str(row.get('player2_id')))) == \
+        sorted((str(player1_id), str(player2_id)))
+
+
+def find_assignment(table, player1_id, player2_id, period, assignment_id=None):
+    """Find the pairing a score belongs to, validated against pair and period.
+
+    Returns (assignment_or_None, error). With an explicit assignment_id the
+    pairing must exist and be for these two players in this period. Without
+    one, the pair's pairing for the period is used if there is one (extra
+    matches have none).
+    """
+    found = table('match_assignments').select('id,player1_id,player2_id,period_label,status,match_id')\
+        .eq('period_label', period).execute()
+    if found.error:
+        return None, f"Failed to look up the pairing: {found.error}"
+    if assignment_id:
+        for a in found.data:
+            if str(a.get('id')) == str(assignment_id):
+                if not _same_pair(a, player1_id, player2_id):
+                    return None, "That pairing is for different players."
+                return a, None
+        return None, f"That pairing isn't in {period}."
+    for a in found.data:
+        if _same_pair(a, player1_id, player2_id):
+            return a, None
+    return None, None
+
+
+def close_assignment(table, assignment_id, match_id):
+    """Mark a pairing completed with its match. Returns an error or None."""
+    from api.supabase_http import is_missing_column_error
+    closed = table('match_assignments').update({'status': 'completed', 'match_id': match_id})\
+        .eq('id', assignment_id).returning().execute()
+    if closed.error and is_missing_column_error(closed.error, 'match_id'):
+        # Older schema without match_assignments.match_id (added by migration 07):
+        # the pairing can still be closed; the match is found by pair + month.
+        print("match_assignments.match_id missing; closing pairing by status only")
+        closed = table('match_assignments').update({'status': 'completed'})\
+            .eq('id', assignment_id).returning().execute()
+    if closed.error:
+        return f"Failed to mark the pairing completed: {closed.error}"
+    if len(closed.data or []) != 1:
+        return "Failed to mark the pairing completed: pairing not found"
+    return None
+
+
+def find_recorded_match(table, player1_id, player2_id, period):
+    """The stored match for this pair and period, if any (either player order)."""
+    found = table('matches').select('*').eq('period_label', period).execute()
+    if found.error:
+        return None, found.error
+    for m in found.data:
+        if _same_pair(m, player1_id, player2_id):
+            return m, None
+    return None, None
+
+
+def recover_duplicate(table, player1_id, player2_id, period, assignment):
+    """A score already exists for this pair/period. If an earlier attempt saved
+    it but failed to close the pairing, finish closing it now so a retry heals
+    the state instead of getting stuck. Returns True if the pairing is closed."""
+    if not assignment:
+        return False
+    if assignment.get('status') == 'completed' and assignment.get('match_id'):
+        return True
+    existing, error = find_recorded_match(table, player1_id, player2_id, period)
+    if error or not existing:
+        return False
+    return close_assignment(table, assignment['id'], existing.get('id')) is None
+
+
+PLAYER_REPORT_MONTHS = 7  # current month + previous 6, matching the dashboard picker
+
+
+def validate_player_period(period_label, today=None):
+    """Players may report the current month or the previous six, never the future.
+
+    Returns an error message or None. Admins record other months from /admin.
+    """
+    try:
+        period = datetime.strptime(str(period_label or '').strip(), '%B %Y')
+    except ValueError:
+        return "Choose a valid month for this match."
+    today = today or datetime.now()
+    months_back = (today.year - period.year) * 12 + (today.month - period.month)
+    if months_back < 0:
+        return "You can't report a match for a future month."
+    if months_back >= PLAYER_REPORT_MONTHS:
+        return "That month is too far back to report. Ask Ashley or Natalie to record it."
+    return None
+
+
+def parse_admin_set_scores(data):
+    """Parse admin-entered set scores.
+
+    Admins may record matches that ended early or were forfeited "as-is"
+    (see Rules), so any whole number 0-7 per set is accepted. A completely
+    blank 0-0, 0-0 score is rejected as an accidental submission.
+    Returns (scores_dict, error_message).
+    """
+    scores = {}
+    for field in ('set1_p1', 'set1_p2', 'set2_p1', 'set2_p2'):
+        value = data.get(field)
+        try:
+            value = int(value)
+        except (TypeError, ValueError):
+            return None, "Enter a number for every set score."
+        if not 0 <= value <= 7:
+            return None, "Each set score must be between 0 and 7."
+        scores[field] = value
+    if not any(scores.values()):
+        return None, "Enter the score (0-0, 0-0 is not a result)."
+    return scores, None
+
+
 class handler(BaseHTTPRequestHandler):
     def do_OPTIONS(self):
         self.send_response(200)
@@ -159,6 +289,22 @@ class handler(BaseHTTPRequestHandler):
                 .or_(f'(player1_id.eq.{player_id},player2_id.eq.{player_id})')\
                 .eq('status', 'pending')\
                 .execute()
+
+            # A pairing whose match is already recorded isn't outstanding, even if
+            # closing it failed earlier (self-reconciling; no retry needed)
+            recorded_pairs = set()
+            periods = {a.get('period_label') for a in assignments_result.data or []}
+            for period in periods:
+                recorded = table('matches').select('player1_id,player2_id').eq('period_label', period).execute()
+                if recorded.error:
+                    print(f"Outstanding check could not read matches: {recorded.error}")
+                    continue
+                for m in recorded.data:
+                    recorded_pairs.add((period, frozenset((str(m.get('player1_id')), str(m.get('player2_id'))))))
+            assignments_result.data = [
+                a for a in assignments_result.data or []
+                if (a.get('period_label'), frozenset((str(a.get('player1_id')), str(a.get('player2_id'))))) not in recorded_pairs
+            ]
 
             # Get all players for enrichment
             players_result = table('players').select('id, name, email, phone, skill_level').execute()
@@ -324,21 +470,68 @@ class handler(BaseHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(json.dumps({
                     "success": False,
-                    "error": "Enter two complete valid set scores before submitting the match."
+                    "error": INVALID_SCORE_MESSAGE
                 }).encode())
                 return
 
-            # Insert match
-            response = table('matches').insert(match_data).execute()
-            match = response.data[0] if response.data else None
+            # Players (not admins) may only report recent, non-future months
+            if not is_admin:
+                period_error = validate_player_period(match_data['period_label'])
+                if period_error:
+                    self._send_json(400, {"success": False, "error": period_error})
+                    return
 
-            # Update match assignment status if provided
-            assignment_id = data.get('assignment_id')
-            if assignment_id:
-                table('match_assignments').update({
-                    'status': 'completed',
-                    'match_id': match['id'] if match else None
-                }).eq('id', assignment_id).execute()
+            # Validate the pairing before writing anything
+            assignment = None
+            if data.get('assignment_id'):
+                assignment, assignment_error = find_assignment(
+                    table, player1_id, player2_id, match_data['period_label'], data.get('assignment_id')
+                )
+                if assignment_error:
+                    print(f"Score pairing check failed: {assignment_error}")
+                    self._send_json(400, {"success": False, "error": assignment_error})
+                    return
+
+            # Insert match — a failed insert must never look like a success
+            response = table('matches').insert(match_data).execute()
+            if response.error:
+                print(f"Match insert failed: {response.error}")
+                if is_duplicate_match_error(response.error):
+                    # A retry after a half-finished save closes the pairing here
+                    closed = recover_duplicate(table, player1_id, player2_id, match_data['period_label'], assignment)
+                    self._send_json(409, {
+                        "success": False,
+                        "pairing_closed": closed,
+                        "error": "A score for this match has already been recorded for this month"
+                                 + (" and your pairing is now marked complete." if closed else ".")
+                                 + " Ask Ashley or Natalie if it needs to be corrected."
+                    })
+                else:
+                    self._send_json(500, {
+                        "success": False,
+                        "error": "We couldn't save your score. Please try again, or ask Ashley or Natalie to record it."
+                    })
+                return
+            if len(response.data or []) != 1:
+                print(f"Match insert returned {len(response.data or [])} rows")
+                self._send_json(500, {
+                    "success": False,
+                    "error": "We couldn't save your score. Please try again, or ask Ashley or Natalie to record it."
+                })
+                return
+            match = response.data[0]
+
+            # Close the pairing; a failure here is reported, and a retry heals it
+            if assignment:
+                close_error = close_assignment(table, assignment['id'], match['id'])
+                if close_error:
+                    print(f"Score saved but pairing not closed: {close_error}")
+                    self._send_json(500, {
+                        "success": False,
+                        "score_saved": True,
+                        "error": "Your score was saved, but we couldn't update your pairing. Tap Submit again to finish, or ask Ashley or Natalie."
+                    })
+                    return
 
             # Record feedback (would_play_again)
             if 'would_play_again' in data and match:
@@ -370,7 +563,7 @@ class handler(BaseHTTPRequestHandler):
         except Exception as e:
             error_msg = str(e)
             # Detect unique constraint violation (duplicate match for same players/period)
-            if 'idx_unique_match_per_period' in error_msg or '23505' in error_msg or 'duplicate' in error_msg.lower():
+            if is_duplicate_match_error(error_msg):
                 self.send_response(409)
                 self.send_header('Content-Type', 'application/json')
                 self.send_header('Access-Control-Allow-Origin', '*')
@@ -388,6 +581,13 @@ class handler(BaseHTTPRequestHandler):
                     "success": False,
                     "error": error_msg
                 }).encode())
+
+    def _send_json(self, status, payload):
+        self.send_response(status)
+        self.send_header('Content-Type', 'application/json')
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.end_headers()
+        self.wfile.write(json.dumps(payload).encode())
 
     def _send_demo_response(self, data):
         """Send response when database not available (demo mode)"""

@@ -26,6 +26,7 @@ welcome, or availability emails never prove that match picks were delivered.
 
 ### To change colors/copy/branding:
 - Website CSS: Variables at top of each `public/*.html` file
+- Logo: animated sparkle `public/logo.webp` (hero/page logos) and `public/logo-small.webp` (headers/footers), with `*-still.webp` served via `<picture>` to `prefers-reduced-motion` users; static `public/favicon.png` and `public/apple-touch-icon.png`. All cut from the crystal tennis-ball GIF as transparent circles
 - Email templates: `api/email.py` (all 7 templates with inline styles)
 
 ### To add a player:
@@ -60,11 +61,20 @@ Players self-register via join page → immediately active → can log in right 
 ## Admin Dashboard (`/admin`)
 
 ### Features:
-- **Stats row**: Pending, Players, Social, Active, Paused, Matches counts
-- **Current Pairings**: Shows this month's matches with player names, emails, phones, status
-- **Pending Approval**: New signups awaiting Venmo verification
-- **All Members**: Searchable table with Paid checkbox, tier badge, status
+- **Stats row**: Removed, Players, Social, Active, Paused, Matches counts
+- **Pairings & Scores**: Month picker (last 12 months); each pairing shows its score or "Not reported" with Enter score / Edit; "+ Record a match" for extra matches
+- **Monthly Report**: Month picker (defaults to last month), results, unreported pairings, standings, unpaid members; CSV download and Print
+- **Removed Members**: Collapsed list of inactive accounts with Restore. Signups are active immediately, so inactive = removed by an admin (not "pending")
+- **All Members**: Searchable table with Paid checkbox, tier badge, status, Edit and Remove
 - **Generate Pairings**: Manual trigger for monthly pairing generation
+
+### Admin score rules:
+- Admin entries accept 0–7 per set so matches that ended early or were forfeited can be recorded as-is; players still must enter a rules-valid score
+- `record_score` inserts a match (the INSERT trigger adds games) and closes the pairing
+- `update_score` edits a match and applies the games difference to both players (the trigger only fires on INSERT). It only runs through the `admin_update_match_score` Postgres function (one transaction, row-locked; `migrations/06_admin_update_match_score.sql`). There is deliberately no REST fallback — until the migration is applied, edits return 503 and change nothing
+- Pairings are validated (players + month) before any score is written; a retry after a half-finished save closes the still-pending pairing instead of getting stuck
+- `migrations/07_close_pairing_on_match_insert.sql` closes the pairing in the same transaction as the match INSERT (and adds `match_assignments.match_id` if missing — the base schema file doesn't declare it). Until it's applied, the dashboard's outstanding list hides any pairing whose match already exists, and admin views count it as reported
+- Admin page never puts member names into inline `onclick` JS: buttons carry `data-member-action` + row index and a delegated listener looks the member up
 
 ### Payment Tracking:
 - `has_paid` boolean in database
@@ -74,7 +84,11 @@ Players self-register via join page → immediately active → can log in right 
 ### Admin Actions:
 - `GET /api/admin?action=players` - List all players with has_paid
 - `GET /api/admin?action=pairings` - Current month pairings with player details
+- `GET /api/admin?action=pairings&period=September%202026` - Pairings with recorded scores + extra matches
+- `GET /api/admin?action=report&period=...` - Monthly report data
 - `POST /api/admin` with `action: update_payment` - Toggle payment status
+- `POST /api/admin` with `action: record_score` / `update_score` - Enter or correct a score
+- `POST /api/admin` with `action: deactivate` / `activate` - Remove / restore a member
 
 ---
 
@@ -151,6 +165,7 @@ players
   - favorite_players, avatar_url
   - membership_tier (player | social_butterfly | admin)
   - has_paid (boolean, for admin payment tracking)
+  - reported_paid, reported_paid_at (member's own "I paid" checkbox at signup)
 
 matches
   - player1_id, player2_id
@@ -616,6 +631,17 @@ if (response.status === 401) {
 - **Fixed preflight auth test** — pairings preflight was hitting /api/pairings with {} (actually ran pairings); now uses /api/email test_auth_check like all other jobs
 - **April pairings generated** — 13 pairings, 13 emails sent, 0 repeats confirmed
 - **CRON_SECRET synced** — Vercel + GitHub + vault all matching
+
+### September 2026
+- **New logo** — crystal tennis-ball artwork replaces the text wordmark in headers, hero, login/join/reset, footers, and favicon
+- **Admin score entry/correction** — admins can enter or fix any score from the admin page, including past months
+- **Fixed silent score-save failures** — `POST /api/matches` never checked the insert result, so a failed or duplicate save told the player "Score submitted!" and closed the pairing with nothing saved. It now returns 409/500 and leaves the pairing open
+- **Clearer score error** — invalid player scores now explain the allowed set scores and point to an admin for early-ended matches
+- **Monthly report** — in the admin page (view, CSV, print). Automatic monthly email not yet built (needs email-policy sign-off)
+- **"I paid" tracking** — join checkbox saves `players.reported_paid` / `reported_paid_at` (requires `migrations/05_reported_paid.sql`; signup and the report keep working without it). Shown as "Says paid" in the report's Unpaid list; `has_paid` remains the admin-verified flag
+- **Fixed re-joining** — re-registration of a removed (inactive) account returned "Failed to create account" because the UPDATE returned no rows; it now requests the updated row
+- **Venmo pay step on /join** — tier-aware "Pay on Venmo" button + optional "I've sent my $X" checkbox; one reminder dialog if unchecked, never blocks signup
+- **Removed members** — replaced the misleading "Pending Approval" list with a collapsed Removed Members list + row-level Remove
 
 ### February 2026
 - **Report Issue feature** - Users can report bugs from dashboard via `/api/report_issue` (sends admin alert email)

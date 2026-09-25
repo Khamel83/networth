@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="icon" type="image/png" href="/favicon.png">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
     <title>Join Net Worth | Net Worth Tennis</title>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -429,6 +430,56 @@
                 font-size: 2rem;
             }
         }
+
+        /* Venmo payment step: strongly encouraged, never required */
+        .pay-section {
+            margin-bottom: 1.5rem;
+            padding: 1.25rem;
+            background: rgba(255, 255, 255, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.35);
+            border-radius: 16px;
+        }
+        .pay-section h3 { font-family: var(--font-display); font-size: 1.1rem; font-weight: 600; margin-bottom: 0.5rem; }
+        .pay-section p { font-size: 0.9rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 1rem; }
+        .btn-venmo {
+            display: block;
+            width: 100%;
+            padding: 0.9rem 1rem;
+            background: #008CFF;
+            color: #ffffff;
+            border-radius: 50px;
+            text-align: center;
+            font-weight: 700;
+            font-size: 1rem;
+            text-decoration: none;
+            border: none;
+            cursor: pointer;
+            font-family: var(--font-body);
+        }
+        .btn-venmo:hover { background: #0074d4; }
+        .paid-check { margin-top: 1rem; display: flex; gap: 0.6rem; align-items: flex-start; font-size: 0.95rem; }
+        .paid-check input { width: 20px; height: 20px; margin-top: 0.1rem; accent-color: #008CFF; flex-shrink: 0; }
+        .nudge-backdrop {
+            position: fixed; inset: 0; background: rgba(0, 0, 0, 0.6);
+            display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 1000;
+        }
+        .nudge-backdrop[hidden] { display: none; }
+        .nudge-card {
+            background: linear-gradient(135deg, #d165a4 0%, #ec613e 100%);
+            border-radius: 24px; padding: 2rem 1.5rem; max-width: 420px; width: 100%; text-align: center;
+        }
+        .nudge-card h3 { font-family: var(--font-display); font-size: 1.3rem; margin-bottom: 0.75rem; }
+        .nudge-card p { color: rgba(255, 255, 255, 0.9); line-height: 1.5; margin-bottom: 1.5rem; }
+        .nudge-later {
+            margin-top: 0.75rem; background: none; border: none; color: rgba(255, 255, 255, 0.85);
+            text-decoration: underline; cursor: pointer; font-size: 0.9rem; font-family: var(--font-body);
+        }
+
+        /* Brand logo image */
+        .logo-img { display: block; width: 44px; height: 44px; border-radius: 50%; }
+        .footer-logo-img { display: block; width: 36px; height: 36px; border-radius: 50%; }
+        .page-logo-img { display: block; width: 120px; height: 120px; margin: 0 auto; border-radius: 50%; }
+        .hero-logo { display: block; width: clamp(200px, 40vw, 360px); height: auto; margin: 0 auto; border-radius: 50%; filter: drop-shadow(0 18px 30px rgba(0,0,0,0.25)); }
     </style>
 </head>
 <body>
@@ -443,7 +494,7 @@
         <div class="join-card">
             <div id="form-section">
                 <div class="join-header">
-                    <h1 class="join-logo">net worth</h1>
+                    <h1 class="join-logo"><picture><source srcset="/logo-still.webp" media="(prefers-reduced-motion: reduce)"><img src="/logo.webp" alt="net worth" class="page-logo-img" width="120" height="120"></picture></h1>
                     <p class="join-subtitle">Join the League</p>
                     <p style="font-size: 0.9rem; color: var(--text-muted); margin-top: 1rem; line-height: 1.6;">
                         <a href="https://venmo.com/u/ncoffen?txn=pay&amp;amount=35.00&amp;note=Net%20Worth%20Tennis%20Player%20membership" target="_blank" rel="noopener noreferrer" style="color: var(--text-white); font-weight: 600;">Pay $35 Player membership via Venmo @NCOFFEN (Natalie)</a>, then create your player profile here. If you join after the month has started, you'll be matched in the next month.
@@ -499,6 +550,17 @@
                                 </label>
                             </div>
                         </div>
+                    </div>
+
+                    <!-- Payment: pay Natalie on Venmo (encouraged, not required) -->
+                    <div class="pay-section" id="pay-section">
+                        <h3>Pay Natalie on Venmo</h3>
+                        <p>Membership dues go to Natalie (@NCOFFEN). Tap below and Venmo opens with the amount and note filled in.</p>
+                        <a id="pay-venmo-btn" class="btn-venmo" href="https://venmo.com/u/ncoffen?txn=pay&amp;amount=35.00&amp;note=Net%20Worth%20Tennis%20Player%20membership" target="_blank" rel="noopener noreferrer">Pay $35 on Venmo</a>
+                        <label class="paid-check" for="paid-confirm">
+                            <input type="checkbox" id="paid-confirm" name="paid_confirm">
+                            <span id="paid-confirm-label">I've sent my $35 to Natalie on Venmo</span>
+                        </label>
                     </div>
 
                     <!-- Availability Section -->
@@ -573,7 +635,8 @@
                     <h2>You're In!</h2>
                     <p>We're so pumped for you to join us!</p>
                     <div class="venmo-info">
-                        <p>Please send your membership fee via <a id="success-venmo-link" href="https://venmo.com/u/ncoffen?txn=pay&amp;amount=35.00&amp;note=Net%20Worth%20Tennis%20Player%20membership" target="_blank" rel="noopener noreferrer" style="color: var(--text-white); font-weight: 600;">Venmo @NCOFFEN (Natalie)</a>.</p>
+                        <a id="success-pay-btn" class="btn-venmo" href="https://venmo.com/u/ncoffen?txn=pay&amp;amount=35.00&amp;note=Net%20Worth%20Tennis%20Player%20membership" target="_blank" rel="noopener noreferrer" style="margin-bottom: 1rem;">Pay $35 on Venmo</a>
+                        <p id="success-pay-text">Please send your membership fee via <a id="success-venmo-link" href="https://venmo.com/u/ncoffen?txn=pay&amp;amount=35.00&amp;note=Net%20Worth%20Tennis%20Player%20membership" target="_blank" rel="noopener noreferrer" style="color: var(--text-white); font-weight: 600;">Venmo @NCOFFEN (Natalie)</a>.</p>
                         <p style="margin-top: 1rem;"><strong>You can sign in now!</strong></p>
                     </div>
                 </div>
@@ -591,6 +654,16 @@
         </div>
     </div>
 
+    <!-- Reminder shown once if they submit without checking "I paid" -->
+    <div id="pay-nudge" class="nudge-backdrop" hidden>
+        <div class="nudge-card" role="dialog" aria-modal="true" aria-labelledby="pay-nudge-title">
+            <h3 id="pay-nudge-title">Don't forget to pay Natalie!</h3>
+            <p id="pay-nudge-text">Your $35 membership keeps the league running. It takes 30 seconds on Venmo.</p>
+            <button type="button" class="btn-venmo" id="pay-nudge-pay">Pay $35 on Venmo now</button>
+            <button type="button" class="nudge-later" id="pay-nudge-later">I'll pay later</button>
+        </div>
+    </div>
+
     <script>
         const form = document.getElementById('join-form');
         const messageEl = document.getElementById('message');
@@ -602,6 +675,42 @@
         const venmoPlayerUrl = 'https://venmo.com/u/ncoffen?txn=pay&amount=35.00&note=Net%20Worth%20Tennis%20Player%20membership';
         const venmoSocialUrl = 'https://venmo.com/u/ncoffen?txn=pay&amount=45.00&note=Net%20Worth%20Tennis%20Social%20Butterfly%20membership';
         const successVenmoLink = document.getElementById('success-venmo-link');
+        const payVenmoBtn = document.getElementById('pay-venmo-btn');
+        const paidConfirm = document.getElementById('paid-confirm');
+        const payNudge = document.getElementById('pay-nudge');
+        let payNudgeDone = false;
+
+        function selectedTierPayment() {
+            const tier = document.querySelector('input[name="membership_tier"]:checked')?.value;
+            return tier === 'social_butterfly'
+                ? { url: venmoSocialUrl, amount: '$45' }
+                : { url: venmoPlayerUrl, amount: '$35' };
+        }
+
+        function updatePaymentStep() {
+            const pay = selectedTierPayment();
+            payVenmoBtn.href = pay.url;
+            payVenmoBtn.textContent = `Pay ${pay.amount} on Venmo`;
+            document.getElementById('paid-confirm-label').textContent = `I've sent my ${pay.amount} to Natalie on Venmo`;
+            document.getElementById('pay-nudge-text').textContent = `Your ${pay.amount} membership keeps the league running. It takes 30 seconds on Venmo.`;
+            document.getElementById('pay-nudge-pay').textContent = `Pay ${pay.amount} on Venmo now`;
+        }
+
+        // Tapping the Venmo button is a strong signal; still let them confirm themselves
+        function continueAfterNudge(openVenmo) {
+            if (openVenmo) {
+                window.open(selectedTierPayment().url, '_blank', 'noopener');
+            }
+            payNudge.hidden = true;
+            payNudgeDone = true;
+            if (form.requestSubmit) {
+                form.requestSubmit();
+            } else {
+                submitBtn.click();
+            }
+        }
+        document.getElementById('pay-nudge-pay').addEventListener('click', () => continueAfterNudge(true));
+        document.getElementById('pay-nudge-later').addEventListener('click', () => continueAfterNudge(false));
 
         // Toggle availability section based on tier selection
         tierRadios.forEach(radio => {
@@ -615,6 +724,7 @@
                 } else {
                     availabilitySection.classList.remove('disabled');
                 }
+                updatePaymentStep();
             });
         });
 
@@ -688,6 +798,15 @@
                 }
             }
 
+            // Strongly encourage payment, but never block signup on it
+            if (!paidConfirm.checked && !payNudgeDone) {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Join Now';
+                payNudge.hidden = false;
+                document.getElementById('pay-nudge-pay').focus();
+                return;
+            }
+
             try {
                 const response = await fetch('/api/join', {
                     method: 'POST',
@@ -699,6 +818,7 @@
                         password,
                         membership_tier: membershipTier,
                         favorite_players: favoritePlayers,
+                        reported_paid: paidConfirm.checked,
                         ...availability
                     })
                 });
@@ -711,6 +831,17 @@
                     successVenmoLink.textContent = isSocialButterfly
                         ? 'Venmo @NCOFFEN (Natalie) for $45'
                         : 'Venmo @NCOFFEN (Natalie) for $35';
+                    const successPayBtn = document.getElementById('success-pay-btn');
+                    successPayBtn.href = successVenmoLink.href;
+                    successPayBtn.textContent = isSocialButterfly ? 'Pay $45 on Venmo' : 'Pay $35 on Venmo';
+                    if (paidConfirm.checked) {
+                        // They told us they paid: thank them, keep the link as a fallback
+                        successPayBtn.style.display = 'none';
+                        document.getElementById('success-pay-text').innerHTML =
+                            'Thanks for paying Natalie! If it didn\'t go through, you can still use ';
+                        document.getElementById('success-pay-text').appendChild(successVenmoLink);
+                        document.getElementById('success-pay-text').append('.');
+                    }
                     formSection.style.display = 'none';
                     successSection.style.display = 'block';
                 } else {
