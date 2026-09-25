@@ -15,9 +15,11 @@ These processes run without any human intervention:
 | 1st of month, 9am PT | Pairings generated + match emails sent | GitHub Actions |
 | 1st of month, 1pm PDT / noon PST | Read-only post-generation pairing check | GitHub Actions |
 | 15th of month, 9am PT | Mid-month reminder emails sent | GitHub Actions |
-| Daily, from the 2nd of each month | Read-only watchdog fails if current-month pairings are missing | GitHub Actions |
-| On player signup | Welcome email sent | Automatic |
-| On match score submitted | Rankings recalculated | Automatic |
+| 2nd of month, 10am PT | Last month's report emailed to Natalie + Ashley | GitHub Actions (`monthly-report.yml`) |
+| Daily | Read-only health check; fails if current-month pairings are missing after the 1st | GitHub Actions |
+| Every 5 days | Supabase keep-alive ping (free tier pauses after 7 idle days) | GitHub Actions |
+| On player signup / re-join | Notice emailed to Natalie + Ashley; welcome email to the player only if `PUBLIC_TRANSACTIONAL_EMAILS=enabled` | Automatic |
+| On match score submitted | Games added to both players, pairing marked complete | Automatic (database triggers) |
 
 ---
 
@@ -25,31 +27,43 @@ These processes run without any human intervention:
 
 **Location:** `https://www.networthtennis.com/admin`
 
-### Approve New Players
+Signups are active immediately; there is no approval step. Natalie and Ashley get an email for each signup.
 
-1. Log in with an admin account
-2. New signups appear in "Pending Approvals"
-3. Verify they paid via Venmo
-4. Click **Approve** to activate them
+### Mark Someone Paid
+
+1. Check Venmo
+2. In **All Members**, tick the **Paid** box (saves instantly)
+3. The monthly report's "Not marked paid" list shows "Says paid" for anyone who ticked "I paid" when joining
+
+### Enter or Fix a Score
+
+1. In **Pairings & Scores**, pick the month
+2. Click **Enter score** on the pairing (or **+ Record a match** for an extra match)
+3. For an existing score, click **Edit**; both players' game totals are corrected automatically
+4. Admins may record a match that ended early or a forfeit as-is (0–7 per set)
 
 ### Pause a Player
 
-1. Find the player in the list
-2. Click **Pause**
-3. They won't be matched until unpaused
+1. Find the player in **All Members**, click **Edit**
+2. Click **Pause**; they won't be matched until unpaused
 
 ### Edit Player Info
 
-1. Find the player
-2. Click **Edit**
-3. Update name, email, phone, or membership tier
-4. Click **Save**
+1. Find the player, click **Edit**
+2. Update name, email, phone, membership tier, or availability
+3. Click **Save Changes**
 
-### Reject/Remove a Player
+### Remove / Restore a Player
 
-1. Find the player
-2. Click **Reject** or **Deactivate**
-3. Note: This doesn't delete them, just marks them inactive
+1. Find the player, click **Remove** (soft delete: RLS blocks real deletes)
+2. They disappear from rankings, the directory, pairings, and emails
+3. To undo: open **Removed Members** (collapsed at the bottom) and click **Restore**
+4. If a removed person signs up again with the same email, their account is reactivated
+
+### Monthly Report
+
+- **Monthly Report** section: pick a month, then **Download CSV** or **Print**
+- The same report is emailed to Natalie + Ashley on the 2nd for the previous month
 
 ---
 
@@ -70,6 +84,8 @@ If automation ever fails, trigger workflows manually from GitHub Actions.
    - `mid_month_reminder` - Send mid-month reminder
 6. Click **Run workflow**
 
+To resend a monthly report: **Actions > Monthly League Report > Run workflow**, optionally entering a month like `August 2026`. This sends real email to Natalie and Ashley; a month that already went out is not sent twice.
+
 ### Read-only API checks (safe, no emails sent)
 ```bash
 curl https://www.networthtennis.com/api/system
@@ -79,21 +95,20 @@ curl https://www.networthtennis.com/api/pairings
 
 ---
 
-## Annual Tasks
+## Maintenance Checklist
 
-### Domain Renewal
+Small league, light touch. Nothing here is monthly.
 
-**When:** Before your domain expires (check your registrar)
+**Once a year (pick a date, e.g. January):**
+- Renew the domain (`networthtennis.com`) at the registrar; set auto-renew if possible
+- Confirm the Resend domain is still verified (Resend > Domains) and the API key works (`GET /api/email` shows `ready`)
+- Glance at GitHub > Actions: the daily health check and "Tennis League Emails" runs should be green
+- Export `players` and `matches` to CSV from Supabase (Table Editor > Export) and store it somewhere private
+- Rotate `CRON_SECRET` if anyone who had it has left (update Vercel and GitHub together)
 
-**How:**
-1. Log into your domain registrar (GoDaddy, Namecheap, etc.)
-2. Renew the domain
+**If the repo sits untouched for ~2 months:** GitHub turns off scheduled workflows on public repositories after 60 days without activity, which would silently stop pairings and emails. Either make the repository private (Settings > General > Change visibility; Vercel keeps deploying) or re-enable the workflows from the Actions tab when GitHub emails about it.
 
-**Set a calendar reminder** for 30 days before expiration.
-
-### Review Resend API Key Access
-**When:** Annually or when team access changes
-**How:** Rotate `RESEND_API_KEY` in Vercel and confirm `GET /api/email` is still `ready`
+**When membership renews each year:** clear the Paid boxes in the admin page (or ask a developer to reset `has_paid` for everyone).
 
 ---
 
@@ -111,7 +126,11 @@ If it says "not_configured", `RESEND_API_KEY` is missing in Vercel.
 1. Go to Vercel dashboard > Your project > Settings > Environment Variables
 2. Check that `RESEND_API_KEY` exists and has a value
 
+**Check 2: Is delivery switched on?**
+The same `GET /api/email` response shows `delivery_mode`. It must be `live` to send. `disabled` and `dry_run` never contact Resend (by design). Welcome and password-reset emails also need `PUBLIC_TRANSACTIONAL_EMAILS=enabled`.
+
 **Check 3: Are GitHub Actions running?**
+If scheduled runs stopped entirely, GitHub may have disabled them after 60 days of repo inactivity: Actions tab > pick the workflow > **Enable workflow**.
 1. Go to GitHub repo > Actions tab
 2. Check if recent workflow runs succeeded
 3. If failing, check the error messages
@@ -160,6 +179,7 @@ Expected: {"status": "healthy"}
 | Website down | Developer (Khamel) |
 | Database issues | Developer |
 | Resend key/access issues | Account owner (Ashley) |
+| Monthly report / signup notice recipients | Change `ORGANIZER_EMAILS` in `api/email.py` (developer) |
 | Domain renewal | Account owner |
 | Player disputes | League admins (Ashley/Natalie) |
 
@@ -172,7 +192,10 @@ These are set in Vercel and should NOT be changed unless necessary:
 | Variable | Purpose | Where to Find |
 |----------|---------|---------------|
 | `SUPABASE_URL` | Database connection | Supabase > Settings > API |
-| `SUPABASE_ANON_KEY` | Database auth | Supabase > Settings > API |
+| `SUPABASE_ANON_KEY` | Public key (deny-all RLS) | Supabase > Settings > API |
+| `SUPABASE_SERVICE_ROLE_KEY` | Server-side database access | Supabase > Settings > API |
+| `EMAIL_DELIVERY_MODE` | `live` to send email | Set by the owner |
+| `PUBLIC_TRANSACTIONAL_EMAILS` | `enabled` for welcome/reset mail | Set by the owner |
 | `RESEND_API_KEY` | Email sending | Resend dashboard |
 | `SITE_URL` | Link generation | `https://www.networthtennis.com` |
 | `CRON_SECRET` | Protect scheduled endpoints | Must match GitHub + Vercel |
@@ -183,12 +206,14 @@ These are set in Vercel and should NOT be changed unless necessary:
 
 ### Database Backups
 
-Supabase automatically backs up your database daily (free tier: 7 days retention).
+What Supabase backs up depends on the plan; check Supabase > Database > Backups. Do not rely on it alone.
 
-To manually export data:
+The old weekly GitHub backup job was removed in September 2026: it never saved anything, and in this public repository it would have published member emails and phone numbers if it had worked.
+
+To export data (do this at least yearly):
 1. Supabase dashboard > Table Editor
-2. Select table (e.g., `players`)
-3. Click **Export** > CSV
+2. Select table (`players`, `matches`, `match_assignments`)
+3. Click **Export** > CSV and keep it somewhere private (not in this repo)
 
 ### Code Backups
 
