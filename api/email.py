@@ -35,11 +35,13 @@ SENDER_NAME = 'Net Worth Tennis'
 SENDER_EMAIL = f'{SENDER_NAME} <hello@networthtennis.com>'
 REPLY_TO_EMAIL = 'ashleybrooke.kaufman@gmail.com'
 RESEND_BATCH_SIZE = 100
-# Monthly report goes only to the two league organizers (not the sysadmin)
-MONTHLY_REPORT_RECIPIENTS = (
+# The two league organizers (not the sysadmin). Approved by the owner as the
+# only recipients of the monthly report and new-signup notices.
+ORGANIZER_EMAILS = (
     'nmcoffen@gmail.com',              # Natalie
     'ashleybrooke.kaufman@gmail.com',  # Ashley
 )
+MONTHLY_REPORT_RECIPIENTS = ORGANIZER_EMAILS
 RESEND_BATCH_DELAY_SECONDS = 0.6
 
 
@@ -794,6 +796,75 @@ def get_admin_alert_email_html(subject, message):
     </body>
     </html>
     """
+
+
+def get_new_signup_email_html(player, rejoined=False):
+    """Heads-up to the organizers that someone joined (or re-joined)."""
+    tier = 'Social Butterfly ($45)' if player.get('membership_tier') == 'social_butterfly' else 'Player ($35)'
+    if player.get('reported_paid'):
+        paid = 'Checked "I paid" - check Venmo, then tick Paid on the admin page'
+    else:
+        paid = 'Did not check "I paid" yet'
+    slots = [
+        ('avail_weekday_early', 'Weekday mornings'), ('avail_weekday_day', 'Weekday daytime'),
+        ('avail_weekday_late', 'Weekday evenings'), ('avail_weekend_early', 'Weekend mornings'),
+        ('avail_weekend_day', 'Weekend daytime'), ('avail_weekend_late', 'Weekend evenings'),
+    ]
+    availability = ', '.join(label for key, label in slots if player.get(key)) or 'None given'
+    heading = 'Welcome back' if rejoined else 'New signup'
+    rows = [
+        ('Name', player.get('name')),
+        ('Email', player.get('email')),
+        ('Phone', player.get('phone') or '-'),
+        ('Membership', tier),
+        ('Payment', paid),
+        ('Availability', availability),
+    ]
+    table = ''.join(
+        f'<tr><td style="padding:6px 10px;color:#999;white-space:nowrap;">{label}</td>'
+        f'<td style="padding:6px 10px;">{_esc(str(value or ""))}</td></tr>'
+        for label, value in rows
+    )
+    note = '<p>They had an account before that was removed; it has been reactivated.</p>' if rejoined else ''
+    return f"""
+    <!DOCTYPE html>
+    <html>
+    <head>{get_email_styles()}</head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <h1>{heading}!</h1>
+            </div>
+            <div class="content">
+                <p><strong>{_esc(player.get('name') or 'Someone')}</strong> just joined Net Worth Tennis.</p>
+                {note}
+                <table style="width:100%;border-collapse:collapse;font-size:14px;">{table}</table>
+                <p style="text-align: center; margin: 30px 0;">
+                    <a href="https://www.networthtennis.com/admin" class="button">Open the admin page</a>
+                </p>
+            </div>
+            <div class="footer">
+                <p>Net Worth Tennis - signup notice for league organizers</p>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
+
+
+def notify_organizers_of_signup(player, rejoined=False):
+    """Email Natalie + Ashley about a signup. Best-effort: never raises.
+
+    Goes only to ORGANIZER_EMAILS (fixed server-side, never the signup's own
+    address) and only when EMAIL_DELIVERY_MODE is live (send_email enforces it).
+    """
+    try:
+        name = (player.get('name') or 'Someone').strip()
+        subject = f"{'Re-joined' if rejoined else 'New signup'}: {name}"[:150]
+        return send_email(list(ORGANIZER_EMAILS), subject, get_new_signup_email_html(player, rejoined))
+    except Exception as e:
+        print(f"Organizer signup notice failed: {e}")
+        return {'success': False, 'sent': False, 'error': str(e)}
 
 
 def previous_period_label(today=None):
