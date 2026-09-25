@@ -88,11 +88,17 @@ def run_watchdog(table, now=None):
     # 2. Any job in the last 10 days that failed and was never retried
     #    successfully. Bounded on purpose: older failures that were fixed by
     #    hand would otherwise alert forever; step 1 covers the current cycle.
-    done = {(r.get('action'), r.get('period_label')) for r in runs if r.get('status') in ('succeeded', 'repaired')}
+    # A failure counts as fixed only by a success that started after it
+    last_success = {}
+    for r in runs:
+        if r.get('status') in ('succeeded', 'repaired'):
+            key = (r.get('action'), r.get('period_label'))
+            last_success[key] = max(last_success.get(key, ''), r.get('started_at') or '')
     reported = set()
     for r in runs:
         key = (r.get('action'), r.get('period_label'))
-        if r.get('status') in _BAD_RUN_STATUSES and key not in done and key not in reported:
+        fixed = last_success.get(key, '') > (r.get('started_at') or '')
+        if r.get('status') in _BAD_RUN_STATUSES and not fixed and key not in reported:
             reported.add(key)
             problems.append(f"{key[0]} for {key[1]} ended as '{r.get('status')}' and has not been fixed.")
 

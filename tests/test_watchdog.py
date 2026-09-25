@@ -228,3 +228,11 @@ def test_failed_alert_email_fails_the_cron_request():
     status, data, _ = _call(db, send=Mock(return_value={'sent': False, 'error': 'resend down'}))
     assert status == 500
     assert data['success'] is False and data['emailed'] is False
+
+
+def test_failure_after_an_earlier_success_is_still_reported():
+    db = healthy_october()
+    db['automation_runs'].append({'action': 'send_monthly_report', 'period_label': 'September 2026',
+                                  'status': 'failed_terminal', 'started_at': '2026-10-04T19:00:00+00:00'})
+    problems, _ = run_watchdog(fake(db), now=NOW)
+    assert any("send_monthly_report for September 2026 ended as 'failed_terminal'" in p for p in problems)
