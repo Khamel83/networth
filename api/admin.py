@@ -576,6 +576,28 @@ class handler(BaseHTTPRequestHandler):
             self._send_error(400, error)
             return
 
+        # Preferred path: one database transaction (migrations/06_admin_update_match_score.sql)
+        from api.supabase_http import rpc, is_missing_function_error
+        atomic = rpc('admin_update_match_score', {
+            'p_match_id': match_id,
+            'p_set1_p1': scores['set1_p1'], 'p_set1_p2': scores['set1_p2'],
+            'p_set2_p1': scores['set2_p1'], 'p_set2_p2': scores['set2_p2'],
+        })
+        if not atomic.error:
+            if len(atomic.data or []) != 1:
+                self._send_error(500, "Failed to update match")
+                return
+            self._send_success({'message': 'Score updated', 'match': _match_view(atomic.data[0])})
+            return
+        if not is_missing_function_error(atomic.error):
+            print(f"admin_update_match_score failed: {atomic.error}")
+            if 'P0002' in str(atomic.error) or 'match not found' in str(atomic.error):
+                self._send_error(404, "Match not found")
+            else:
+                self._send_error(500, "Failed to update match; nothing was changed")
+            return
+        print("admin_update_match_score not installed; using guarded REST fallback")
+
         existing = table('matches').select('*').eq('id', match_id).execute()
         if existing.error:
             self._send_error(500, f"Failed to fetch match: {existing.error}")
@@ -599,7 +621,12 @@ class handler(BaseHTTPRequestHandler):
 
         def rollback_totals():
             for pid, before, after in reversed(applied):
-                table('players').update({'total_games': before}).eq('id', pid).eq('total_games', after).execute()
+                undone = table('players').update({'total_games': before})\
+                    .eq('id', pid).eq('total_games', after).returning().execute()
+                if undone.error or len(undone.data or []) != 1:
+                    # Never silent: surface exactly what needs a manual fix
+                    print(f"ROLLBACK FAILED: player {pid} total_games should be {before}, "
+                          f"was set to {after} (match {match_id} unchanged)")
 
         for pid, delta in deltas:
             if not delta:

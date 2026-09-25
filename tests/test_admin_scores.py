@@ -115,11 +115,16 @@ def make_handler(module, method, body=None, path='/api/admin'):
     return handler.send_response.call_args[0][0], json.loads(handler.wfile.getvalue())
 
 
-def call_admin(db, method, body=None, path='/api/admin'):
+NO_RPC = FakeResult(data=[], error='HTTP 404: {"code":"PGRST202","message":"Could not find the function"}')
+
+
+def call_admin(db, method, body=None, path='/api/admin', rpc_result=NO_RPC):
     import api.admin as admin
     with patch('api.supabase_http.table', db), \
+            patch('api.supabase_http.rpc', return_value=rpc_result) as rpc_mock, \
             patch('api.auth.verify_session', return_value='admin@example.net'), \
             patch.object(admin, 'verify_admin', return_value=True):
+        call_admin.rpc_calls = rpc_mock
         return make_handler(admin, method, body, path)
 
 
@@ -391,3 +396,29 @@ def test_player_sees_error_when_pairing_close_fails():
         }, path='/api/matches')
     assert status == 500
     assert data['score_saved'] is True
+
+
+def test_update_score_uses_atomic_database_function_when_installed():
+    tables = _seed_with_match()
+    db = FakeDB(tables)
+    updated = {**tables['matches'][0], 'set1_p1': 4, 'set1_p2': 6, 'player1_games': 10, 'player2_games': 10}
+    status, data = call_admin(db, 'do_POST', {
+        'action': 'update_score', 'match_id': 'm1', 'set1_p1': 4, 'set1_p2': 6, 'set2_p1': 6, 'set2_p2': 4,
+    }, rpc_result=FakeResult(data=[updated], error=None))
+    assert status == 200, data
+    name, params = call_admin.rpc_calls.call_args[0]
+    assert name == 'admin_update_match_score'
+    assert params == {'p_match_id': 'm1', 'p_set1_p1': 4, 'p_set1_p2': 6, 'p_set2_p1': 6, 'p_set2_p2': 4}
+    # The database did the work; the REST fallback must not also adjust totals
+    assert tables['players'][0]['total_games'] == 10
+    assert tables['matches'][0]['player1_games'] == 12
+
+
+def test_update_score_database_error_changes_nothing():
+    tables = _seed_with_match()
+    status, _ = call_admin(FakeDB(tables), 'do_POST', {
+        'action': 'update_score', 'match_id': 'm1', 'set1_p1': 4, 'set1_p2': 6, 'set2_p1': 6, 'set2_p2': 4,
+    }, rpc_result=FakeResult(data=[], error='HTTP 500: deadlock detected'))
+    assert status == 500
+    assert tables['players'][0]['total_games'] == 10
+    assert tables['matches'][0]['player1_games'] == 12
