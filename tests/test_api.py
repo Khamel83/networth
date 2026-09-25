@@ -887,6 +887,93 @@ class TestEmailReliability:
         assert inserted_rows[0][0]['delivery_status'] == 'pending'
         assert inserted_rows[0][0]['message_key'].startswith('send_midmonth_reminders:')
 
+    def test_midmonth_skips_pairs_whose_score_is_already_recorded(self):
+        """A pairing left pending after its score was saved must not get a reminder."""
+        from api.email import handler
+        from types import SimpleNamespace
+        import io
+        import resend
+
+        matches = [{
+            'id': 'match-1',
+            'player1_id': 'player-1',
+            'player2_id': 'player-2',
+            'status': 'pending',
+        }]
+        players = [
+            {'id': 'player-1', 'email': 'one@test.com', 'name': 'One'},
+            {'id': 'player-2', 'email': 'two@test.com', 'name': 'Two'},
+        ]
+        inserted_rows = []
+
+        class FakeQuery:
+            def __init__(self, table_name):
+                self.table_name = table_name
+
+            def select(self, columns):
+                return self
+
+            def eq(self, column, value):
+                return self
+
+            def is_(self, column, value):
+                return self
+
+            def update(self, data):
+                return self
+
+            def insert(self, data):
+                inserted_rows.append(data)
+                return self
+
+            def execute(self):
+                if self.table_name == 'match_assignments':
+                    return SimpleNamespace(data=matches, error=None)
+                if self.table_name == 'players':
+                    return SimpleNamespace(data=players, error=None)
+                if self.table_name == 'matches':
+                    return SimpleNamespace(data=[{'player1_id': 'player-2', 'player2_id': 'player-1'}], error=None)
+                return SimpleNamespace(data=[], error=None)
+
+        mock_request = Mock()
+        mock_handler = handler(mock_request, None, None)
+        mock_handler.send_response = Mock()
+        mock_handler.send_header = Mock()
+        mock_handler.end_headers = Mock()
+        mock_handler.wfile = Mock()
+
+        body = json.dumps({'action': 'send_midmonth_reminders'}).encode()
+        mock_handler.headers = Mock()
+        mock_handler.headers.get = Mock(side_effect=lambda key, default=None: {
+            'Content-Length': str(len(body)),
+            'Authorization': 'Bearer test-cron-secret',
+        }.get(key, default))
+        mock_handler.rfile = io.BytesIO(body)
+
+        with patch('api.supabase_http.table', side_effect=lambda name: FakeQuery(name)):
+            with patch('api.email.try_start_run', return_value=('run-1', None)):
+                with patch('api.email.preflight', return_value=(True, {})):
+                    with patch('api.email.append_event'):
+                        with patch('api.email.update_run'):
+                            with patch.dict(os.environ, {
+                                'CRON_SECRET': 'test-cron-secret',
+                                'RESEND_API_KEY': 'test-resend-key',
+                                'EMAIL_DELIVERY_MODE': 'live',
+                            }):
+                                with patch.object(resend.Batch, 'send', return_value={
+                                    'data': [{'id': 'resend-1'}]
+                                }) as batch_send:
+                                    with patch.object(
+                                        resend.Emails,
+                                        'send',
+                                        side_effect=AssertionError('individual send used'),
+                                    ):
+                                        mock_handler.do_POST()
+
+        mock_handler.send_response.assert_called_with(200)
+        batch_send.assert_not_called()
+        assert inserted_rows == []
+
     def test_pairings_email_path_uses_bounded_batch_delivery(self):
         """Pairing generation must not retain the old serial provider loop."""
         with open('api/pairings.py', 'r') as f:

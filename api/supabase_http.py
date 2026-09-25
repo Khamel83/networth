@@ -189,6 +189,12 @@ class UpdateBuilder:
         self.table_name = table_name
         self.data = data
         self.filters = []
+        self.return_rows = False
+
+    def returning(self) -> 'UpdateBuilder':
+        """Return updated rows so callers can detect a no-op (0 rows matched)"""
+        self.return_rows = True
+        return self
 
     def eq(self, column: str, value: Any) -> 'UpdateBuilder':
         """Filter by equality"""
@@ -199,6 +205,8 @@ class UpdateBuilder:
         """Execute the update"""
         url = _build_url(self.table_name)
         headers = _get_headers()
+        if self.return_rows:
+            headers['Prefer'] = 'return=representation'
 
         # Build query string for filters
         params = {}
@@ -266,6 +274,27 @@ class Result:
     def execute(self) -> 'Result':
         """Chain method - returns self"""
         return self
+
+
+def rpc(function_name: str, params: Dict[str, Any]) -> 'Result':
+    """Call a Postgres function via PostgREST (/rest/v1/rpc/<name>)"""
+    url = _build_url(f'rpc/{function_name}')
+    response = httpx.post(url, headers=_get_headers(), json=params)
+    return Result(response)
+
+
+def is_missing_function_error(error) -> bool:
+    """Whether an rpc() error means the function isn't installed yet"""
+    text = str(error or '')
+    return 'PGRST202' in text or 'Could not find the function' in text or text.startswith('HTTP 404')
+
+
+def is_missing_column_error(error, column: str) -> bool:
+    """Whether an error means `column` doesn't exist yet (migration not applied)"""
+    text = str(error or '')
+    if column not in text:
+        return False
+    return '42703' in text or 'PGRST204' in text or 'does not exist' in text or 'Could not find' in text
 
 
 def table(table_name: str) -> Table:
