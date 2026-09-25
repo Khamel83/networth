@@ -27,7 +27,7 @@ welcome, or availability emails never prove that match picks were delivered.
 ### To change colors/copy/branding:
 - Website CSS: Variables at top of each `public/*.html` file
 - Logo: animated sparkle `public/logo.webp` (hero/page logos) and `public/logo-small.webp` (headers/footers), with `*-still.webp` served via `<picture>` to `prefers-reduced-motion` users; static `public/favicon.png` and `public/apple-touch-icon.png`. All cut from the crystal tennis-ball GIF as transparent circles
-- Email templates: `api/email.py` (all 7 templates with inline styles)
+- Email templates: `api/email.py` (all 10 templates with inline styles)
 
 ### To add a player:
 Players self-register via join page → immediately active → can log in right away
@@ -43,7 +43,7 @@ Players self-register via join page → immediately active → can log in right 
 - `api/pairings.py` - Pairing orchestration, validation, and match emails
 - `api/matching.py` - General-graph maximum-weight pairing solver
 - `api/ratings.py` - Deterministic uncertainty-aware ratings from valid two-set results
-- `api/email.py` - Resend API sender + 8 email templates (including admin alerts)
+- `api/email.py` - Resend API sender + 10 email templates (including admin alerts, monthly report, signup notice); `ORGANIZER_EMAILS` = Natalie + Ashley
 - `api/email_delivery.py` - Canonical delivery ledger and stable-key reconciliation
 - `api/email_policy.py` - Disabled-by-default delivery and protected-action policy
 - `api/join.py` - Player registration (handles re-registration of inactive accounts)
@@ -55,7 +55,9 @@ Players self-register via join page → immediately active → can log in right 
 - `.github/workflows/biweekly-emails.yml` - Scheduled email automation
 - `.github/workflows/daily-health-check.yml` - Daily read-only health check
 - `.github/workflows/monthly-report.yml` - Monthly report email to Natalie + Ashley (kept separate from pairing automation)
+- `.github/workflows/keep-alive.yml` - Pings Supabase every 5 days so the free tier never pauses
 - `.github/workflows/tests.yml` - CI/CD test runner
+- (Removed Sept 2026: `backup.yml` - it never saved anything and, in this public repo, would have published member PII. Do not reintroduce a backup that commits data to the repo.)
 - `supabase-final-setup.sql` - Database schema, triggers, and functions
 
 ---
@@ -123,7 +125,7 @@ Automated Emails (GitHub Actions)
 ## Email System
 
 **Provider:** Resend (replaced Gmail SMTP for better deliverability)
-**Sender:** `Net Worth Tennis <noreply@networthtennis.com>`
+**Sender:** `Net Worth Tennis <hello@networthtennis.com>`
 **Reply-To:** `ashleybrooke.kaufman@gmail.com`
 **Env var:** `RESEND_API_KEY`
 
@@ -141,7 +143,7 @@ Automated Emails (GitHub Actions)
 - All scheduled responses include `outcome`, `delivery_summary`, and `reconciliation_required`
 - `email_log` is retained only as a legacy migration source until its row counts are verified
 
-### 8 Email Templates (in api/email.py)
+### 10 Email Templates (in api/email.py)
 
 | Email | Trigger | Subject | Notes |
 |-------|---------|---------|-------|
@@ -270,9 +272,15 @@ checkbox.addEventListener('change', async () => {
 | `SITE_URL` | `https://www.networthtennis.com` |
 | `ADMIN_EMAIL` | Admin notification email |
 | `CRON_SECRET` | Secret for GitHub Actions auth |
+| `SUPABASE_SERVICE_ROLE_KEY` | Server-side DB access (anon key is deny-all) |
+| `EMAIL_DELIVERY_MODE` | `disabled` / `dry_run` / `live` |
+| `PUBLIC_TRANSACTIONAL_EMAILS` | `enabled` for welcome/reset mail to the signup |
+| `SENTRY_DSN` | Optional error tracking |
 
 ### GitHub Repo Secrets:
-- `SITE_URL`, `CRON_SECRET`
+- `SITE_URL`, `CRON_SECRET`, `SUPABASE_URL`, `SUPABASE_ANON_KEY` (keep-alive only)
+
+**Public repo:** GitHub disables scheduled workflows on public repos after 60 days without activity. If the repo goes quiet, pairings stop silently. Making the repo private (or re-enabling from the Actions tab) avoids this.
 
 ### Critical Reliability Notes (March 2026)
 - Protected automation actions require `CRON_SECRET` and fail closed if it is missing.
@@ -648,6 +656,7 @@ if (response.status === 401) {
 - **Fixed re-joining** — re-registration of a removed (inactive) account returned "Failed to create account" because the UPDATE returned no rows; it now requests the updated row
 - **Venmo pay step on /join** — tier-aware "Pay on Venmo" button + optional "I've sent my $X" checkbox; one reminder dialog if unchecked, never blocks signup
 - **New-signup notice** — every signup (or re-join) emails Natalie + Ashley with the member's details, tier, "I paid" answer, and availability (owner-approved; fixed recipients)
+- **Docs + maintenance review** — README/RUNBOOK/.env.example brought current; removed the no-op, PII-risky `backup.yml`; documented the 60-day public-repo schedule shutoff
 - **Removed members** — replaced the misleading "Pending Approval" list with a collapsed Removed Members list + row-level Remove
 
 ### February 2026

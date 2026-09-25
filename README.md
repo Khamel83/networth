@@ -15,14 +15,28 @@ Automated schedule (`.github/workflows/biweekly-emails.yml`):
 - 27th @ 9am PT: availability reminder
 - Last day @ 9am PT: final reminder
 - 1st @ 9am PT: generate pairings + send match emails
-- Daily after the 1st: read-only watchdog fails if the current month's pairings are missing
 - 1st @ 12pm PT: read-only pairing health check
-- 15th @ 9am PT: mid-month pending-match reminder
+- 15th @ 9am PT: mid-month pending-match reminder (skips pairs whose score is already recorded)
+
+Monthly report (`.github/workflows/monthly-report.yml`, separate from pairings):
+- 2nd @ 10am PT: last month's report emailed to Natalie + Ashley only
+
+Event-driven:
+- Every signup / re-join: notice emailed to Natalie + Ashley only (details, tier, "I paid" answer)
 
 Daily safety net (`.github/workflows/daily-health-check.yml`):
 - read-only endpoint checks
 - public-response privacy checks
+- fails if the current month's pairings are missing after the 1st
 - GitHub step summary only; no email alert path
+
+Supabase keep-alive (`.github/workflows/keep-alive.yml`): pings every 5 days so the free-tier project never pauses.
+
+## Admin (`/admin`)
+
+- Pairings & Scores: pick any of the last 12 months, enter or edit a score, record an extra match
+- Monthly Report: results, unreported pairings, month + season standings, unpaid members ("Says paid" from the join checkbox); CSV + print
+- All Members: search, Paid checkbox, Edit, Remove (soft delete); Removed Members list with Restore
 
 ## Reliability and Email Safety
 
@@ -46,10 +60,13 @@ Daily safety net (`.github/workflows/daily-health-check.yml`):
   - `email_delivery_log`
   - `issue_reports`
 
-Migration:
+Migrations (run in the Supabase SQL Editor; all applied in production as of September 2026):
 - `migrations/02_reliability_automation.sql`
 - `migrations/04_email_automation_hardening.sql` (run only after the documented read-only schema inventory)
 - `migrations/04_match_history_integrity.sql` (run after resolving any existing duplicate pair/period match rows)
+- `migrations/05_reported_paid.sql` - saves the join page's "I paid" checkbox
+- `migrations/06_admin_update_match_score.sql` - atomic admin score corrections (edits return 503 without it)
+- `migrations/07_close_pairing_on_match_insert.sql` - closes a pairing in the same transaction as its score
 
 ## Tech Stack
 
@@ -57,7 +74,7 @@ Migration:
 - Backend: Python serverless functions on Vercel
 - Database: Supabase (PostgreSQL)
 - Auth: password-based login + reset token flow
-- Email: Resend (`hello@networthtennis.com`)
+- Email: Resend (`hello@networthtennis.com`); organizer notices go only to `ORGANIZER_EMAILS` in `api/email.py`
 
 ## Current API Layout
 
@@ -69,21 +86,25 @@ Utility modules:
 - `api/sentry_init.py`
 - `api/ratings.py`
 - `api/matching.py`
+- `api/email_delivery.py` (canonical delivery ledger)
+- `api/email_policy.py` (delivery gates, cron-protected actions)
 
 ## Required Configuration
 
-Vercel env vars:
-- `SUPABASE_URL`
-- `SUPABASE_ANON_KEY`
+Vercel env vars (see `.env.example`):
+- `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
 - `RESEND_API_KEY`
 - `EMAIL_DELIVERY_MODE` = `disabled` (safe default; use `dry_run` for target counts; `live` only after explicit approval)
-- `ADMIN_EMAIL`
+- `PUBLIC_TRANSACTIONAL_EMAILS` = `enabled` to allow welcome/reset mail to the person signing up
+- `ADMIN_EMAIL` (sysadmin technical alerts)
 - `CRON_SECRET`
 - `SITE_URL` = `https://www.networthtennis.com`
+- `SENTRY_DSN` (optional)
 
 GitHub Actions secrets:
 - `SITE_URL` = `https://www.networthtennis.com`
 - `CRON_SECRET` (must exactly match Vercel)
+- `SUPABASE_URL`, `SUPABASE_ANON_KEY` (keep-alive ping only)
 
 ## Operational Endpoints
 
@@ -105,4 +126,7 @@ GitHub Actions secrets:
 
 ```bash
 python3 serve.py
+pip install -r requirements.txt -r requirements-ci.txt && python3 -m pytest -q
 ```
+
+See `RUNBOOK.md` for day-to-day operations and the yearly maintenance checklist.

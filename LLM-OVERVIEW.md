@@ -1,50 +1,36 @@
 # LLM Overview — networth
-*Updated: 2026-05-10 07:35 UTC | Tier: standard | Auto-updated: daily cron*
+*Updated: 2026-09-25 (manual refresh after the September 2026 feature + maintenance pass)*
 
 ## What This Is
-East Side LA women's tennis ladder with monthly pairings, automated reminders, and games-won ranking.
+East Side LA women's tennis ladder (~50 members): monthly pairings, automated reminder emails, games-won ranking, admin dashboard. Live at https://www.networthtennis.com.
 
 ## Current State
-*Status: 🟢 active from local git history*
+*Status: 🟢 active, low-maintenance*
 
-**Active work:**
-- 92bc5f9 chore: bootstrap LLM-OVERVIEW files 2026-05-10
-- 0cd652b fix: clear_period clears email_log FK + automation_runs lock before deleting
-- 64d5c70 feat: add dry_run mode to pairings API for human preview before sending
-- 6f7be7f feat: add clear_period action to pairings API for admin rematch
-- 7360903 fix: check matches table for repeat prevention, not just match_assignments
-- b6c4ded fix: handle 409 in health-check recovery loop
-
-**Known issues:**
-- No known issue found in recent commit subjects or local TODO/BLOCKERS docs.
-
-**Recent changes (7 days):**
-- `92bc5f9 chore: bootstrap LLM-OVERVIEW files 2026-05-10`
+- Monthly automation green: pairings on the 1st, reminders on the 27th / last day / 15th, daily read-only health check, Supabase keep-alive.
+- September 2026 additions: crystal-ball logo; admin score entry/editing (atomic DB function); monthly report page + email to Natalie/Ashley on the 2nd; signup notice email to Natalie/Ashley; Venmo pay step with optional "I paid" checkbox; Removed Members list.
+- Migrations 05-07 applied in production.
+- Known operational risk: the repo is public, so GitHub disables scheduled workflows after 60 days without activity. See RUNBOOK.md > Maintenance Checklist.
 
 ## Architecture
-- Stack marker: Vercel deployment
-- Top-level entry: `AGENTS.md`
-- Top-level entry: `api/`
-- Top-level entry: `BUGFIX-match-history-unknown.md`
-- Top-level entry: `BUGFIX-once-and-for-all.md`
-- Top-level entry: `CLAUDE.md`
-- Top-level entry: `content/`
-- Top-level entry: `CONTENT_LOCATIONS.md`
-- Top-level entry: `docs/`
+- Vercel static site (`public/`) + Python serverless functions (`api/`, 10 of the 12 Hobby slots).
+- Supabase Postgres via a small REST client (`api/supabase_http.py`); triggers keep game totals and close pairings.
+- Resend for email, gated by `EMAIL_DELIVERY_MODE`; scheduled sends go through the `email_delivery_log` ledger.
+- GitHub Actions: `biweekly-emails.yml`, `monthly-report.yml`, `daily-health-check.yml`, `keep-alive.yml`, `tests.yml`.
 
 ## Key Commands
-- `git status --short`
-- `git log --oneline -5`
+- `python3 serve.py` (local site)
+- `python3 -m pytest -q` (179 tests)
 
 ## Dependencies
-- **Runs on:** Not declared in local repo evidence.
-- **Calls out to:** See repo docs and config files.
-- **Called by:** Not declared in local repo evidence.
-- **Env vars required:** `ADMIN_EMAIL`, `CRON_SECRET`, `SITE_URL`, `SMTP_PASSWORD`, `SUPABASE_ANON_KEY`, `SUPABASE_URL`
+- **Runs on:** Vercel (Hobby), Supabase (free tier), GitHub Actions
+- **Calls out to:** Supabase REST, Resend, Sentry (optional)
+- **Env vars required:** `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `RESEND_API_KEY`, `EMAIL_DELIVERY_MODE`, `PUBLIC_TRANSACTIONAL_EMAILS`, `ADMIN_EMAIL`, `CRON_SECRET`, `SITE_URL`, `SENTRY_DSN` (optional)
 
 ## Critical Rules
-- Preserve repo-local instructions in `AGENTS.md`, `CLAUDE.md`, or README when present.
-- Do not infer behavior from the repository name alone; verify against local docs and source.
+- Read `CLAUDE.md` first: email-safety and pairings-reliability invariants are non-negotiable.
+- Never commit member data or secrets; the repository is public.
 
 ## Gotchas
-- Generated from local evidence only: git history, top-level structure, README/CLAUDE/AGENTS/docs, and env examples.
+- `players` has no hard deletes (RLS); removal = `is_active=false`.
+- Score edits require `migrations/06`; there is intentionally no non-atomic fallback.

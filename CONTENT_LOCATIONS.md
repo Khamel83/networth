@@ -88,15 +88,20 @@ COLORS = {
 
 The actual email content is in Python functions:
 
-| Function | Lines | Purpose |
-|----------|-------|---------|
-| `get_welcome_email_html()` | 113-150 | Welcome email after signup |
-| `get_match_assignment_email_html()` | 152-206 | Monthly pairing notification |
-| `get_availability_check_email_html()` | 208-255 | End-of-month availability check |
-| `get_final_reminder_email_html()` | 257-299 | Last day reminder |
-| `get_midmonth_reminder_email_html()` | 301-340 | Mid-month match reminder |
-| `get_sitout_confirmation_email_html()` | 342-377 | Pause confirmation |
-| `get_rejoin_confirmation_email_html()` | 379-416 | Rejoin confirmation |
+| Function | Purpose |
+|----------|---------|
+| `get_welcome_email_html()` | Welcome email after signup (needs `PUBLIC_TRANSACTIONAL_EMAILS=enabled`) |
+| `get_match_assignment_email_html()` | Monthly pairing notification |
+| `get_availability_check_email_html()` | End-of-month availability check |
+| `get_final_reminder_email_html()` | Last day reminder |
+| `get_midmonth_reminder_email_html()` | Mid-month match reminder |
+| `get_sitout_confirmation_email_html()` | Pause confirmation |
+| `get_rejoin_confirmation_email_html()` | Rejoin confirmation |
+| `get_admin_alert_email_html()` | Technical alert to the sysadmin (`ADMIN_EMAIL`) |
+| `get_new_signup_email_html()` | New-signup notice to Natalie + Ashley (`ORGANIZER_EMAILS`) |
+| `get_monthly_report_email_html()` | Monthly report to Natalie + Ashley (2nd of the month) |
+
+Search the file for the function name (line numbers change). Organizer recipients live in `ORGANIZER_EMAILS` near the top of `api/email.py`.
 
 **To change email text:** Edit the HTML strings inside these functions.
 
