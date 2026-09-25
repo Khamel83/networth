@@ -28,7 +28,11 @@ class handler(BaseHTTPRequestHandler):
         self.end_headers()
 
     def do_GET(self):
-        """Health check endpoint"""
+        """Health check endpoint (or the daily watchdog when ?action=watchdog)"""
+        from urllib.parse import parse_qs, urlparse
+        if parse_qs(urlparse(getattr(self, 'path', '') or '').query).get('action', [''])[0] == 'watchdog':
+            return self._run_watchdog()
+
         db_status = "not_configured"
         supabase_available = False
 
@@ -60,6 +64,51 @@ class handler(BaseHTTPRequestHandler):
                 "status": db_status
             },
             "environment": os.environ.get('VERCEL_ENV', 'development')
+        }).encode())
+
+    def _run_watchdog(self):
+        """Daily independent check, triggered by Vercel Cron (see vercel.json).
+
+        Vercel sends `Authorization: Bearer $CRON_SECRET` automatically.
+        Emails ADMIN_EMAIL through Resend when anything is wrong, plus an
+        all-clear on the 3rd of each month. Owner-approved alert path.
+        """
+        from api.email_policy import require_cron_secret
+        if not require_cron_secret(self):
+            return
+        try:
+            from api.supabase_http import table
+            from api.watchdog import run_watchdog, watchdog_email_html
+            now = datetime.now(timezone.utc)
+            problems, summary = run_watchdog(table, now=now)
+        except Exception as e:
+            print(f"Watchdog crashed: {e}")
+            problems, summary, now = [f"The watchdog itself crashed: {e}"], {}, datetime.now(timezone.utc)
+            from api.watchdog import watchdog_email_html
+
+        should_email = bool(problems) or now.day == 3
+        email_result = None
+        if should_email:
+            admin_email = os.environ.get('ADMIN_EMAIL', '').strip()
+            if not admin_email:
+                print("Watchdog: ADMIN_EMAIL not configured; cannot send alert")
+                email_result = {'sent': False, 'error': 'ADMIN_EMAIL not configured'}
+            else:
+                from api.email import send_email
+                subject = (f"Net Worth: {len(problems)} problem(s) need attention" if problems
+                           else "Net Worth: monthly all-clear")
+                email_result = send_email(admin_email, subject, watchdog_email_html(problems, summary))
+                if not email_result.get('sent'):
+                    print(f"Watchdog alert not sent: {email_result}")
+
+        self.send_response(200)
+        self.send_header('Content-Type', 'application/json')
+        self.end_headers()
+        self.wfile.write(json.dumps({
+            'success': True,
+            'problems': problems,
+            'summary': summary,
+            'emailed': bool(email_result and email_result.get('sent')),
         }).encode())
 
     def do_POST(self):

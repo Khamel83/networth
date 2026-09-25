@@ -17,6 +17,7 @@ These processes run without any human intervention:
 | 15th of month, 9am PT | Mid-month reminder emails sent | GitHub Actions |
 | 2nd of month, 10am PT | Last month's report emailed to Natalie + Ashley | GitHub Actions (`monthly-report.yml`) |
 | Daily | Read-only health check; fails if current-month pairings are missing after the 1st | GitHub Actions |
+| Daily, 9am PT | Watchdog (Vercel, independent of GitHub) emails the owner if any job didn't run or any email failed; all-clear on the 3rd | Vercel Cron |
 | Every 5 days | Supabase keep-alive ping (free tier pauses after 7 idle days) | GitHub Actions |
 | On player signup / re-join | Notice emailed to Natalie + Ashley; welcome email to the player only if `PUBLIC_TRANSACTIONAL_EMAILS=enabled` | Automatic |
 | On match score submitted | Games added to both players, pairing marked complete | Automatic (database triggers) |
@@ -94,6 +95,14 @@ curl https://www.networthtennis.com/api/pairings
 ```
 
 ---
+
+## If You Get a Watchdog Email
+
+The email says what's wrong in plain words. It repeats daily until fixed.
+- "... never ran": open GitHub > Actions, find the workflow, check it is enabled, and run it manually (see Manual Triggers above).
+- "did not finish cleanly" / emails "unknown" or "failed": run the same workflow again; if it fails, the run log in Actions says why.
+- "no pairings this month": run **Tennis League Emails > generate_pairings** manually.
+- No all-clear on the 3rd: the watchdog itself isn't running; check Vercel > Project > Settings > Cron Jobs and that `ADMIN_EMAIL` and `CRON_SECRET` are set.
 
 ## Maintenance Checklist
 
