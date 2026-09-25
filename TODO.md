@@ -19,5 +19,5 @@ No pending or uncompleted tasks are documented in the provided remote evidence o
 
 ## Owner follow-ups (outside the janitor block)
 
-- [ ] Decide: make the GitHub repo private, or accept re-enabling scheduled workflows after 60 quiet days (see RUNBOOK.md > Maintenance Checklist)
+- [x] Repo stays public; the watchdog emails if GitHub disables schedules after 60 quiet days (fix: Actions > Enable workflow)
 - [ ] Yearly: domain renewal, Resend domain check, CSV export of players/matches, reset Paid boxes at renewal

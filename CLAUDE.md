@@ -282,7 +282,7 @@ checkbox.addEventListener('change', async () => {
 ### GitHub Repo Secrets:
 - `SITE_URL`, `CRON_SECRET`, `SUPABASE_URL`, `SUPABASE_ANON_KEY` (keep-alive only)
 
-**Public repo:** GitHub disables scheduled workflows on public repos after 60 days without activity. If the repo goes quiet, pairings stop silently. Making the repo private (or re-enabling from the Actions tab) avoids this.
+**Public repo (keep it public):** GitHub disables scheduled workflows on public repos after 60 days without activity; the Vercel watchdog emails the owner the next morning, and the fix is Actions > Enable workflow. Do not make the repo private: on this account private-repo jobs use paid GitHub-hosted minutes and failed instantly without starting (September 2026). Never commit secrets or member data; the repo is public.
 
 ### Critical Reliability Notes (March 2026)
 - Protected automation actions require `CRON_SECRET` and fail closed if it is missing.
