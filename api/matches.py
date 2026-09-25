@@ -379,14 +379,21 @@ class handler(BaseHTTPRequestHandler):
                         "error": "We couldn't save your score. Please try again, or ask Ashley or Natalie to record it."
                     })
                 return
-            match = response.data[0] if response.data else None
+            if len(response.data or []) != 1:
+                print(f"Match insert returned {len(response.data or [])} rows")
+                self._send_json(500, {
+                    "success": False,
+                    "error": "We couldn't save your score. Please try again, or ask Ashley or Natalie to record it."
+                })
+                return
+            match = response.data[0]
 
             # Update match assignment status if provided
             assignment_id = data.get('assignment_id')
             if assignment_id:
                 table('match_assignments').update({
                     'status': 'completed',
-                    'match_id': match['id'] if match else None
+                    'match_id': match['id']
                 }).eq('id', assignment_id).execute()
 
             # Record feedback (would_play_again)

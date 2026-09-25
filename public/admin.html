@@ -1849,9 +1849,15 @@
                     ${r.unreported.map(p => `<tr><td>${escapeHtml(p.player1_name)}</td><td>${escapeHtml(p.player2_name)}</td></tr>`).join('')}
                 </tbody></table></div>` : '<p class="empty-state">Everyone has reported</p>'}
 
-                <h3 class="sub-title">Standings (games won)</h3>
+                <h3 class="sub-title">Games won in ${escapeHtml(r.period)}</h3>
+                ${r.standings.length ? `
                 <div class="table-wrapper"><table class="data-table"><tbody>
-                    ${r.standings.map(p => `<tr><td>#${p.rank}</td><td>${escapeHtml(p.name)}</td><td>${p.total_games} games</td><td class="hide-mobile">${p.matches_played} matches</td></tr>`).join('')}
+                    ${r.standings.map(p => `<tr><td>#${p.rank}</td><td>${escapeHtml(p.name)}</td><td>${p.total_games} games</td><td class="hide-mobile">${p.matches_played} ${p.matches_played === 1 ? 'match' : 'matches'}</td></tr>`).join('')}
+                </tbody></table></div>` : '<p class="empty-state">No scores reported this month</p>'}
+
+                <h3 class="sub-title">Season standings (as of today)</h3>
+                <div class="table-wrapper"><table class="data-table"><tbody>
+                    ${r.season_standings.map(p => `<tr><td>#${p.rank}</td><td>${escapeHtml(p.name)}</td><td>${p.total_games} games</td><td class="hide-mobile">${p.matches_played} matches</td></tr>`).join('')}
                 </tbody></table></div>
 
                 <h3 class="sub-title">Unpaid members</h3>
@@ -1881,7 +1887,8 @@
             const rows = [['Section', 'Player 1', 'Player 2', 'Score / Games', 'Detail']];
             reportData.pairings.forEach(p => rows.push(['Pairing', p.player1_name, p.player2_name, p.match ? reportScoreFor(p) : '', p.match ? 'Reported' : 'Not reported']));
             reportData.extra_matches.forEach(m => rows.push(['Extra match', m.player1_name, m.player2_name, formatScore(m), '']));
-            reportData.standings.forEach(p => rows.push(['Standings', p.name, '', p.total_games, `#${p.rank}, ${p.matches_played} matches`]));
+            reportData.standings.forEach(p => rows.push([`Games won in ${reportData.period}`, p.name, '', p.total_games, `#${p.rank}, ${p.matches_played} matches`]));
+            reportData.season_standings.forEach(p => rows.push(['Season standings (as of today)', p.name, '', p.total_games, `#${p.rank}, ${p.matches_played} matches`]));
             reportData.unpaid.forEach(p => rows.push(['Unpaid', p.name, '', '', p.email]));
             const csv = rows.map(r => r.map(q).join(',')).join('\n');
             const blob = new Blob([csv], { type: 'text/csv' });
