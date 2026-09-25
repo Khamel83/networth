@@ -92,8 +92,15 @@ def find_assignment(table, player1_id, player2_id, period, assignment_id=None):
 
 def close_assignment(table, assignment_id, match_id):
     """Mark a pairing completed with its match. Returns an error or None."""
+    from api.supabase_http import is_missing_column_error
     closed = table('match_assignments').update({'status': 'completed', 'match_id': match_id})\
         .eq('id', assignment_id).returning().execute()
+    if closed.error and is_missing_column_error(closed.error, 'match_id'):
+        # Older schema without match_assignments.match_id (added by migration 07):
+        # the pairing can still be closed; the match is found by pair + month.
+        print("match_assignments.match_id missing; closing pairing by status only")
+        closed = table('match_assignments').update({'status': 'completed'})\
+            .eq('id', assignment_id).returning().execute()
     if closed.error:
         return f"Failed to mark the pairing completed: {closed.error}"
     if len(closed.data or []) != 1:

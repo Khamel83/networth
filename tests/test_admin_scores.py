@@ -453,3 +453,18 @@ def test_dashboard_hides_pairing_once_its_match_is_recorded():
             patch('api.auth.verify_session', return_value='a@example.net'):
         status, data = make_handler(matches, 'do_GET', path='/api/matches?action=outstanding')
     assert [m['opponent_name'] for m in data['matches']] == ['Christina']
+
+
+def test_close_pairing_works_without_match_id_column():
+    from api.matches import close_assignment
+    tables = seed()
+
+    class NoMatchIdTable(FakeTable):
+        def execute(self):
+            if self.op == 'update' and 'match_id' in (self.payload or {}):
+                return FakeResult(data=[], error='HTTP 400: {"code":"PGRST204","message":"Could not find the \'match_id\' column"}')
+            return super().execute()
+
+    db = FakeDB(tables)
+    assert close_assignment(lambda name: NoMatchIdTable(db, name), 'as1', 'm1') is None
+    assert tables['match_assignments'][0]['status'] == 'completed'
