@@ -53,11 +53,14 @@ def healthy_october():
             {'action': 'generate_pairings', 'period_label': 'October 2026', 'status': 'succeeded', 'started_at': RECENT},
             {'action': 'send_final_reminder', 'period_label': 'September 2026', 'status': 'succeeded', 'started_at': '2026-09-30T20:00:00+00:00'},
             {'action': 'send_monthly_report', 'period_label': 'September 2026', 'status': 'succeeded', 'started_at': '2026-10-02T19:00:00+00:00'},
+            {'action': 'send_availability_check', 'period_label': 'September 2026', 'status': 'succeeded', 'started_at': '2026-09-27T20:00:00+00:00'},
         ],
         'match_assignments': [{'id': 1, 'period_label': 'October 2026'}, {'id': 2, 'period_label': 'October 2026'}],
         'email_delivery_log': [
-            {'action': 'generate_pairings', 'period_label': 'October 2026', 'delivery_status': 'accepted', 'created_at': RECENT},
-            {'action': 'generate_pairings', 'period_label': 'October 2026', 'delivery_status': 'accepted', 'created_at': RECENT},
+            {'action': 'generate_pairings', 'period_label': 'October 2026', 'delivery_status': 'accepted',
+             'message_key': 'generate_pairings:October 2026:pair-1', 'created_at': RECENT},
+            {'action': 'generate_pairings', 'period_label': 'October 2026', 'delivery_status': 'accepted',
+             'message_key': 'generate_pairings:October 2026:pair-2', 'created_at': RECENT},
         ],
     }
 
@@ -110,8 +113,9 @@ def test_missing_availability_email_caught_after_the_27th():
 
 def test_expected_jobs_windows():
     names = lambda d: {a for a, _, _ in expected_jobs(d)}
-    assert names(datetime(2026, 10, 1).date()) == set()
-    assert names(datetime(2026, 10, 2).date()) == {'generate_pairings', 'send_final_reminder'}
+    assert names(datetime(2026, 10, 1).date()) == {'send_availability_check'}
+    assert names(datetime(2026, 10, 2).date()) == {'generate_pairings', 'send_final_reminder', 'send_availability_check'}
+    assert names(datetime(2026, 10, 6).date()) == {'generate_pairings', 'send_final_reminder', 'send_monthly_report'}
     assert 'send_monthly_report' in names(datetime(2026, 10, 3).date())
     assert names(datetime(2026, 10, 16).date()) == {'send_midmonth_reminders'}
     assert names(datetime(2026, 2, 28).date()) == {'send_availability_check'}
@@ -201,3 +205,26 @@ def test_vercel_cron_is_configured_daily():
     from pathlib import Path
     config = json.loads((Path(__file__).resolve().parents[1] / 'vercel.json').read_text())
     assert {'path': '/api/system?action=watchdog', 'schedule': '0 16 * * *'} in config['crons']
+
+
+def test_late_february_availability_check_still_checked_in_march():
+    jobs = {(a, p) for a, p, _ in expected_jobs(datetime(2027, 3, 2).date())}
+    assert ('send_availability_check', 'February 2027') in jobs
+    problems, _ = run_watchdog(fake({'automation_runs': [], 'match_assignments': [], 'email_delivery_log': []}),
+                               now=datetime(2027, 3, 2, 16, tzinfo=timezone.utc))
+    assert any('February 2027 availability check (27th) never ran' in p for p in problems)
+
+
+def test_duplicate_accepted_rows_do_not_hide_a_missing_match_email():
+    db = healthy_october()
+    db['email_delivery_log'][1]['message_key'] = db['email_delivery_log'][0]['message_key']
+    problems, _ = run_watchdog(fake(db), now=NOW)
+    assert any('Only 1 of 2 October 2026 match emails' in p for p in problems)
+
+
+def test_failed_alert_email_fails_the_cron_request():
+    db = healthy_october()
+    db['match_assignments'] = []
+    status, data, _ = _call(db, send=Mock(return_value={'sent': False, 'error': 'resend down'}))
+    assert status == 500
+    assert data['success'] is False and data['emailed'] is False

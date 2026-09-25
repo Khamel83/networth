@@ -101,11 +101,14 @@ class handler(BaseHTTPRequestHandler):
                 if not email_result.get('sent'):
                     print(f"Watchdog alert not sent: {email_result}")
 
-        self.send_response(200)
+        # If an alert was due but didn't go out, fail the request so Vercel's
+        # cron log shows a failure instead of a quiet success
+        alert_failed = should_email and not (email_result and email_result.get('sent'))
+        self.send_response(500 if alert_failed else 200)
         self.send_header('Content-Type', 'application/json')
         self.end_headers()
         self.wfile.write(json.dumps({
-            'success': True,
+            'success': not alert_failed,
             'problems': problems,
             'summary': summary,
             'emailed': bool(email_result and email_result.get('sent')),
