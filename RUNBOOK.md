@@ -17,6 +17,7 @@ These processes run without any human intervention:
 | 15th of month, 9am PT | Mid-month reminder emails sent | GitHub Actions |
 | 2nd of month, 10am PT | Last month's report emailed to Natalie + Ashley | GitHub Actions (`monthly-report.yml`) |
 | Daily | Read-only health check; fails if current-month pairings are missing after the 1st | GitHub Actions |
+| Daily, 9am PT | Watchdog (Vercel, independent of GitHub) emails the owner if any job didn't run or any email failed; all-clear on the 3rd | Vercel Cron |
 | Every 5 days | Supabase keep-alive ping (free tier pauses after 7 idle days) | GitHub Actions |
 | On player signup / re-join | Notice emailed to Natalie + Ashley; welcome email to the player only if `PUBLIC_TRANSACTIONAL_EMAILS=enabled` | Automatic |
 | On match score submitted | Games added to both players, pairing marked complete | Automatic (database triggers) |
@@ -95,6 +96,14 @@ curl https://www.networthtennis.com/api/pairings
 
 ---
 
+## If You Get a Watchdog Email
+
+The email says what's wrong in plain words. It repeats daily until fixed.
+- "... never ran": open GitHub > Actions, find the workflow, check it is enabled, and run it manually (see Manual Triggers above).
+- "did not finish cleanly" / emails "unknown" or "failed": run the same workflow again; if it fails, the run log in Actions says why.
+- "no pairings this month": run **Tennis League Emails > generate_pairings** manually.
+- No all-clear on the 3rd: the watchdog itself isn't running; check Vercel > Project > Settings > Cron Jobs and that `ADMIN_EMAIL` and `CRON_SECRET` are set.
+
 ## Maintenance Checklist
 
 Small league, light touch. Nothing here is monthly.
@@ -106,7 +115,9 @@ Small league, light touch. Nothing here is monthly.
 - Export `players` and `matches` to CSV from Supabase (Table Editor > Export) and store it somewhere private
 - Rotate `CRON_SECRET` if anyone who had it has left (update Vercel and GitHub together)
 
-**If the repo sits untouched for ~2 months:** GitHub turns off scheduled workflows on public repositories after 60 days without activity, which would silently stop pairings and emails. Either make the repository private (Settings > General > Change visibility; Vercel keeps deploying) or re-enable the workflows from the Actions tab when GitHub emails about it.
+**If the repo sits untouched for ~2 months:** GitHub turns off scheduled workflows on public repositories after 60 days without activity. The watchdog emails you the next morning when a job doesn't run; fix it with Actions tab > pick the workflow > **Enable workflow**, then run it manually.
+
+**Keep the repository public.** Making it private (tried September 2026) moves the workflows onto GitHub's paid minutes; on this account every job then failed instantly without starting. The code holds no secrets (those live in Vercel and GitHub settings).
 
 **When membership renews each year:** clear the Paid boxes in the admin page (or ask a developer to reset `has_paid` for everyone).
 
