@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="icon" type="image/png" href="/favicon.png">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
     <title>Admin | Net Worth Tennis</title>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -746,12 +747,38 @@
                 display: none;
             }
         }
+
+        /* Scores + monthly report */
+        .period-select {
+            padding: 0.4rem 0.75rem;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--card-border);
+            border-radius: 8px;
+            color: var(--text-white);
+            font-family: var(--font-body);
+            font-size: 0.85rem;
+        }
+        select option { color: var(--text-dark); }
+        .header-controls { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
+        .score-text { font-weight: 600; white-space: nowrap; }
+        .score-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+        .score-hint { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1rem; line-height: 1.5; }
+        .sub-title { font-family: var(--font-display); font-size: 1rem; margin: 1.5rem 0 0.75rem; }
+        .report-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 0.75rem; margin-bottom: 1rem; }
+        .report-summary .stat-card { padding: 0.75rem; }
+        .removed-toggle { cursor: pointer; }
+
+        /* Brand logo image */
+        .logo-img { display: block; width: 44px; height: 44px; border-radius: 50%; }
+        .footer-logo-img { display: block; width: 36px; height: 36px; border-radius: 50%; }
+        .page-logo-img { display: block; width: 120px; height: 120px; margin: 0 auto; border-radius: 50%; }
+        .hero-logo { display: block; width: clamp(200px, 40vw, 360px); height: auto; margin: 0 auto; border-radius: 50%; filter: drop-shadow(0 18px 30px rgba(0,0,0,0.25)); }
     </style>
 </head>
 <body>
     <header class="header">
         <div class="header-left">
-            <a href="/" class="logo">net worth</a>
+            <a href="/" class="logo"><img src="/logo-small.webp" alt="net worth" class="logo-img" width="44" height="44"></a>
             <span class="admin-badge">Admin</span>
         </div>
         <div class="user-menu">
@@ -766,7 +793,7 @@
         <!-- Stats Row -->
         <div class="stats-row">
             <div class="stat-card">
-                <p class="stat-label">Pending</p>
+                <p class="stat-label">Removed</p>
                 <p class="stat-value" id="stat-pending">-</p>
             </div>
             <div class="stat-card">
@@ -795,12 +822,16 @@
         <section class="section">
             <div class="section-card">
                 <div class="section-header">
-                    <h2 class="section-title">Current Pairings</h2>
-                    <span class="pending-hint" id="pairings-period">Loading...</span>
+                    <h2 class="section-title">Pairings &amp; Scores</h2>
+                    <div class="header-controls">
+                        <select class="period-select" id="pairings-period-select" aria-label="Pairings month" onchange="loadPairings()"></select>
+                        <button class="btn-action" onclick="openRecordModal()">+ Record a match</button>
+                    </div>
                 </div>
                 <div id="pairings-list">
                     <p class="empty-state">Loading...</p>
                 </div>
+                <div id="extra-matches-list"></div>
             </div>
         </section>
 
@@ -824,14 +855,31 @@
             </div>
         </section>
 
-        <!-- Pending Approval Section -->
-        <section class="section" id="pending-section">
-            <div class="section-card pending-card">
+        <!-- Monthly Report Section -->
+        <section class="section">
+            <div class="section-card">
                 <div class="section-header">
-                    <h2 class="section-title">⏳ Pending Approval</h2>
-                    <span class="pending-hint">Check Venmo, then approve</span>
+                    <h2 class="section-title">Monthly Report</h2>
+                    <div class="header-controls">
+                        <select class="period-select" id="report-period-select" aria-label="Report month" onchange="loadReport()"></select>
+                        <button class="btn-action" onclick="downloadReportCsv()">Download CSV</button>
+                        <button class="btn-action" onclick="window.print()">Print</button>
+                    </div>
                 </div>
-                <div id="pending-list">
+                <div id="report-content">
+                    <p class="empty-state">Loading...</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Removed Members Section (signups are active immediately; inactive = removed) -->
+        <section class="section hidden" id="pending-section">
+            <div class="section-card pending-card">
+                <div class="section-header removed-toggle" onclick="toggleRemovedList()">
+                    <h2 class="section-title">Removed Members (<span id="removed-count">0</span>)</h2>
+                    <span class="pending-hint" id="removed-toggle-hint">Show</span>
+                </div>
+                <div id="pending-list" class="hidden">
                     <p class="empty-state">Loading...</p>
                 </div>
             </div>
@@ -950,6 +998,53 @@
         </div>
     </div>
 
+    <!-- Score Modal (enter or correct a score) -->
+    <div id="score-modal" class="modal-backdrop hidden">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 class="modal-title" id="score-modal-title">Enter Score</h3>
+                <button class="modal-close" onclick="closeScoreModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p class="score-hint">Record the games each player won in each set. Admin entries can record a match that ended early or a forfeit as-is (0&ndash;7 per set). Editing a score updates both players' game totals.</p>
+                <div class="form-group">
+                    <label>Month</label>
+                    <input type="text" id="score-period" readonly>
+                </div>
+                <div class="score-row">
+                    <div class="form-group">
+                        <label>Player 1</label>
+                        <select id="score-p1"></select>
+                    </div>
+                    <div class="form-group">
+                        <label>Player 2</label>
+                        <select id="score-p2"></select>
+                    </div>
+                </div>
+                <div class="score-row">
+                    <div class="form-group">
+                        <label>Set 1 &ndash; Player 1</label>
+                        <input type="number" id="score-set1-p1" min="0" max="7" inputmode="numeric">
+                    </div>
+                    <div class="form-group">
+                        <label>Set 1 &ndash; Player 2</label>
+                        <input type="number" id="score-set1-p2" min="0" max="7" inputmode="numeric">
+                    </div>
+                    <div class="form-group">
+                        <label>Set 2 &ndash; Player 1</label>
+                        <input type="number" id="score-set2-p1" min="0" max="7" inputmode="numeric">
+                    </div>
+                    <div class="form-group">
+                        <label>Set 2 &ndash; Player 2</label>
+                        <input type="number" id="score-set2-p2" min="0" max="7" inputmode="numeric">
+                    </div>
+                </div>
+                <p class="score-hint hidden" id="score-error" role="alert" style="color: var(--text-white); font-weight: 600;"></p>
+                <button class="btn" id="score-save-btn" onclick="saveScore()">Save Score</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         // Auth check
         const player = JSON.parse(localStorage.getItem('networth_player') || '{}');
@@ -1005,10 +1100,12 @@
             }
         }
 
-        // Render pending approval section
+        // Render removed (inactive) members. Signups are active immediately,
+        // so an inactive non-admin account is one an admin removed.
         function renderPendingPlayers(players) {
             const container = document.getElementById('pending-list');
             const section = document.getElementById('pending-section');
+            document.getElementById('removed-count').textContent = players.length;
 
             if (players.length === 0) {
                 section.classList.add('hidden');
@@ -1017,7 +1114,7 @@
 
             section.classList.remove('hidden');
             container.innerHTML = players.map(p => {
-                const tierDisplay = p.membership_tier === 'social_butterfly' ? 'Social Butterfly ($45)' : 'Player ($35)';
+                const tierDisplay = p.membership_tier === 'social_butterfly' ? 'Social Butterfly' : 'Player';
                 return `
                     <div class="pending-player">
                         <div class="pending-info">
@@ -1026,17 +1123,42 @@
                             <div class="pending-meta">${tierDisplay}</div>
                         </div>
                         <div class="pending-actions">
-                            <button class="btn-approve" onclick="approvePlayer('${p.id}', '${escapeHtml(p.name)}')">Approve</button>
-                            <button class="btn-reject" onclick="rejectPlayer('${p.id}', '${escapeHtml(p.name)}')">Reject</button>
+                            <button class="btn-approve" onclick="approvePlayer('${p.id}', '${escapeHtml(p.name)}')">Restore</button>
                         </div>
                     </div>
                 `;
             }).join('');
         }
 
+        function toggleRemovedList() {
+            const list = document.getElementById('pending-list');
+            list.classList.toggle('hidden');
+            document.getElementById('removed-toggle-hint').textContent = list.classList.contains('hidden') ? 'Show' : 'Hide';
+        }
+
+        // Remove a member from the league (soft delete: RLS blocks deletes)
+        async function removePlayer(playerId, playerName) {
+            if (!confirm(`Remove ${playerName} from the league? They'll be hidden from rankings, the player directory, pairings, and emails. You can restore them later.`)) {
+                return;
+            }
+            try {
+                const response = await fetch('/api/admin', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
+                    body: JSON.stringify({ action: 'deactivate', player_id: playerId })
+                });
+                const data = await response.json();
+                if (!data.success) throw new Error(data.error || 'Failed to remove member');
+                showMessage(`${playerName} removed`, 'success');
+                loadPlayers();
+            } catch (err) {
+                showMessage(err.message, 'error');
+            }
+        }
+
         // Approve player (after Venmo verification)
         async function approvePlayer(playerId, playerName) {
-            if (!confirm(`Approve ${playerName}? Make sure you've verified their Venmo payment.`)) {
+            if (!confirm(`Restore ${playerName} to the league?`)) {
                 return;
             }
 
@@ -1055,7 +1177,7 @@
 
                 const data = await response.json();
                 if (data.success) {
-                    showMessage(`${playerName} approved! They can now be matched.`, 'success');
+                    showMessage(`${playerName} restored to the league.`, 'success');
                     loadPlayers();
                 } else {
                     throw new Error(data.error);
@@ -1159,6 +1281,7 @@
                         <td class="hide-mobile">${p.membership_tier === 'social_butterfly' ? '-' : (p.total_games || 0)}</td>
                         <td>
                             <button class="btn-action" onclick='openEditModal(${JSON.stringify(p).replace(/'/g, "&#39;")})'>Edit</button>
+                            ${p.is_admin ? '' : `<button class="btn-action" onclick='removePlayer(${JSON.stringify(p.id)}, ${JSON.stringify(p.name || "").replace(/'/g, "&#39;")})'>Remove</button>`}
                         </td>
                     </tr>
                 `;
@@ -1309,6 +1432,12 @@
             }
         }
 
+        document.getElementById('score-modal').addEventListener('click', (e) => {
+            if (e.target.classList.contains('modal-backdrop')) {
+                closeScoreModal();
+            }
+        });
+
         // Close modal on backdrop click
         document.getElementById('edit-modal').addEventListener('click', (e) => {
             if (e.target.classList.contains('modal-backdrop')) {
@@ -1415,69 +1544,360 @@
             }
         }
 
-        // Load and render pairings
+        // ---------- Month helpers ----------
+        const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+        function recentPeriods(count) {
+            const now = new Date();
+            const periods = [];
+            for (let i = 0; i < count; i++) {
+                const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                periods.push(`${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`);
+            }
+            return periods;
+        }
+
+        function fillPeriodSelect(id, selectedIndex) {
+            const select = document.getElementById(id);
+            select.innerHTML = recentPeriods(12).map((label, i) =>
+                `<option value="${label}" ${i === selectedIndex ? 'selected' : ''}>${label}</option>`
+            ).join('');
+        }
+
+        function formatScore(m) {
+            if (!m) return '';
+            if (m.set1_p1 === null || m.set1_p1 === undefined) {
+                return `${m.player1_games ?? 0}-${m.player2_games ?? 0} games`;
+            }
+            return `${m.set1_p1}-${m.set1_p2}, ${m.set2_p1}-${m.set2_p2}`;
+        }
+
+        // ---------- Pairings & scores ----------
+        let pairingsData = { pairings: [], extra_matches: [] };
+
         async function loadPairings() {
+            const period = document.getElementById('pairings-period-select').value;
             try {
-                const response = await fetch('/api/admin?action=pairings', {
+                const response = await fetch(`/api/admin?action=pairings&period=${encodeURIComponent(period)}`, {
                     headers: { 'Authorization': `Bearer ${authToken}` }
                 });
                 const data = await response.json();
-
-                if (data.success && data.pairings) {
+                if (!data.success) throw new Error(data.error || 'Failed to load pairings');
+                pairingsData = data;
+                if (period === recentPeriods(1)[0]) {
                     document.getElementById('stat-pairings').textContent = data.pairings.length;
-                    renderPairings(data.pairings, data.period);
                 }
+                renderPairings(data.pairings, data.extra_matches || []);
             } catch (err) {
                 console.error('Failed to load pairings:', err);
+                document.getElementById('pairings-list').innerHTML =
+                    `<p class="empty-state">Could not load pairings: ${escapeHtml(err.message)}</p>`;
             }
         }
 
-        function renderPairings(pairings, period) {
+        function renderPairings(pairings, extraMatches) {
             const container = document.getElementById('pairings-list');
-            const periodLabel = document.getElementById('pairings-period');
-
-            periodLabel.textContent = period;
+            const extraContainer = document.getElementById('extra-matches-list');
 
             if (pairings.length === 0) {
-                container.innerHTML = '<p class="empty-state">No pairings for this month yet</p>';
-                return;
+                container.innerHTML = '<p class="empty-state">No pairings for this month</p>';
+            } else {
+                container.innerHTML = `
+                    <div class="table-wrapper">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Player 1</th>
+                                <th>Player 2</th>
+                                <th>Score</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${pairings.map((p, i) => `
+                                <tr>
+                                    <td>
+                                        <div class="player-name">${escapeHtml(p.player1_name)}</div>
+                                        <div class="player-email">${escapeHtml(p.player1_email)}</div>
+                                        ${p.player1_phone ? `<div class="player-email">${escapeHtml(p.player1_phone)}</div>` : ''}
+                                    </td>
+                                    <td>
+                                        <div class="player-name">${escapeHtml(p.player2_name)}</div>
+                                        <div class="player-email">${escapeHtml(p.player2_email)}</div>
+                                        ${p.player2_phone ? `<div class="player-email">${escapeHtml(p.player2_phone)}</div>` : ''}
+                                    </td>
+                                    <td>
+                                        ${p.match
+                                            ? `<span class="score-text">${formatScore(p.match)}</span>`
+                                            : `<span class="status-badge status-paused">Not reported</span>`}
+                                    </td>
+                                    <td>
+                                        <button class="btn-action" onclick="openPairingScore(${i})">${p.match ? 'Edit' : 'Enter score'}</button>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                    </div>
+                `;
             }
 
-            container.innerHTML = `
+            if (extraMatches.length === 0) {
+                extraContainer.innerHTML = '';
+                return;
+            }
+            extraContainer.innerHTML = `
+                <h3 class="sub-title">Other matches logged this month</h3>
+                <div class="table-wrapper">
                 <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>Player 1</th>
-                            <th>Player 2</th>
-                            <th class="hide-mobile">Status</th>
-                        </tr>
-                    </thead>
                     <tbody>
-                        ${pairings.map(p => `
+                        ${extraMatches.map((m, i) => `
                             <tr>
-                                <td>
-                                    <div class="player-name">${escapeHtml(p.player1_name)}</div>
-                                    <div class="player-email">${escapeHtml(p.player1_email)}</div>
-                                    ${p.player1_phone ? `<div class="player-email">${escapeHtml(p.player1_phone)}</div>` : ''}
-                                </td>
-                                <td>
-                                    <div class="player-name">${escapeHtml(p.player2_name)}</div>
-                                    <div class="player-email">${escapeHtml(p.player2_email)}</div>
-                                    ${p.player2_phone ? `<div class="player-email">${escapeHtml(p.player2_phone)}</div>` : ''}
-                                </td>
-                                <td class="hide-mobile">
-                                    <span class="status-badge ${p.status === 'completed' ? 'status-active' : 'status-paused'}">${p.status}</span>
-                                </td>
+                                <td><div class="player-name">${escapeHtml(m.player1_name)}</div></td>
+                                <td><div class="player-name">${escapeHtml(m.player2_name)}</div></td>
+                                <td><span class="score-text">${formatScore(m)}</span></td>
+                                <td><button class="btn-action" onclick="openExtraScore(${i})">Edit</button></td>
                             </tr>
                         `).join('')}
                     </tbody>
                 </table>
+                </div>
             `;
         }
 
-        // Initialize
+        // ---------- Score modal ----------
+        let scoreContext = null;
+
+        function playerOptions(selectedId) {
+            const roster = [...allPlayers].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+            return '<option value="">Select player...</option>' + roster.map(p =>
+                `<option value="${p.id}" ${String(p.id) === String(selectedId) ? 'selected' : ''}>${escapeHtml(p.name)}</option>`
+            ).join('');
+        }
+
+        function openScoreModal(ctx) {
+            scoreContext = ctx;
+            const m = ctx.match;
+            document.getElementById('score-modal-title').textContent = m ? 'Edit Score' : 'Enter Score';
+            document.getElementById('score-period').value = ctx.period;
+            const p1 = document.getElementById('score-p1');
+            const p2 = document.getElementById('score-p2');
+            p1.innerHTML = playerOptions(ctx.player1_id);
+            p2.innerHTML = playerOptions(ctx.player2_id);
+            // Players are fixed once a match or pairing exists
+            p1.disabled = p2.disabled = !ctx.freePlayers;
+            if (!ctx.freePlayers) {
+                // Make sure fixed players show even if they're no longer active
+                [[p1, ctx.player1_id, ctx.player1_name], [p2, ctx.player2_id, ctx.player2_name]].forEach(([sel, id, name]) => {
+                    if (!sel.value) sel.innerHTML = `<option value="${id}" selected>${escapeHtml(name || 'Unknown')}</option>`;
+                });
+            }
+            document.getElementById('score-set1-p1').value = m ? (m.set1_p1 ?? '') : '';
+            document.getElementById('score-set1-p2').value = m ? (m.set1_p2 ?? '') : '';
+            document.getElementById('score-set2-p1').value = m ? (m.set2_p1 ?? '') : '';
+            document.getElementById('score-set2-p2').value = m ? (m.set2_p2 ?? '') : '';
+            scoreError('');
+            document.getElementById('score-modal').classList.remove('hidden');
+        }
+
+        function scoreError(text) {
+            const el = document.getElementById('score-error');
+            el.textContent = text;
+            el.classList.toggle('hidden', !text);
+        }
+
+        function closeScoreModal() {
+            document.getElementById('score-modal').classList.add('hidden');
+            scoreContext = null;
+        }
+
+        function openPairingScore(index) {
+            const p = pairingsData.pairings[index];
+            openScoreModal({
+                period: p.period_label,
+                assignment_id: p.id,
+                player1_id: p.match ? p.match.player1_id : p.player1_id,
+                player2_id: p.match ? p.match.player2_id : p.player2_id,
+                player1_name: p.match && String(p.match.player1_id) === String(p.player2_id) ? p.player2_name : p.player1_name,
+                player2_name: p.match && String(p.match.player1_id) === String(p.player2_id) ? p.player1_name : p.player2_name,
+                match: p.match,
+                freePlayers: false
+            });
+        }
+
+        function openExtraScore(index) {
+            const m = pairingsData.extra_matches[index];
+            openScoreModal({
+                period: m.period_label,
+                player1_id: m.player1_id,
+                player2_id: m.player2_id,
+                player1_name: m.player1_name,
+                player2_name: m.player2_name,
+                match: m,
+                freePlayers: false
+            });
+        }
+
+        function openRecordModal() {
+            openScoreModal({
+                period: document.getElementById('pairings-period-select').value,
+                match: null,
+                freePlayers: true
+            });
+        }
+
+        async function saveScore() {
+            if (!scoreContext) return;
+            const btn = document.getElementById('score-save-btn');
+            const values = {};
+            for (const [key, id] of [['set1_p1', 'score-set1-p1'], ['set1_p2', 'score-set1-p2'], ['set2_p1', 'score-set2-p1'], ['set2_p2', 'score-set2-p2']]) {
+                const raw = document.getElementById(id).value;
+                if (raw === '') {
+                    scoreError('Enter all four set scores (use 0 for no games)');
+                    return;
+                }
+                values[key] = parseInt(raw, 10);
+            }
+
+            let body;
+            if (scoreContext.match) {
+                body = { action: 'update_score', match_id: scoreContext.match.id, ...values };
+            } else {
+                const player1Id = document.getElementById('score-p1').value;
+                const player2Id = document.getElementById('score-p2').value;
+                if (!player1Id || !player2Id || player1Id === player2Id) {
+                    scoreError('Choose two different players');
+                    return;
+                }
+                body = {
+                    action: 'record_score',
+                    player1_id: player1Id,
+                    player2_id: player2Id,
+                    period_label: scoreContext.period,
+                    ...values
+                };
+                if (scoreContext.assignment_id) body.assignment_id = scoreContext.assignment_id;
+            }
+
+            btn.disabled = true;
+            btn.textContent = 'Saving...';
+            try {
+                const response = await fetch('/api/admin', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
+                    body: JSON.stringify(body)
+                });
+                const data = await response.json();
+                if (!data.success) throw new Error(data.error || 'Failed to save score');
+                showMessage(data.message || 'Score saved', 'success');
+                closeScoreModal();
+                loadPairings();
+                loadPlayers();
+                loadReport();
+            } catch (err) {
+                scoreError(err.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Save Score';
+            }
+        }
+
+        // ---------- Monthly report ----------
+        let reportData = null;
+
+        async function loadReport() {
+            const period = document.getElementById('report-period-select').value;
+            const container = document.getElementById('report-content');
+            try {
+                const response = await fetch(`/api/admin?action=report&period=${encodeURIComponent(period)}`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                const data = await response.json();
+                if (!data.success) throw new Error(data.error || 'Failed to load report');
+                reportData = data;
+                renderReport(data);
+            } catch (err) {
+                reportData = null;
+                container.innerHTML = `<p class="empty-state">Could not load report: ${escapeHtml(err.message)}</p>`;
+            }
+        }
+
+        function renderReport(r) {
+            const s = r.summary;
+            const statCard = (label, value) => `<div class="stat-card"><p class="stat-label">${label}</p><p class="stat-value">${value}</p></div>`;
+            const results = r.pairings.filter(p => p.match);
+            document.getElementById('report-content').innerHTML = `
+                <div class="report-summary">
+                    ${statCard('Pairings', s.pairings)}
+                    ${statCard('Reported', s.reported)}
+                    ${statCard('Not reported', s.unreported)}
+                    ${statCard('Extra matches', s.extra_matches)}
+                    ${statCard('Active members', s.active_members)}
+                    ${statCard('Unpaid', s.unpaid_members)}
+                </div>
+
+                <h3 class="sub-title">Results</h3>
+                ${results.length || r.extra_matches.length ? `
+                <div class="table-wrapper"><table class="data-table"><tbody>
+                    ${results.map(p => `<tr><td>${escapeHtml(p.player1_name)}</td><td>${escapeHtml(p.player2_name)}</td><td class="score-text">${reportScoreFor(p)}</td></tr>`).join('')}
+                    ${r.extra_matches.map(m => `<tr><td>${escapeHtml(m.player1_name)}</td><td>${escapeHtml(m.player2_name)}</td><td class="score-text">${formatScore(m)} (extra)</td></tr>`).join('')}
+                </tbody></table></div>` : '<p class="empty-state">No scores reported yet</p>'}
+
+                <h3 class="sub-title">Not reported yet</h3>
+                ${r.unreported.length ? `
+                <div class="table-wrapper"><table class="data-table"><tbody>
+                    ${r.unreported.map(p => `<tr><td>${escapeHtml(p.player1_name)}</td><td>${escapeHtml(p.player2_name)}</td></tr>`).join('')}
+                </tbody></table></div>` : '<p class="empty-state">Everyone has reported</p>'}
+
+                <h3 class="sub-title">Standings (games won)</h3>
+                <div class="table-wrapper"><table class="data-table"><tbody>
+                    ${r.standings.map(p => `<tr><td>#${p.rank}</td><td>${escapeHtml(p.name)}</td><td>${p.total_games} games</td><td class="hide-mobile">${p.matches_played} matches</td></tr>`).join('')}
+                </tbody></table></div>
+
+                <h3 class="sub-title">Unpaid members</h3>
+                ${r.unpaid.length ? `
+                <div class="table-wrapper"><table class="data-table"><tbody>
+                    ${r.unpaid.map(p => `<tr><td>${escapeHtml(p.name)}</td><td class="hide-mobile">${escapeHtml(p.email)}</td><td>${p.membership_tier === 'social_butterfly' ? 'Social ($45)' : 'Player ($35)'}</td></tr>`).join('')}
+                </tbody></table></div>` : '<p class="empty-state">Everyone is marked paid</p>'}
+            `;
+        }
+
+        // Show a pairing's score from the pairing's player1 point of view
+        function reportScoreFor(p) {
+            const m = p.match;
+            if (String(m.player1_id) === String(p.player1_id)) return formatScore(m);
+            return formatScore({
+                set1_p1: m.set1_p2, set1_p2: m.set1_p1, set2_p1: m.set2_p2, set2_p2: m.set2_p1,
+                player1_games: m.player2_games, player2_games: m.player1_games
+            });
+        }
+
+        function downloadReportCsv() {
+            if (!reportData) {
+                showMessage('Report not loaded yet', 'error');
+                return;
+            }
+            const q = v => `"${String(v ?? '').replace(/"/g, '""')}"`;
+            const rows = [['Section', 'Player 1', 'Player 2', 'Score / Games', 'Detail']];
+            reportData.pairings.forEach(p => rows.push(['Pairing', p.player1_name, p.player2_name, p.match ? reportScoreFor(p) : '', p.match ? 'Reported' : 'Not reported']));
+            reportData.extra_matches.forEach(m => rows.push(['Extra match', m.player1_name, m.player2_name, formatScore(m), '']));
+            reportData.standings.forEach(p => rows.push(['Standings', p.name, '', p.total_games, `#${p.rank}, ${p.matches_played} matches`]));
+            reportData.unpaid.forEach(p => rows.push(['Unpaid', p.name, '', '', p.email]));
+            const csv = rows.map(r => r.map(q).join(',')).join('\n');
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `net-worth-report-${reportData.period.replace(/\s+/g, '-').toLowerCase()}.csv`;
+            a.click();
+            URL.revokeObjectURL(a.href);
+        }
+
+        // Initialize: pairings default to this month, report to last month
+        fillPeriodSelect('pairings-period-select', 0);
+        fillPeriodSelect('report-period-select', 1);
         loadPlayers();
         loadPairings();
+        loadReport();
     </script>
     <script src="/js/report-issue.js"></script>
 </body>
