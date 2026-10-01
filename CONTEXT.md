@@ -60,10 +60,12 @@ _Avoid_: new player, inactive player
 Natalie or Ashley, who voluntarily sits out according to the league's rotation rule when the eligible roster is odd so the remaining Players can be paired.
 _Avoid_: skipped player, exception player
 <!-- janitor:begin:recent -->
-- `d05eefbcf86ae9243a9f76e6da20c494eb68b1aa`: merged pull request #22.
-- `e9305e6f7e95fd2672ed901b5664e8ded8fb2690`: updated the watchdog to require an accepted match email for every actual pairing.
-- `ebf6d2ea023de5aafc38a8a9a915218cc886739e`: documented that the repository should remain public and that the watchdog covers GitHub's 60-day schedule shutoff.
-- `e4862c38b99a7d40b28047a46d7c2b9a7b7d0d49`: changed watchdog recovery so a failure is fixed only by a success that started after it.
-- `94844a6b3c55492a252c74347a1575f0a2ce393d`: updated watchdog handling for late 27th jobs, duplicate pairing counts, and alert-send failures.
-- `aab591fdcd36908a3963b75900a3f5a19438039b`: added an independent daily watchdog that emails the owner via Resend.
+## Recent activity
+
+- Shared agent rules were synchronized in `ceec7644b021c2f0c57c7cebafa4a7c85dad4858`, following similar updates in `9984cd085287d4e51bb7a7665d929f2dbeaf0109` and `d291ea204968de86daa138d96bc8edb7e4dc0fbc`.
+- Match emails were refined to require an accepted-match email for every actual pairing (`e9305e6f7e95fd2672ed901b5664e8ded8fb2690`), account for a failure only being fixed by a later success (`e4862c38b99a7d40b28047a46d7c2b9a7b7d0d49`), catch late 27th-of-month jobs, count each pairing once, and fail loudly if alerting fails (`94844a6b3c55492a252c74347a1575f0a2ce393d`). An independent daily watchdog using Resend was added (`aab591fdcd36908a3963b75900a3f5a19438039b`).
+- The documentation states that the repository remains public and that the watchdog emails the owner if GitHub disables schedules after 60 quiet days (`ebf6d2ea023de5aafc38a8a9a915218cc886739e`).
+- Pairing completion was changed to close pairings atomically with the match insertion and self-heal the dashboard (`d90b2e307b829a3102165fb5eb1fc6b72bfd6449`); older schemas remain supported, and reminders are skipped for recorded scores (`03de7a81555041243c3ef0e876169c1984744e4c`).
+- Rejoining players' paid state is reset, with a confirmed missing column as the only schema fallback (`0354f370920e6bfc6779d0577d404228133a66a4`).
+- Player-reported months are limited and CSV formulas are neutralized (`44a8f0931cff0ab2208b318fe63fb18df800cf41`).
 <!-- janitor:end:recent -->
