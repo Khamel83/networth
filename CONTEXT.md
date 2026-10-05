@@ -65,8 +65,9 @@ _Avoid_: skipped player, exception player
 - 2026-10-05 source-only managed-rule repair for PR [#28](https://github.com/Khamel83/networth/pull/28) started from candidate
   `24e91819088e4e301eba03d1f98b25cd8097c295`. The rule now selects the latest
   trusted, non-dismissed OCI reviewer Bot PASS for the exact current commit and
-  rejects stale, superseded or contradictory PASS; runtime, deployment,
-  durable receipt, and downstream effect remain unchanged.
+  rejects stale, superseded or contradictory PASS. This repair performed no
+  runtime, provider, or deployment operation; durable receipt and downstream
+  effect remain separate facts to verify after merge.
 - Shared agent rules were synchronized in `ceec7644b021c2f0c57c7cebafa4a7c85dad4858`, following similar updates in `9984cd085287d4e51bb7a7665d929f2dbeaf0109` and `d291ea204968de86daa138d96bc8edb7e4dc0fbc`.
 - Match emails were refined to require an accepted-match email for every actual pairing (`e9305e6f7e95fd2672ed901b5664e8ded8fb2690`), account for a failure only being fixed by a later success (`e4862c38b99a7d40b28047a46d7c2b9a7b7d0d49`), catch late 27th-of-month jobs, count each pairing once, and fail loudly if alerting fails (`94844a6b3c55492a252c74347a1575f0a2ce393d`). An independent daily watchdog using Resend was added (`aab591fdcd36908a3963b75900a3f5a19438039b`).
 - The documentation states that the repository remains public and that the watchdog emails the owner if GitHub disables schedules after 60 quiet days (`ebf6d2ea023de5aafc38a8a9a915218cc886739e`).
