@@ -12,6 +12,10 @@ provider or deployment operation was performed; related acceptance stays open.
 
 ## Historical PR28 preparation
 
+The remaining text records the earlier unmerged PR28 preparation checkpoint.
+Its pending-source statements are historical; the current checkpoint above
+records the actual source merge. Runtime acceptance remains separate.
+
 ### Source
 
 PR [#28](https://github.com/Khamel83/networth/pull/28) started from source

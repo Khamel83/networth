@@ -60,13 +60,13 @@ _Avoid_: new player, inactive player
 Natalie or Ashley, who voluntarily sits out according to the league's rotation rule when the eligible roster is odd so the remaining Players can be paired.
 _Avoid_: skipped player, exception player
 <!-- janitor:begin:recent -->
-## Recently verified
+## Recent source activity
 
 - **Independent daily watchdog** (`aab591fd`, `e9305e6f`, `94844a6b`, `e4862c38`) - A new daily watchdog was added (`aab591fd`) that emails the owner via Resend. It requires an accepted match email for every actual pairing (`e9305e6f`), catches late 27th jobs and counts each pairing once (`94844a6b`), and treats a failure as fixed only by a subsequent success (`e4862c38`). This watchdog also covers the 60-day GitHub schedule shutoff risk by keeping the repo public (`ebf6d2ea`).
-- **Atomic score corrections and dashboard self-healing** (d: d90b2e30, 5: 539d49a7, 0: 03de7a81) - Score corrections now require an atomic DB function (`539d49a7`), pausing the requirement to remove names from inline handlers. Pairings are closed atomically with match inserts, and the dashboard self-heals (`d90b2e30`). Closing pairings on older schemas no longer fails, and reminders are skipped for already-recorded scores (`03de7a81`).
+- **Atomic score corrections and dashboard self-healing** (`d90b2e30`, `539d49a7`, `03de7a81`) - Score corrections now require an atomic DB function (`539d49a7`), pausing the requirement to remove names from inline handlers. Pairings are closed atomically with match inserts, and the dashboard self-heals (`d90b2e30`). Closing pairings on older schemas no longer fails, and reminders are skipped for already-recorded scores (`03de7a81`).
 - **Admin newsletter** (`ccd1f8c3`, `2f0548b8`) - The system now emails the monthly report to Natalie and Ashley (`ccd1f8c3`) and notifies them when a new player signs up (`2f0548b8`).
-- **Data hygiene and rejoin logic** (4: 44a8f093, 0: 0354f370) - Player-reported months are limited and CSV formulas are neutralized to prevent injection (`44a8f093`). The "I-paid" box resets upon rejoin, with fallback only for confirmed missing columns (`0354f370`).
-- **Documentation cleanup** (4: 4c465e14) - No-op backup workflow was removed and documentation was brought current (`4c465e14`).
+- **Data hygiene and rejoin logic** (`44a8f093`, `0354f370`) - Player-reported months are limited and CSV formulas are neutralized to prevent injection (`44a8f093`). The "I-paid" box resets upon rejoin, with fallback only for confirmed missing columns (`0354f370`).
+- **Documentation cleanup** (`4c465e14`) - No-op backup workflow was removed and documentation was brought current (`4c465e14`).
 
 ## Watch items
 
