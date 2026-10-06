@@ -1,6 +1,22 @@
 # Managed rule repair handoff — 2026-10-05
 
-## Source
+## Current maintenance checkpoint
+
+PR28 merged as `ef79caf5`. PR29's documentation correction removes malformed
+commit citations and restores its pending runtime/receipt/downstream follow-up.
+The valid cited commits `539d49a7` and `2f0548b8` resolve in fetched Git history.
+The automatic repair hit malformed patches and exhausted its three-cycle limit;
+this bounded operator correction changes documentation only. Next: trusted
+review of PR29's new head and normal SHA-pinned merge. No runtime, credential,
+provider or deployment operation was performed; related acceptance stays open.
+
+## Historical PR28 preparation
+
+The remaining text records the earlier unmerged PR28 preparation checkpoint.
+Its pending-source statements are historical; the current checkpoint above
+records the actual source merge. Runtime acceptance remains separate.
+
+### Source
 
 PR [#28](https://github.com/Khamel83/networth/pull/28) started from source
 candidate `24e91819088e4e301eba03d1f98b25cd8097c295`. The prior head
