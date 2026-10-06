@@ -1,3 +1,10 @@
+## PR29 acceptance repair
+
+- [ ] Accept final-head source review and successful required checks for PR29.
+  Annual domain/Resend/CSV/renewal follow-ups remain outside the managed block.
+  The prior run passed198 API tests, then failed optional Codecov TLS upload;
+  coverage transport is now advisory without weakening pytest.
+
 <!-- janitor:begin:todo -->
 - [ ] Complete PR #28's remaining deployment, durable receipt and downstream
   verification follow-up. Source merged as `ef79caf5`; that merge does not

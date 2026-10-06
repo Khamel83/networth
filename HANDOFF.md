@@ -1,3 +1,11 @@
+## PR29 final repair checkpoint
+
+The watchdog description now preserves owner notification on disabled schedules;
+public visibility does not prevent inactivity shutdown. Annual owner follow-ups
+are retained. Prior CI passed198 tests before an optional coverage-upload TLS error;
+only that transport step is made advisory. Next: new-head review/CI and normal merge.
+No runtime, credential or provider operation occurred.
+
 # Managed rule repair handoff — 2026-10-05
 
 ## Current maintenance checkpoint
