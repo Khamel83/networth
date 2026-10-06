@@ -57,26 +57,20 @@ A Player with prior valid results who re-enters the eligible roster after an abs
 _Avoid_: new player, inactive player
 
 **Admin flex**:
-Natalie or Ashley, who voluntarily sits out according to the league's rotation rule when the eligible roster is odd so the remaining Players can be paired.
+A league administrator who voluntarily sits out according to the league's rotation rule when the eligible roster is odd so the remaining Players can be paired.
 _Avoid_: skipped player, exception player
 <!-- janitor:begin:recent -->
-## Recent activity
+## Recent source activity
 
-- 2026-10-05 source-only managed-rule repair for PR [#28](https://github.com/Khamel83/networth/pull/28) started from candidate
-  `24e91819088e4e301eba03d1f98b25cd8097c295`. The rule now selects the latest
-  trusted, non-dismissed OCI reviewer Bot PASS for the exact current commit and
-  rejects stale, superseded or contradictory PASS. The source is ready, while
-  merged source, merge receipt, deployment, durable receipt, and downstream
-  effect remain pending; this repair performed no runtime, provider, or
-  deployment operation.
-- Native review of prior head `86d6d5d167e35ac2e9b05fb5c11d1304e955f55f`
-  required the TODO completion state and PR evidence to match that boundary.
-  The earlier renderer validation covered generated `AGENTS.md` output only;
-  the final PR diff also contains `CONTEXT.md`, `HANDOFF.md`, and `TODO.md`.
-- Shared agent rules were synchronized in `ceec7644b021c2f0c57c7cebafa4a7c85dad4858`, following similar updates in `9984cd085287d4e51bb7a7665d929f2dbeaf0109` and `d291ea204968de86daa138d96bc8edb7e4dc0fbc`.
-- Match emails were refined to require an accepted-match email for every actual pairing (`e9305e6f7e95fd2672ed901b5664e8ded8fb2690`), account for a failure only being fixed by a later success (`e4862c38b99a7d40b28047a46d7c2b9a7b7d0d49`), catch late 27th-of-month jobs, count each pairing once, and fail loudly if alerting fails (`94844a6b3c55492a252c74347a1575f0a2ce393d`). An independent daily watchdog using Resend was added (`aab591fdcd36908a3963b75900a3f5a19438039b`).
-- The documentation states that the repository remains public and that the watchdog emails the owner if GitHub disables schedules after 60 quiet days (`ebf6d2ea023de5aafc38a8a9a915218cc886739e`).
-- Pairing completion was changed to close pairings atomically with the match insertion and self-heal the dashboard (`d90b2e307b829a3102165fb5eb1fc6b72bfd6449`); older schemas remain supported, and reminders are skipped for recorded scores (`03de7a81555041243c3ef0e876169c1984744e4c`).
-- Rejoining players' paid state is reset, with a confirmed missing column as the only schema fallback (`0354f370920e6bfc6779d0577d404228133a66a4`).
-- Player-reported months are limited and CSV formulas are neutralized (`44a8f0931cff0ab2208b318fe63fb18df800cf41`).
+- **Independent daily watchdog** (`aab591fd`, `e9305e6f`, `94844a6b`, `e4862c38`) - A new daily watchdog was added (`aab591fd`) that emails the owner via Resend. It requires an accepted match email for every actual pairing (`e9305e6f`), catches late 27th jobs and counts each pairing once (`94844a6b`), and treats a failure as fixed only by a subsequent success (`e4862c38`). The independent watchdog notifies the owner when GitHub disables schedules after inactivity; public visibility alone does not prevent schedule shutoff (`ebf6d2ea`).
+- **Atomic score corrections and dashboard self-healing** (`d90b2e30`, `539d49a7`, `03de7a81`) - Score corrections now require an atomic DB function (`539d49a7`), pausing the requirement to remove names from inline handlers. Pairings are closed atomically with match inserts, and the dashboard self-heals (`d90b2e30`). Closing pairings on older schemas no longer fails, and reminders are skipped for already-recorded scores (`03de7a81`).
+- **Admin newsletter** (`ccd1f8c3`, `2f0548b8`) - The system now emails the monthly report to league administrators (`ccd1f8c3`) and notifies them when a new player signs up (`2f0548b8`).
+- **Data hygiene and rejoin logic** (`44a8f093`, `0354f370`) - Player-reported months are limited and CSV formulas are neutralized to prevent injection (`44a8f093`). The "I-paid" box resets upon rejoin, with fallback only for confirmed missing columns (`0354f370`).
+- **Documentation cleanup** (`4c465e14`) - No-op backup workflow was removed and documentation was brought current (`4c465e14`).
+
+## Watch items
+
+- **Pending verification**: Check that the Resend-based watchdog emails are arriving and correctly tracking pairings.
+- **Pending verification**: Confirm admin emails (monthly report + sign-ups) are sent to both admins.
+- **Pending verification**: Verify atomic score corrections work end-to-end via the DB function.
 <!-- janitor:end:recent -->
