@@ -14,7 +14,10 @@ PR28 merged as `ef79caf5`. PR29's documentation correction removes malformed
 commit citations and restores its pending runtime/receipt/downstream follow-up.
 The valid cited commits `539d49a7` and `2f0548b8` resolve in fetched Git history.
 The automatic repair hit malformed patches and exhausted its three-cycle limit;
-this bounded operator correction changes documentation only. Next: trusted
+this earlier operator correction changed documentation only. The current PR also
+makes optional coverage transport advisory in the CI workflow; it is a mixed
+documentation/workflow PR subject to the general active-repository merge policy.
+Next: trusted
 review of PR29's new head and normal SHA-pinned merge. No runtime, credential,
 provider or deployment operation was performed; related acceptance stays open.
 
