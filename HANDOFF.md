@@ -1,3 +1,9 @@
+## Current repository-plan checkpoint — October 11, 2026
+
+The owner requested one owning plan for every open TODO, issue and PR. [docs/REPO_PLAN.md](docs/REPO_PLAN.md) maps 3 unchecked source references and 2 open native records observed from `96cddfa99b834191ab521806f04c99c596091142`. G2K is the executor; coordinator34 tracks project-owned acceptance. Previous source prose below is retained as dated evidence, not refreshed runtime attestation.
+
+This source proposal requires trusted exact-head review, native CI and normal merge before audit35 is closed or finite sequencing is applied. Source, installation, ordinary receipt and downstream effect remain separate. Next: verify this PR’s current head and accepted native merge, then update the existing coordinator; resolve the explicitly listed next review/receipt/decision in plan order. No busy worker, host service, access policy or retry state was changed.
+
 ## PR29 final repair checkpoint
 
 The watchdog description now preserves owner notification on disabled schedules;
