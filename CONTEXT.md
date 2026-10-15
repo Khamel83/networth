@@ -68,6 +68,8 @@ _Avoid_: skipped player, exception player
 <!-- janitor:begin:recent -->
 ## Recent source activity
 
+- October 15, 2026: `/join` shows a note under the paid checkbox to return after Venmo and finish registration (PR #37, `02472f0`, deployed).
+
 - **Independent daily watchdog** (`aab591fd`, `e9305e6f`, `94844a6b`, `e4862c38`) - A new daily watchdog was added (`aab591fd`) that emails the owner via Resend. It requires an accepted match email for every actual pairing (`e9305e6f`), catches late 27th jobs and counts each pairing once (`94844a6b`), and treats a failure as fixed only by a subsequent success (`e4862c38`). The independent watchdog notifies the owner when GitHub disables schedules after inactivity; public visibility alone does not prevent schedule shutoff (`ebf6d2ea`).
 - **Atomic score corrections and dashboard self-healing** (`d90b2e30`, `539d49a7`, `03de7a81`) - Score corrections now require an atomic DB function (`539d49a7`), pausing the requirement to remove names from inline handlers. Pairings are closed atomically with match inserts, and the dashboard self-heals (`d90b2e30`). Closing pairings on older schemas no longer fails, and reminders are skipped for already-recorded scores (`03de7a81`).
 - **Admin newsletter** (`ccd1f8c3`, `2f0548b8`) - The system now emails the monthly report to league administrators (`ccd1f8c3`) and notifies them when a new player signs up (`2f0548b8`).
