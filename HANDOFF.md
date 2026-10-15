@@ -1,3 +1,13 @@
+## Join page Venmo return note — October 15, 2026
+
+Source: PR [#37](https://github.com/Khamel83/networth/pull/37) merged as `02472f0`. It adds a line under the
+`/join` paid checkbox that tells members to come back after Venmo and tap **Join Now**.
+Runtime: Vercel production deployment for `02472f0` succeeded, and the live `/join` page contains the note (checked October 15, 2026).
+No email, workflow, or player-record action was taken. The owner asked that no emails be sent.
+Open: the owner will retest signup. Natalie asked to have their test signup removed (deactivate, not delete), and two members
+(Jessica, Mae) paid on Venmo without registering. These items need owner direction.
+Temporary worktree `.worktrees/venmo-return-note` was removed after the merge.
+
 ## Current repository-plan checkpoint — October 11, 2026
 
 The owner requested one owning plan for every open TODO, issue and PR. [docs/REPO_PLAN.md](docs/REPO_PLAN.md) maps 3 unchecked source references and 2 open native records observed from `96cddfa99b834191ab521806f04c99c596091142`. G2K is the executor; coordinator34 tracks project-owned acceptance. Previous source prose below is retained as dated evidence, not refreshed runtime attestation.

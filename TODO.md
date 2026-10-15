@@ -1,3 +1,9 @@
+## Join signup follow-up (October 15, 2026)
+
+- [x] Add a return-after-Venmo note to `/join`. Evidence: PR #37, merge `02472f0`, live page checked.
+- [ ] Owner retests signup on the live site.
+- [ ] Owner decision: deactivate Natalie's test signup; follow up with Jessica and Mae, who paid without registering. Send no email without explicit approval.
+
 ## PR29 acceptance repair
 
 - [x] Accept final-head source review and successful required checks for PR29. Evidence: https://github.com/Khamel83/networth/pull/29 (merge1d9a65781a046a04f9d8d37b8d225b7dc4d66aa3; final-head PASS and required checks succeeded).
