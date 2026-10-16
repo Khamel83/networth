@@ -67,3 +67,6 @@ Run the managed-marker and diff checks, push the existing PR branch without
 force, let the natural webhook review the new head, then inspect native
 current-head reviews and recheck the PR state. After merge, verify the merge
 receipt, deployment, and downstream effect separately.
+## Fleet CI cancellation - source checkpoint (October 16, 2026)
+
+Prepared source on `feat/fleet-ci-cancellation-20261016` adds PR-only concurrency cancellation to `.github/workflows/tests.yml`. Native CI, review, and normal merge remain pending. No runtime or deployment change is claimed.
