@@ -82,3 +82,6 @@ _Avoid_: skipped player, exception player
 - **Pending verification**: Confirm admin emails (monthly report + sign-ups) are sent to both admins.
 - **Pending verification**: Verify atomic score corrections work end-to-end via the DB function.
 <!-- janitor:end:recent -->
+## Fleet CI cancellation - source checkpoint (October 16, 2026)
+
+`.github/workflows/tests.yml` has a prepared source change on `feat/fleet-ci-cancellation-20261016` that coalesces superseded pull-request runs and leaves main, manual, release, and scheduled runs non-canceling. Native CI, review, and normal merge remain pending; no runtime change is claimed.
