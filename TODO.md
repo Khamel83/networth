@@ -5,6 +5,11 @@
 - [ ] January 1, 2027: confirm January pairings and match-email counts match, and that scheduled workflows stayed on. GitHub's 60-day shutoff was the risk the keep-alive now addresses. If the count is odd, confirm Natalie sat out and got the skip email, and that Ashley is next.
 - [ ] Owner: update the vault `CRON_SECRET` to match Vercel. It returned 403 from production on November 2, 2026. Scheduled runs are unaffected.
 
+## Public repo exposure (November 2, 2026)
+
+- [ ] Owner: revoke the old Gmail app password exposed in commit `926fd8a` (`SMTP_PASSWORD`, from before the Resend move). Vercel no longer needs it.
+- [ ] Owner decision: rewrite git history to remove the 2025 member CSV and `public/ladder.json` (commit `87d70c5` and `7074e2a`). Not done; already-public copies cannot be recalled.
+
 ## Join signup follow-up (October 15, 2026)
 
 - [x] Add a return-after-Venmo note to `/join`. Evidence: PR #37, merge `02472f0`, live page checked.

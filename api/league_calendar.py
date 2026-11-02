@@ -8,7 +8,7 @@ that the site, the watchdog, and GitHub Actions cannot disagree.
 """
 from datetime import datetime
 
-# Ashley Kaufman and Omar Zoheri, November 2026: no December matches; the
+# Organizer decision, November 2026: no December matches; the
 # league restarts with January 2027 pairings.
 PAUSED_PERIODS = frozenset({'December 2026'})
 
