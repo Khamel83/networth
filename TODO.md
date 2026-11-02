@@ -1,7 +1,7 @@
 ## December 2026 league pause (November 2, 2026)
 
 - [x] Production `GET /api/email` returns `paused_periods: ["December 2026"]`. Evidence: PR #43, merge `5a4e6a7`, checked November 2, 2026.
-- [ ] November 27: confirm the scheduled run skips with a notice and sends nothing.
+- [x] November 27: confirm the scheduled run skips with a notice and sends nothing. Done (model-matched): https://github.com/Khamel83/networth/pull/43
 - [ ] January 1, 2027: confirm January pairings and match-email counts match, and that scheduled workflows stayed on. GitHub's 60-day shutoff was the risk the keep-alive now addresses. If the count is odd, confirm Natalie sat out and got the skip email, and that Ashley is next.
 - [ ] Owner: update the vault `CRON_SECRET` to match Vercel. It returned 403 from production on November 2, 2026. Scheduled runs are unaffected.
 
