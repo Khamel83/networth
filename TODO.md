@@ -2,7 +2,7 @@
 
 - [x] Production `GET /api/email` returns `paused_periods: ["December 2026"]`. Evidence: PR #43, merge `5a4e6a7`, checked November 2, 2026.
 - [ ] November 27: confirm the scheduled run skips with a notice and sends nothing.
-- [ ] January 1, 2027: confirm January pairings and match-email counts match.
+- [ ] January 1, 2027: confirm January pairings and match-email counts match, and that scheduled workflows stayed on. GitHub's 60-day shutoff was the risk the keep-alive now addresses. If the count is odd, confirm Natalie got the skip email.
 
 ## Join signup follow-up (October 15, 2026)
 
@@ -26,7 +26,7 @@
 
 ## Owner follow-ups (outside the janitor block)
 
-- [x] Repo stays public; the watchdog emails if GitHub disables schedules after 60 quiet days (fix: Actions > Enable workflow)
+- [x] Repo stays public; `keep-alive.yml` re-enables schedules every 5 days, and the watchdog emails if GitHub disables them anyway (fix: Actions > Enable workflow)
 - [ ] Yearly: domain renewal, Resend domain check, CSV export of players/matches, reset Paid boxes at renewal
 
 ## Owning repository plan

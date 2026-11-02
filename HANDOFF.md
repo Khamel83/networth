@@ -4,7 +4,9 @@ November automation evidence: the October 31 final reminder reported 51 accepted
 
 Decision: organizers want no December matches and a restart in January. `PAUSED_PERIODS` in `api/league_calendar.py` holds December 2026; `RUNBOOK.md` has the date table. Source: PR [#43](https://github.com/Khamel83/networth/pull/43), merge `5a4e6a7`. Runtime: production `GET /api/email` returned the paused month on November 2, 2026. Downstream effect is unverified: no scheduled run has skipped yet. Next check: the November 27 run. No email was sent and no workflow was dispatched.
 
-Cleanup: temporary worktree `.worktrees/december-pause` was removed after merge. Local `master` in the primary checkout has 3 unpublished janitor commits and is 45 behind origin; it was left as is.
+Organizer skip: an organizer who sits out now gets an email, and the paused month no longer uses up a turn, so Natalie is next in January 2027 if the count is odd. The first real send happens on the next odd-count month.
+
+Cleanup, November 2, 2026, at the owner's request: local `master` was reset to origin, and all 6 local `auto-wip` branches and 37 remote branches were deleted. Everything, including the 3 unpublished janitor commits, is in `~/archive/git-bundles/networth-all-branches-20261102.bundle` on the Mac mini, with a ref list beside it. The janitor cron has been disabled since July 2026.
 
 ## Join page Venmo return note — October 15, 2026
 

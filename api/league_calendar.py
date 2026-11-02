@@ -21,3 +21,12 @@ def next_period(period_label):
     parsed = datetime.strptime(period_label, '%B %Y')
     year, month = (parsed.year + 1, 1) if parsed.month == 12 else (parsed.year, parsed.month + 1)
     return datetime(year, month, 1).strftime('%B %Y')
+
+
+def paused_periods_before(period_label):
+    """Count listed pauses earlier than this month; unparseable labels count none."""
+    try:
+        target = datetime.strptime(period_label, '%B %Y')
+    except (TypeError, ValueError):
+        return 0
+    return sum(datetime.strptime(paused, '%B %Y') < target for paused in PAUSED_PERIODS)
