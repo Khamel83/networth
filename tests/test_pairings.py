@@ -537,7 +537,20 @@ def test_skipped_organizer_gets_a_notice():
     message = deliver.call_args[0][0][0]
     assert message['to'] == ['ashleybrooke.kaufman@gmail.com']
     assert 'sitting out November' in message['subject']
-    assert 'Hi Ashley,' in message['html']
+    assert 'Hey Ashley,' in message['html']
+    assert 'You and Natalie take turns' in message['html']
+    assert 'Natalie sits out next time' in message['html']
+    assert 'other organizer' not in message['html']
+
+
+def test_skip_notice_to_natalie_names_ashley():
+    from unittest.mock import Mock
+    deliver = Mock(return_value={'outcome': 'accepted'})
+    natalie = make_player('n', 'Natalie Coffen', email='nmcoffen@gmail.com')
+    _skip_notice([natalie], deliver)
+    html = deliver.call_args[0][0][0]['html']
+    assert 'Hey Natalie,' in html
+    assert 'You and Ashley take turns' in html
 
 
 def test_non_organizer_gets_no_skip_notice():
