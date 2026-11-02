@@ -10,7 +10,7 @@ Stale records closed the same day: PRs #28, #29 and #39 are merged, issues #34 a
 
 Public repo cleanup, November 2, 2026: the owner asked for history to be scrubbed. `master` was rewritten with `git-filter-repo` and force-pushed; the file tree stayed identical. Removed: member spreadsheet and data files, databases, `.env.vercel`, `docs/sessions`, committed virtualenv and bytecode. Redacted everywhere: 84 emails, 42 phones, 22 full names, 3 credentials. Commit hashes in older notes predate the rewrite and no longer match `master`. GitHub still serves old commits by hash and through `refs/pull/*` until Support purges them; a request was submitted November 2, 2026. The pre-scrub backup is `~/archive/git-bundles/networth-pre-history-scrub-20261102.bundle`, and it contains the removed data. Any other clone, including the OCI janitor's, must re-clone and must not push old history back.
 
-Open: the `CRON_SECRET` from `secrets get` returned 403 from production `GET /api/pairings` on November 2, 2026, so that vault copy does not match Vercel. Scheduled runs use the GitHub secret and worked on November 1.
+Note: the `CRON_SECRET` from `secrets get` returned 403 from production `GET /api/pairings` on November 2, 2026, so that vault copy does not match Vercel. Scheduled runs use the GitHub secret and worked on November 1.
 
 Cleanup, November 2, 2026, at the owner's request: local `master` was reset to origin, and all 6 local `auto-wip` branches and 37 remote branches were deleted. Everything, including the 3 unpublished janitor commits, is in `~/archive/git-bundles/networth-all-branches-20261102.bundle` on the Mac mini, with a ref list beside it. The janitor cron has been disabled since July 2026.
 
@@ -20,5 +20,5 @@ Source: PR [#37](https://github.com/Khamel83/networth/pull/37) merged as `02472f
 `/join` paid checkbox that tells members to come back after Venmo and tap **Join Now**.
 Runtime: Vercel production deployment for `02472f0` succeeded, and the live `/join` page contains the note (checked October 15, 2026).
 No email, workflow, or player-record action was taken. The owner asked that no emails be sent.
-Open: the owner will retest signup, and Natalie asked to have their test signup removed (deactivate, not delete). Jessica and Mae need no follow-up (owner, November 2, 2026).
+The owner retested signup and handled Natalie's test signup (November 2, 2026). Jessica and Mae need no follow-up (owner, November 2, 2026).
 Temporary worktree `.worktrees/venmo-return-note` was removed after the merge.
