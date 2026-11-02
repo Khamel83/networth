@@ -4,7 +4,11 @@ November automation evidence: the October 31 final reminder reported 51 accepted
 
 Decision: organizers want no December matches and a restart in January. `PAUSED_PERIODS` in `api/league_calendar.py` holds December 2026; `RUNBOOK.md` has the date table. Source: PR [#43](https://github.com/Khamel83/networth/pull/43), merge `5a4e6a7`. Runtime: production `GET /api/email` returned the paused month on November 2, 2026. Downstream effect is unverified: no scheduled run has skipped yet. Next check: the November 27 run. No email was sent and no workflow was dispatched.
 
-Organizer skip: an organizer who sits out now gets an email, and the paused month no longer uses up a turn, so Natalie is next in January 2027 if the count is odd. The first real send happens on the next odd-count month.
+Organizer skip: an organizer who sits out now gets an email. The turn now passes back and forth instead of following the calendar month (owner decision, November 2, 2026). It starts from Ashley sitting out November 2026, so Natalie is next, in January 2027 if the count is odd. A month where only one organizer was paired counts as the other sitting out, even after a voluntary pause. Source and tests only until the first odd month after this change; no email was sent.
+
+Stale records closed the same day: PRs #28, #29 and #39 are merged, issues #34 and #35 are closed, and scheduled November pairings matched 17 emails to 17 assignments.
+
+Open: the `CRON_SECRET` from `secrets get` returned 403 from production `GET /api/pairings` on November 2, 2026, so that vault copy does not match Vercel. Scheduled runs use the GitHub secret and worked on November 1.
 
 Cleanup, November 2, 2026, at the owner's request: local `master` was reset to origin, and all 6 local `auto-wip` branches and 37 remote branches were deleted. Everything, including the 3 unpublished janitor commits, is in `~/archive/git-bundles/networth-all-branches-20261102.bundle` on the Mac mini, with a ref list beside it. The janitor cron has been disabled since July 2026.
 
@@ -14,69 +18,5 @@ Source: PR [#37](https://github.com/Khamel83/networth/pull/37) merged as `02472f
 `/join` paid checkbox that tells members to come back after Venmo and tap **Join Now**.
 Runtime: Vercel production deployment for `02472f0` succeeded, and the live `/join` page contains the note (checked October 15, 2026).
 No email, workflow, or player-record action was taken. The owner asked that no emails be sent.
-Open: the owner will retest signup. Natalie asked to have their test signup removed (deactivate, not delete), and two members
-(Jessica, Mae) paid on Venmo without registering. These items need owner direction.
+Open: the owner will retest signup, and Natalie asked to have their test signup removed (deactivate, not delete). Jessica and Mae need no follow-up (owner, November 2, 2026).
 Temporary worktree `.worktrees/venmo-return-note` was removed after the merge.
-
-## Current repository-plan checkpoint — October 11, 2026
-
-The owner requested one owning plan for every open TODO, issue and PR. [docs/REPO_PLAN.md](docs/REPO_PLAN.md) maps 3 unchecked source references and 2 open native records observed from `96cddfa99b834191ab521806f04c99c596091142`. G2K is the executor; coordinator34 tracks project-owned acceptance. Previous source prose below is retained as dated evidence, not refreshed runtime attestation.
-
-This source proposal requires trusted exact-head review, native CI and normal merge before audit35 is closed or finite sequencing is applied. Source, installation, ordinary receipt and downstream effect remain separate. Next: verify this PR’s current head and accepted native merge, then update the existing coordinator; resolve the explicitly listed next review/receipt/decision in plan order. No busy worker, host service, access policy or retry state was changed.
-
-## PR29 final repair checkpoint
-
-The watchdog description now preserves owner notification on disabled schedules;
-public visibility does not prevent inactivity shutdown. Annual owner follow-ups
-are retained. Prior CI passed198 tests before an optional coverage-upload TLS error;
-only that transport step is made advisory. Next: new-head review/CI and normal merge.
-No runtime, credential or provider operation occurred.
-
-# Managed rule repair handoff — 2026-10-05
-
-## Current maintenance checkpoint
-
-PR28 merged as `ef79caf5`. PR29's documentation correction removes malformed
-commit citations and restores its pending runtime/receipt/downstream follow-up.
-The valid cited commits `539d49a7` and `2f0548b8` resolve in fetched Git history.
-The automatic repair hit malformed patches and exhausted its three-cycle limit;
-this earlier operator correction changed documentation only. The current PR also
-makes optional coverage transport advisory in the CI workflow; it is a mixed
-documentation/workflow PR subject to the general active-repository merge policy.
-Next: trusted
-review of PR29's new head and normal SHA-pinned merge. No runtime, credential,
-provider or deployment operation was performed; related acceptance stays open.
-
-## Historical PR28 preparation
-
-The remaining text records the earlier unmerged PR28 preparation checkpoint.
-Its pending-source statements are historical; the current checkpoint above
-records the actual source merge. Runtime acceptance remains separate.
-
-### Source
-
-PR [#28](https://github.com/Khamel83/networth/pull/28) started from source
-candidate `24e91819088e4e301eba03d1f98b25cd8097c295`. The prior head
-`86d6d5d167e35ac2e9b05fb5c11d1304e955f55f` received a native review with
-findings about the TODO completion state and PR evidence. This follow-up keeps
-the managed Janitor rule unchanged and corrects only those factual records.
-All-PR eligibility, catalog exclusions, normal GitHub protections, and the
-single PASS gate remain as authorized.
-
-## Runtime and effects
-
-- Source scope: `AGENTS.md`, `TODO.md`, `CONTEXT.md`, and this handoff only.
-- Source operation: no runtime, provider, or deployment operation was performed
-  by this repair. The source-only documentation change is ready.
-- Merged source, merge receipt, deployment, durable runtime receipt, and
-  downstream effect: pending; none is established by this source-only change.
-
-## Next verification
-
-Run the managed-marker and diff checks, push the existing PR branch without
-force, let the natural webhook review the new head, then inspect native
-current-head reviews and recheck the PR state. After merge, verify the merge
-receipt, deployment, and downstream effect separately.
-## Fleet CI cancellation - source checkpoint (October 16, 2026)
-
-Prepared source on `feat/fleet-ci-cancellation-20261016` adds PR-only concurrency cancellation to `.github/workflows/tests.yml`. Native CI, review, and normal merge remain pending. No runtime or deployment change is claimed.

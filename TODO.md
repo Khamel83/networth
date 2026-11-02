@@ -2,7 +2,8 @@
 
 - [x] Production `GET /api/email` returns `paused_periods: ["December 2026"]`. Evidence: PR #43, merge `5a4e6a7`, checked November 2, 2026.
 - [ ] November 27: confirm the scheduled run skips with a notice and sends nothing.
-- [ ] January 1, 2027: confirm January pairings and match-email counts match, and that scheduled workflows stayed on. GitHub's 60-day shutoff was the risk the keep-alive now addresses. If the count is odd, confirm Natalie got the skip email.
+- [ ] January 1, 2027: confirm January pairings and match-email counts match, and that scheduled workflows stayed on. GitHub's 60-day shutoff was the risk the keep-alive now addresses. If the count is odd, confirm Natalie sat out and got the skip email, and that Ashley is next.
+- [ ] Owner: update the vault `CRON_SECRET` to match Vercel. It returned 403 from production on November 2, 2026. Scheduled runs are unaffected.
 
 ## Join signup follow-up (October 15, 2026)
 
@@ -18,20 +19,10 @@
   coverage transport is now advisory without weakening pytest.
 
 <!-- janitor:begin:todo -->
-- [ ] Complete PR #28's remaining deployment, durable receipt and downstream
-  verification follow-up. Source merged as `ef79caf5`; that merge does not
-  establish runtime adoption or downstream effect. Preserve the source-only
-  boundary until the corresponding evidence exists.
+- [x] PR #28 follow-up. Merged as `ef79caf5`; November 2026 scheduled pairings ran with 17 of 17 match emails accepted (run `41349485297`).
 <!-- janitor:end:todo -->
 
 ## Owner follow-ups (outside the janitor block)
 
 - [x] Repo stays public; `keep-alive.yml` re-enables schedules every 5 days, and the watchdog emails if GitHub disables them anyway (fix: Actions > Enable workflow)
 - [ ] Yearly: domain renewal, Resend domain check, CSV export of players/matches, reset Paid boxes at renewal
-
-## Owning repository plan
-
-Use [the ordered reconciliation](docs/REPO_PLAN.md) and [coordinator #34](https://github.com/Khamel83/networth/issues/34). It maps every observed open source record. Existing incomplete acceptance and holds remain in force.
-## Fleet CI cancellation - source checkpoint (October 16, 2026)
-
-- [x] `.github/workflows/tests.yml` has a prepared PR-only concurrency cancellation change on `feat/fleet-ci-cancellation-20261016`; native CI, review, and normal merge remain pending. No runtime change is claimed. Done (model-matched): https://github.com/Khamel83/networth/pull/39
