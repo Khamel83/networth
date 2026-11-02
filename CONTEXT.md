@@ -1,9 +1,3 @@
-## Current repository-plan checkpoint — October 11, 2026
-
-The owner requested one owning plan for every open TODO, issue and PR. [docs/REPO_PLAN.md](docs/REPO_PLAN.md) maps 3 unchecked source references and 2 open native records observed from `96cddfa99b834191ab521806f04c99c596091142`. G2K is the executor; coordinator34 tracks project-owned acceptance. Previous source prose below is retained as dated evidence, not refreshed runtime attestation.
-
-This source proposal requires trusted exact-head review, native CI and normal merge before audit35 is closed or finite sequencing is applied. Source, installation, ordinary receipt and downstream effect remain separate. Next: verify this PR’s current head and accepted native merge, then update the existing coordinator; resolve the explicitly listed next review/receipt/decision in plan order. No busy worker, host service, access policy or retry state was changed.
-
 # Net Worth Tennis Matching
 
 This context defines the language and invariants for assigning monthly matches in a small, dynamic women's tennis league.
@@ -63,7 +57,7 @@ A Player with prior valid results who re-enters the eligible roster after an abs
 _Avoid_: new player, inactive player
 
 **Admin flex**:
-A league administrator who voluntarily sits out according to the league's rotation rule when the eligible roster is odd so the remaining Players can be paired.
+A league administrator who voluntarily sits out when the eligible roster is odd so the remaining Players can be paired. Natalie and Ashley take this turn back and forth, whichever months are odd.
 _Avoid_: skipped player, exception player
 <!-- janitor:begin:recent -->
 ## Recent source activity
@@ -82,6 +76,3 @@ _Avoid_: skipped player, exception player
 - **Pending verification**: Confirm admin emails (monthly report + sign-ups) are sent to both admins.
 - **Pending verification**: Verify atomic score corrections work end-to-end via the DB function.
 <!-- janitor:end:recent -->
-## Fleet CI cancellation - source checkpoint (October 16, 2026)
-
-`.github/workflows/tests.yml` has a prepared source change on `feat/fleet-ci-cancellation-20261016` that coalesces superseded pull-request runs and leaves main, manual, release, and scheduled runs non-canceling. Native CI, review, and normal merge remain pending; no runtime change is claimed.

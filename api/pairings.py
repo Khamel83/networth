@@ -13,7 +13,7 @@ from datetime import datetime, date
 from api.sentry_init import init_sentry
 from api.reliability import preflight, try_start_run, append_event, update_run
 from api.matching import build_pairing_plan
-from api.league_calendar import is_paused_period, paused_periods_before
+from api.league_calendar import is_paused_period
 from api.email_delivery import (
     build_delivery_rows,
     deliver_batch,
@@ -128,14 +128,40 @@ def is_admin_flex(player):
     return email in ['nmcoffen@gmail.com', 'ashleybrooke.kaufman@gmail.com']
 
 
-def _period_month(period_label):
-    """Return the pairing period's month, falling back to the current month."""
-    if period_label:
-        try:
-            return datetime.strptime(period_label.strip(), '%B %Y').month
-        except (AttributeError, ValueError):
-            pass
-    return datetime.now().month
+# The odd-count turn passes back and forth like a chip. It has a fixed starting
+# point: Ashley sat out November 2026, the last month before this rule took effect.
+_ORGANIZER_SKIP_START = datetime(2026, 11, 1)
+
+
+def _parse_period(period_label):
+    try:
+        return datetime.strptime(period_label.strip(), '%B %Y')
+    except (AttributeError, ValueError):
+        return None
+
+
+def _ashley_sat_out_last(natalie_id, ashley_id, all_assignments, period_label):
+    """Find who sat out last: the organizer missing from a month the other played in.
+
+    Months where both or neither played pass no turn, so paused months count for
+    nothing. Saved assignments are the only input, so a dry run and a real run
+    always agree.
+    """
+    target = _parse_period(period_label)
+    played_by_month = {}
+    for row in all_assignments or []:
+        month = _parse_period(row.get('period_label'))
+        if month is None or month <= _ORGANIZER_SKIP_START or (target and month >= target):
+            continue
+        played_by_month.setdefault(month, set()).update(
+            (row.get('player1_id'), row.get('player2_id'))
+        )
+    for month in sorted(played_by_month, reverse=True):
+        natalie_played = natalie_id in played_by_month[month]
+        ashley_played = ashley_id in played_by_month[month]
+        if natalie_played != ashley_played:
+            return natalie_played
+    return True
 
 
 def generate_pairings(players, blocked_pairs, all_assignments, all_matches, period_label=None):
@@ -160,12 +186,10 @@ def generate_pairings(players, blocked_pairs, all_assignments, all_matches, peri
             (p for p in available_players if p.get('email', '').lower() == 'ashleybrooke.kaufman@gmail.com'),
             None,
         )
-        # A paused month has no pairings, so it must not use up a turn;
-        # otherwise the same organizer would sit out on both sides of the pause.
-        is_odd_month = (_period_month(period_label) + paused_periods_before(period_label)) % 2 == 1
-        removed_player = None
-        if is_odd_month:
-            removed_player = ashley or natalie
+        if natalie and ashley:
+            removed_player = natalie if _ashley_sat_out_last(
+                natalie['id'], ashley['id'], all_assignments, period_label
+            ) else ashley
         else:
             removed_player = natalie or ashley
         if removed_player is None:
