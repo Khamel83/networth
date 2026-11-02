@@ -285,6 +285,8 @@ checkbox.addEventListener('change', async () => {
 ### GitHub Repo Secrets:
 - `SITE_URL`, `CRON_SECRET`, `SUPABASE_URL`, `SUPABASE_ANON_KEY` (keep-alive only)
 
+**Never commit private data:** this repo is public. Secrets stay in Vercel, GitHub secrets or the vault, not in the repo, even encrypted: an encrypted file's name is still public. Member data stays in Supabase. GitHub push protection and the Public Repo Check in CI enforce this.
+
 **Public repo (keep it public):** GitHub disables scheduled workflows on public repos after 60 days without activity; the Vercel watchdog emails the owner the next morning, and the fix is Actions > Enable workflow. Do not make the repo private: on this account private-repo jobs use paid GitHub-hosted minutes and failed instantly without starting (September 2026). Never commit secrets or member data; the repo is public.
 
 ### Critical Reliability Notes (March 2026)

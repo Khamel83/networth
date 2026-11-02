@@ -63,3 +63,11 @@ htmlcov/
 
 # Session transcripts: file names can name members
 docs/sessions/
+
+# Private data never belongs in this public repo
+.env.*
+!.env.example
+*.age
+*.dump
+*.bak
+supabase-export*

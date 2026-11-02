@@ -12,6 +12,23 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  public-repo-check:
+    name: Public Repo Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Refuse private files
+        run: |
+          blocked=$(git ls-files | grep -E '(^|/)\.env($|\.)|\.(csv|db|sqlite3?|age|dump|bak)$|^docs/sessions/' | grep -v '^\.env\.example$' || true)
+          if [ -n "$blocked" ]; then
+            echo "These files must not be in this public repo:"
+            echo "$blocked"
+            exit 1
+          fi
+
   api-tests:
     name: API Unit Tests
     runs-on: ubuntu-latest

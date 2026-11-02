@@ -8,7 +8,8 @@
 ## Public repo exposure (November 2, 2026)
 
 - [x] Rewrite `master` history to remove member data and exposed values. Done and force-pushed November 2, 2026; final file tree unchanged.
-- [ ] Ashley: revoke the Gmail app password exposed from January 2026 (`myaccount.google.com/apppasswords`). The code pointed `SMTP_USER` at Ashley's address until January 10, 2026, so this is probably Ashley's account; not tested. The code no longer uses it.
+- [x] Gmail app password deleted (owner reported Ashley's confirmation, November 2, 2026).
+- [x] GitHub secret scanning and push protection enabled; the one alert, a dead Resend key, is resolved as revoked.
 - [ ] Owner: ask GitHub Support to purge cached commits and `refs/pull/*`. Until then, old commits still open by exact hash, including the `.env.vercel` commit.
 
 ## Join signup follow-up (October 15, 2026)
