@@ -12,6 +12,10 @@
 - [x] GitHub secret scanning and push protection enabled; the one alert, a dead Resend key, is resolved as revoked.
 - [x] GitHub Support purge request submitted November 2, 2026, from khamel83@gmail.com. Confirmation page shown; purge not yet confirmed. Old commits keep opening by exact hash until Support acts. No further work is planned: the owner accepts what remains.
 
+## Parked
+
+- [ ] Rolling annual memberships: waiting on the owner. See [the proposal](docs/proposals/rolling-memberships.md). Nothing is built.
+
 ## Join signup follow-up (October 15, 2026)
 
 - [x] Add a return-after-Venmo note to `/join`. Evidence: PR #37, merge `02472f0`, live page checked.
