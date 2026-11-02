@@ -3,7 +3,7 @@
 - [x] Production `GET /api/email` returns `paused_periods: ["December 2026"]`. Evidence: PR #43, merge `5a4e6a7`, checked November 2, 2026.
 - [ ] November 27: confirm the scheduled run skips with a notice and sends nothing.
 - [ ] January 1, 2027: confirm January pairings and match-email counts match, and that scheduled workflows stayed on. GitHub's 60-day shutoff was the risk the keep-alive now addresses. If the count is odd, confirm Natalie sat out and got the skip email, and that Ashley is next.
-- [x] Vault `CRON_SECRET` left as is (decision, November 2, 2026). It returns 403 from production, but scheduled jobs use the GitHub copy. Rotating adds risk to pairings for no league benefit. Agents check runs through GitHub Actions logs instead.
+- [ ] Copy the production `CRON_SECRET` from Vercel into the vault as `NETWORTH_CRON_SECRET` (owner request, November 2, 2026). Blocked: this agent connection needs Vercel team access, and GitHub secrets cannot be read. Do not change the Vercel or GitHub values. The existing vault `CRON_SECRET` gets 401 from production; it lives in the shared `services.env`, so check other users before overwriting it. Scheduled jobs are unaffected.
 
 ## Public repo exposure (November 2, 2026)
 
