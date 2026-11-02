@@ -7,8 +7,9 @@
 
 ## Public repo exposure (November 2, 2026)
 
-- [ ] Owner: revoke the old Gmail app password exposed in commit `926fd8a` (`SMTP_PASSWORD`, from before the Resend move). Vercel no longer needs it.
-- [ ] Owner decision: rewrite git history to remove the 2025 member CSV and `public/ladder.json` (commit `87d70c5` and `7074e2a`). Not done; already-public copies cannot be recalled.
+- [x] Rewrite `master` history to remove member data and exposed values. Done and force-pushed November 2, 2026; final file tree unchanged.
+- [ ] Ashley: revoke the Gmail app password exposed from January 2026 (`myaccount.google.com/apppasswords`). The code pointed `SMTP_USER` at Ashley's address until January 10, 2026, so this is probably Ashley's account; not tested. The code no longer uses it.
+- [ ] Owner: ask GitHub Support to purge cached commits and `refs/pull/*`. Until then, old commits still open by exact hash, including the `.env.vercel` commit.
 
 ## Join signup follow-up (October 15, 2026)
 
