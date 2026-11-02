@@ -109,12 +109,12 @@ ssh macmini-ts "cd ~/github/PROJECT && gemini 'prompt'"
 
 All web search routes through Argus on homelab.
 
-- **HTTP API**: `http://100.112.130.100:8270/api/search`
+- **HTTP API**: `http://$ARGUS_HOST:8270/api/search`
 - **MCP tool** (Claude Code): `mcp__argus__search_web` — registered in `~/.claude/settings.json`
 
 ```bash
 # From code
-curl -s -X POST http://100.112.130.100:8270/api/search \
+curl -s -X POST http://$ARGUS_HOST:8270/api/search \
   -H "Content-Type: application/json" \
   -d '{"query": "...", "mode": "discovery"}'
 

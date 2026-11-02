@@ -8,6 +8,8 @@ Organizer skip: an organizer who sits out now gets an email. The turn now passes
 
 Stale records closed the same day: PRs #28, #29 and #39 are merged, issues #34 and #35 are closed, and scheduled November pairings matched 17 emails to 17 assignments.
 
+Public repo audit, November 2, 2026: the current files have no live keys or member contact data. `docs/sessions` was removed because its encrypted files had plaintext names that identified a member, and `.gitignore` now blocks that folder. Git history was not rewritten and still holds a 2025 member CSV (42 emails, 41 phones) and `.env.vercel` from commit `926fd8a`. That file's Resend key is rejected by Resend. Its Gmail app password was not tested.
+
 Open: the `CRON_SECRET` from `secrets get` returned 403 from production `GET /api/pairings` on November 2, 2026, so that vault copy does not match Vercel. Scheduled runs use the GitHub secret and worked on November 1.
 
 Cleanup, November 2, 2026, at the owner's request: local `master` was reset to origin, and all 6 local `auto-wip` branches and 37 remote branches were deleted. Everything, including the 3 unpublished janitor commits, is in `~/archive/git-bundles/networth-all-branches-20261102.bundle` on the Mac mini, with a ref list beside it. The janitor cron has been disabled since July 2026.

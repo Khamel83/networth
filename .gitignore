@@ -60,3 +60,6 @@ htmlcov/
 # Railway
 .railway/
 .vercel/
+
+# Session transcripts: file names can name members
+docs/sessions/
