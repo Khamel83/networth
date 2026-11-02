@@ -1,6 +1,7 @@
 ## December 2026 league pause (November 2, 2026)
 
-- [ ] After merge, confirm production `GET /api/email` returns `paused_periods: ["December 2026"]`, then confirm the November 27 run skips with a notice and sends nothing.
+- [x] Production `GET /api/email` returns `paused_periods: ["December 2026"]`. Evidence: PR #43, merge `5a4e6a7`, checked November 2, 2026.
+- [ ] November 27: confirm the scheduled run skips with a notice and sends nothing.
 - [ ] January 1, 2027: confirm January pairings and match-email counts match.
 
 ## Join signup follow-up (October 15, 2026)
