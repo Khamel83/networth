@@ -10,7 +10,7 @@
 - [x] Rewrite `master` history to remove member data and exposed values. Done and force-pushed November 2, 2026; final file tree unchanged.
 - [x] Gmail app password deleted (owner reported Ashley's confirmation, November 2, 2026).
 - [x] GitHub secret scanning and push protection enabled; the one alert, a dead Resend key, is resolved as revoked.
-- [ ] Owner: ask GitHub Support to purge cached commits and `refs/pull/*`. Until then, old commits still open by exact hash, including the `.env.vercel` commit.
+- [x] GitHub Support purge request submitted November 2, 2026, from khamel83@gmail.com. Confirmation page shown; purge not yet confirmed. Old commits keep opening by exact hash until Support acts. No further work is planned: the owner accepts what remains.
 
 ## Join signup follow-up (October 15, 2026)
 
