@@ -3,7 +3,7 @@
 - [x] Production `GET /api/email` returns `paused_periods: ["December 2026"]`. Evidence: PR #43, merge `5a4e6a7`, checked November 2, 2026.
 - [ ] November 27: confirm the scheduled run skips with a notice and sends nothing.
 - [ ] January 1, 2027: confirm January pairings and match-email counts match, and that scheduled workflows stayed on. GitHub's 60-day shutoff was the risk the keep-alive now addresses. If the count is odd, confirm Natalie sat out and got the skip email, and that Ashley is next.
-- [ ] Owner: update the vault `CRON_SECRET` to match Vercel. It returned 403 from production on November 2, 2026. Scheduled runs are unaffected.
+- [x] Vault `CRON_SECRET` left as is (decision, November 2, 2026). It returns 403 from production, but scheduled jobs use the GitHub copy. Rotating adds risk to pairings for no league benefit. Agents check runs through GitHub Actions logs instead.
 
 ## Public repo exposure (November 2, 2026)
 
@@ -15,8 +15,8 @@
 ## Join signup follow-up (October 15, 2026)
 
 - [x] Add a return-after-Venmo note to `/join`. Evidence: PR #37, merge `02472f0`, live page checked.
-- [ ] Owner retests signup on the live site.
-- [ ] Owner decision: deactivate Natalie's test signup. Send no email without explicit approval. Jessica and Mae need no follow-up (owner, November 2, 2026).
+- [x] Owner retested signup (owner, November 2, 2026).
+- [x] Natalie's test signup handled (owner, November 2, 2026). Jessica and Mae need no follow-up.
 
 ## PR29 acceptance repair
 
