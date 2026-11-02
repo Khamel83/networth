@@ -13,6 +13,7 @@ from datetime import datetime, date
 from api.sentry_init import init_sentry
 from api.reliability import preflight, try_start_run, append_event, update_run
 from api.matching import build_pairing_plan
+from api.league_calendar import is_paused_period
 from api.email_delivery import (
     build_delivery_rows,
     deliver_batch,
@@ -364,6 +365,10 @@ class handler(BaseHTTPRequestHandler):
             period_label = data.get('period_label', datetime.now().strftime('%B %Y'))
             period_type = data.get('period_type', 'month')
             self._run_period = period_label
+
+            if is_paused_period(period_label):
+                self._send_error(409, f"{period_label} is paused: the league has no matches that month.")
+                return
 
             run_id, lock_error = try_start_run('generate_pairings', period_label, {
                 'source': 'api/pairings',

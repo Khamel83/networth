@@ -1,3 +1,11 @@
+## December 2026 league pause — November 2, 2026
+
+November automation evidence: the October 31 final reminder reported 51 accepted. Run `41349485297` on November 1 created 17 pairings with 17 match emails accepted, and run `41360828765` read back 17 assignments, each with a match email ID.
+
+Decision: organizers want no December matches and a restart in January. `PAUSED_PERIODS` in `api/league_calendar.py` holds December 2026; `RUNBOOK.md` has the date table. Source state is in this checkpoint's PR; deployment and the November 27 skip remain unverified until the TODO items close. No email was sent and no workflow was dispatched.
+
+Cleanup: remove temporary worktree `.worktrees/december-pause` after merge. Local `master` in the primary checkout has 3 unpublished janitor commits and is 45 behind origin; it was left as is.
+
 ## Join page Venmo return note — October 15, 2026
 
 Source: PR [#37](https://github.com/Khamel83/networth/pull/37) merged as `02472f0`. It adds a line under the

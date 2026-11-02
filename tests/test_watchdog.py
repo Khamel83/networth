@@ -248,3 +248,46 @@ def test_accepted_email_for_a_different_pairing_does_not_count():
     problems, summary = run_watchdog(fake(db), now=NOW)
     assert summary['match_emails_accepted'] == 1
     assert any('Only 1 of 2 October 2026 match emails' in p for p in problems)
+
+
+def _actions(year, month, day):
+    return {(a, p) for a, p, _ in expected_jobs(datetime(year, month, day).date())}
+
+
+def test_paused_december_expects_no_december_jobs_or_emails_about_it():
+    assert _actions(2026, 11, 28) == set()
+    assert _actions(2026, 12, 2) == set()
+    assert _actions(2026, 12, 3) == {('send_monthly_report', 'November 2026')}
+    assert _actions(2026, 12, 16) == set()
+
+
+def test_january_restart_stays_fully_checked():
+    assert ('send_availability_check', 'December 2026') in _actions(2026, 12, 28)
+    jan2 = _actions(2027, 1, 2)
+    assert ('generate_pairings', 'January 2027') in jan2
+    assert ('send_final_reminder', 'December 2026') in jan2
+    assert ('send_availability_check', 'December 2026') in jan2
+    assert ('send_monthly_report', 'December 2026') not in _actions(2027, 1, 3)
+
+
+def test_other_months_are_not_paused():
+    assert ('generate_pairings', 'December 2027') in _actions(2027, 12, 2)
+    assert ('send_availability_check', 'November 2027') in _actions(2027, 11, 28)
+
+
+def test_watchdog_quiet_in_paused_month_with_no_pairings():
+    problems, summary = run_watchdog(fake({}), now=datetime(2026, 12, 10, 16, tzinfo=timezone.utc))
+    assert problems == []
+    assert summary['paused'] is True
+    assert 'league paused' in watchdog_email_html([], summary)
+
+
+def test_watchdog_flags_pairings_in_paused_month():
+    db = {'match_assignments': [{'id': 1, 'period_label': 'December 2026'}]}
+    problems, _ = run_watchdog(fake(db), now=datetime(2026, 12, 10, 16, tzinfo=timezone.utc))
+    assert any('is paused' in p for p in problems)
+
+
+def test_watchdog_still_alarms_if_january_has_no_pairings():
+    problems, _ = run_watchdog(fake({}), now=datetime(2027, 1, 10, 16, tzinfo=timezone.utc))
+    assert any('no January 2027 pairings' in p for p in problems)
