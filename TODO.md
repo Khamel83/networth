@@ -8,7 +8,7 @@
 
 - [x] Add a return-after-Venmo note to `/join`. Evidence: PR #37, merge `02472f0`, live page checked.
 - [ ] Owner retests signup on the live site.
-- [ ] Owner decision: deactivate Natalie's test signup; follow up with Jessica and Mae, who paid without registering. Send no email without explicit approval.
+- [ ] Owner decision: deactivate Natalie's test signup. Send no email without explicit approval. Jessica and Mae need no follow-up (owner, November 2, 2026).
 
 ## PR29 acceptance repair
 

@@ -732,7 +732,7 @@ def get_sitout_confirmation_email_html(player_name, period_label):
     """
 
 
-def get_admin_skip_email_html(first_name, month):
+def get_admin_skip_email_html(first_name, other_organizer, month):
     """Tells an organizer they are the one sitting out an odd-numbered month"""
     return f"""
     <!DOCTYPE html>
@@ -744,11 +744,11 @@ def get_admin_skip_email_html(first_name, month):
                 <h1>You're Sitting Out {month}</h1>
             </div>
             <div class="content">
-                <p>Hi {first_name},</p>
+                <p>Hey {first_name},</p>
 
                 <p>We have an odd number of players for {month}, so it's your turn to sit out. You don't have a match this month, and there's nothing you need to do.</p>
 
-                <p>You and the other organizer take turns when the count is odd. The other organizer sits out next time.</p>
+                <p>You and {other_organizer} take turns when the count is odd. {other_organizer} sits out next time.</p>
             </div>
         </div>
     </body>

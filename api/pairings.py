@@ -188,6 +188,11 @@ def generate_pairings(players, blocked_pairs, all_assignments, all_matches, peri
     return plan['pairings'], skipped, set(plan['forced_repeats'])
 
 
+def _other_organizer(admin):
+    is_natalie = admin.get('email', '').lower() == 'nmcoffen@gmail.com'
+    return 'Ashley' if is_natalie else 'Natalie'
+
+
 def _send_admin_skip_notices(skipped, period_label, run_id):
     """Tell an organizer they sit out. Never affects the pairing run's result.
 
@@ -208,7 +213,9 @@ def _send_admin_skip_notices(skipped, period_label, run_id):
             'from': SENDER_EMAIL,
             'to': [admin['email']],
             'subject': f"You're sitting out {month} (odd number of players)",
-            'html': get_admin_skip_email_html(admin['name'].split()[0], month),
+            'html': get_admin_skip_email_html(
+                admin['name'].split()[0], _other_organizer(admin), month
+            ),
             'reply_to': REPLY_TO_EMAIL,
         } for admin in admins]
         logical_messages = [{
