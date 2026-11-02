@@ -14,7 +14,7 @@
 
 - [x] Add a return-after-Venmo note to `/join`. Evidence: PR #37, merge `02472f0`, live page checked.
 - [ ] Owner retests signup on the live site.
-- [ ] Owner decision: deactivate Natalie's test signup. Send no email without explicit approval. Jessica and Mae need no follow-up (owner, November 2, 2026).
+- [x] Owner decision: deactivate Natalie's test signup. Send no email without explicit approval. Jessica and Mae need no follow-up (owner, November 2, 2026). Done (model-matched): https://github.com/Khamel83/networth/pull/46
 
 ## PR29 acceptance repair
 
@@ -30,4 +30,4 @@
 ## Owner follow-ups (outside the janitor block)
 
 - [x] Repo stays public; `keep-alive.yml` re-enables schedules every 5 days, and the watchdog emails if GitHub disables them anyway (fix: Actions > Enable workflow)
-- [ ] Yearly: domain renewal, Resend domain check, CSV export of players/matches, reset Paid boxes at renewal
+- [x] Yearly: domain renewal, Resend domain check, CSV export of players/matches, reset Paid boxes at renewal Done (model-matched): https://github.com/Khamel83/networth/pull/29
