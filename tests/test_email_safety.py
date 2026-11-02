@@ -131,6 +131,7 @@ def test_email_status_exposes_delivery_mode(monkeypatch):
 
     payload = json.loads(instance.wfile.write.call_args[0][0].decode())
     assert payload['delivery_mode'] == 'disabled'
+    assert payload['paused_periods'] == ['December 2026']
 
 
 def test_provider_send_calls_are_only_in_email_module():

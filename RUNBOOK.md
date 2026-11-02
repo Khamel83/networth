@@ -4,6 +4,27 @@ This document covers routine operations and what to do when things go wrong. Des
 
 ---
 
+## League Pause: December 2026
+
+Organizers decided in November 2026 that the league has no December matches and restarts in January. `api/league_calendar.py` lists the paused month, and the site, watchdog, and workflows all read that list.
+
+| Date | Job | During the pause |
+|------|-----|------------------|
+| Nov 15 | November mid-month reminder | Sends |
+| Nov 27 and Nov 30 | Availability emails about December | Skipped |
+| Dec 1 | December pairings and pairing check | Skipped; **Generate Pairings** on the admin page is refused |
+| Dec 2 | November report to organizers | Sends |
+| Dec 15 | December mid-month reminder | Skipped |
+| Dec 27 and Dec 31 | Availability emails about January | Send |
+| Jan 1 | January pairings and match emails | Run as usual; every reliability check applies |
+| Jan 2 | December report to organizers | Skipped |
+
+The code sends no announcement. Organizers tell members about the pause themselves.
+
+To pause another month, add its exact label to `PAUSED_PERIODS` on an organizer's explicit decision and add a row here. Any unlisted month without pairings is still an incident.
+
+---
+
 ## What Runs Automatically (Autopilot)
 
 These processes run without any human intervention:

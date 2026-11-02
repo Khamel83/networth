@@ -1,3 +1,8 @@
+## December 2026 league pause (November 2, 2026)
+
+- [ ] After merge, confirm production `GET /api/email` returns `paused_periods: ["December 2026"]`, then confirm the November 27 run skips with a notice and sends nothing.
+- [ ] January 1, 2027: confirm January pairings and match-email counts match.
+
 ## Join signup follow-up (October 15, 2026)
 
 - [x] Add a return-after-Venmo note to `/join`. Evidence: PR #37, merge `02472f0`, live page checked.

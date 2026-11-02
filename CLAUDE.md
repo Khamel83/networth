@@ -19,6 +19,9 @@ the runner's current hour. A pairing run requires live delivery, a positive
 pairing count, and confirmed match-email count equal to created assignments;
 unresolved outcomes must fail loudly and require reconciliation. Status,
 welcome, or availability emails never prove that match picks were delivered.
+The only exception is an exact month in `PAUSED_PERIODS`
+(`api/league_calendar.py`), added on an organizer's explicit decision. December
+2026 is paused; see `RUNBOOK.md`.
 
 ---
 

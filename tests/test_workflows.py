@@ -92,3 +92,16 @@ def test_daily_health_check_uses_canonical_site_host():
     source, _ = _workflow('daily-health-check.yml')
     assert 'SITE_URL: https://www.networthtennis.com' in source
     assert 'SITE_URL: https://networthtennis.com' not in source
+
+
+def test_every_month_dependent_workflow_honors_the_league_calendar():
+    for name in ('biweekly-emails.yml', 'daily-health-check.yml', 'monthly-report.yml'):
+        source, _ = _workflow(name)
+        assert 'paused_periods' in source
+
+
+def test_pause_gate_reads_status_and_fails_when_unreadable():
+    source, _ = _workflow('biweekly-emails.yml')
+    assert 'Unable to read the league calendar' in source
+    assert 'monthly_availability|final_availability)' in source
+    assert '+1 month' in source

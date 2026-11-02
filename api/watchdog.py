@@ -15,6 +15,8 @@ from calendar import monthrange
 from datetime import datetime, timedelta, timezone
 from html import escape
 
+from api.league_calendar import is_paused_period, next_period
+
 # Statuses in automation_runs that mean a job did not finish cleanly
 _BAD_RUN_STATUSES = {'failed_terminal', 'preflight_failed', 'postcheck_failed', 'repairing'}
 _LOOKBACK_DAYS = 10
@@ -52,7 +54,14 @@ def expected_jobs(today):
         jobs.append(('send_midmonth_reminders', this_month, f'{this_month} mid-month reminders (15th)'))
     if 28 <= day <= last_day:
         jobs.append(('send_availability_check', this_month, f'{this_month} availability check (27th)'))
-    return jobs
+    return [job for job in jobs if not _skipped_by_pause(job[0], job[1])]
+
+
+def _skipped_by_pause(action, period):
+    # Availability emails sent during a month ask about the following month
+    if action in ('send_availability_check', 'send_final_reminder'):
+        return is_paused_period(next_period(period))
+    return is_paused_period(period)
 
 
 def run_watchdog(table, now=None):
@@ -110,7 +119,11 @@ def run_watchdog(table, now=None):
         else:
             count = len(pairs.data or [])
             summary['pairings'] = count
-            if count == 0:
+            if is_paused_period(this_month):
+                summary['paused'] = True
+                if count:
+                    problems.append(f"{this_month} is paused, but {count} pairings exist for it.")
+            elif count == 0:
                 problems.append(f"There are no {this_month} pairings. Players have not been matched this month.")
             elif today.day <= 7:
                 ledger = table('email_delivery_log').select('delivery_status,message_key')\
@@ -167,6 +180,8 @@ def watchdog_email_html(problems, summary):
         parts = [f"{summary.get('period')}: {summary.get('pairings', 0)} pairings"]
         if 'match_emails_accepted' in summary:
             parts.append(f"{summary['match_emails_accepted']} match emails confirmed")
+        if summary.get('paused'):
+            parts.append('league paused this month')
         body = '<p>' + escape(', '.join(parts)) + '. Every scheduled job ran.</p>'
         footer = 'Monthly check-in so you know the watchdog itself is still running.'
     return f"""

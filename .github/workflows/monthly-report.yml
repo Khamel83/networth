@@ -52,6 +52,8 @@ jobs:
       - name: Check email delivery mode (read-only)
         id: delivery-mode
         shell: bash
+        env:
+          PERIOD: ${{ steps.period.outputs.period }}
         run: |
           set -euo pipefail
           HTTP_STATUS=$(curl -sS -o /tmp/email-status.json -w "%{http_code}" "$SITE_URL/api/email")
@@ -63,6 +65,9 @@ jobs:
           echo "- delivery_mode: \`$MODE\`" >> "$GITHUB_STEP_SUMMARY"
           if [ "$MODE" != "live" ]; then
             echo "::notice::Email delivery is $MODE; the monthly report will not be sent."
+            echo "live=false" >> "$GITHUB_OUTPUT"
+          elif jq -e --arg period "$PERIOD" 'any(.paused_periods[]?; . == $period)' /tmp/email-status.json >/dev/null; then
+            echo "::notice::$PERIOD was paused; there is no report to send."
             echo "live=false" >> "$GITHUB_OUTPUT"
           else
             echo "live=true" >> "$GITHUB_OUTPUT"
