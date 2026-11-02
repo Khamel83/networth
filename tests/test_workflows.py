@@ -105,3 +105,11 @@ def test_pause_gate_reads_status_and_fails_when_unreadable():
     assert 'Unable to read the league calendar' in source
     assert 'monthly_availability|final_availability)' in source
     assert '+1 month' in source
+
+
+def test_keep_alive_reenables_every_scheduled_workflow():
+    source, parsed = _workflow('keep-alive.yml')
+    assert parsed['jobs']['keep-schedules-on']['permissions'] == {'actions': 'write'}
+    for name in ('biweekly-emails.yml', 'daily-health-check.yml', 'monthly-report.yml', 'keep-alive.yml'):
+        assert name in source
+    assert '/enable' in source

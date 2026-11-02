@@ -497,3 +497,58 @@ def test_unpaused_month_still_reaches_generation():
     status, _, start_run = _post_pairings({'period_label': 'January 2027'})
     assert status == 409
     start_run.assert_called_once()
+
+
+def _rotation_roster():
+    return [
+        make_player(str(i), f'Player {i}') for i in range(3)
+    ] + [
+        make_player('n', 'Natalie', email='nmcoffen@gmail.com'),
+        make_player('a', 'Ashley', email='ashleybrooke.kaufman@gmail.com'),
+    ]
+
+
+def _sits_out(period):
+    from api.pairings import generate_pairings
+    _, skipped, _ = generate_pairings(_rotation_roster(), [], [], [], period_label=period)
+    return [p['name'] for p in skipped]
+
+
+def test_paused_month_does_not_use_up_an_organizer_turn():
+    assert _sits_out('October 2026') == ['Natalie']
+    assert _sits_out('November 2026') == ['Ashley']
+    assert _sits_out('January 2027') == ['Natalie']
+    assert _sits_out('February 2027') == ['Ashley']
+
+
+def _skip_notice(skipped, deliver):
+    from unittest.mock import patch
+    import api.pairings as pairings
+    with patch.object(pairings, 'deliver_batch', deliver), \
+            patch.object(pairings, 'build_delivery_rows', return_value=[{}]):
+        return pairings._send_admin_skip_notices(skipped, 'November 2026', 'run-1')
+
+
+def test_skipped_organizer_gets_a_notice():
+    from unittest.mock import Mock
+    deliver = Mock(return_value={'outcome': 'accepted'})
+    ashley = make_player('a', 'Ashley Brooke Kaufman', email='ashleybrooke.kaufman@gmail.com')
+    assert _skip_notice([ashley], deliver) == 'accepted'
+    message = deliver.call_args[0][0][0]
+    assert message['to'] == ['ashleybrooke.kaufman@gmail.com']
+    assert 'sitting out November' in message['subject']
+    assert 'Hi Ashley,' in message['html']
+
+
+def test_non_organizer_gets_no_skip_notice():
+    from unittest.mock import Mock
+    deliver = Mock()
+    assert _skip_notice([make_player('x', 'Player X')], deliver) is None
+    deliver.assert_not_called()
+
+
+def test_skip_notice_failure_never_breaks_the_pairing_run():
+    from unittest.mock import Mock
+    deliver = Mock(side_effect=RuntimeError('provider down'))
+    ashley = make_player('a', 'Ashley', email='ashleybrooke.kaufman@gmail.com')
+    assert _skip_notice([ashley], deliver) == 'pre_send_failure'

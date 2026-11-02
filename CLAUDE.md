@@ -30,7 +30,7 @@ The only exception is an exact month in `PAUSED_PERIODS`
 ### To change colors/copy/branding:
 - Website CSS: Variables at top of each `public/*.html` file
 - Logo: animated sparkle `public/logo.webp` (hero/page logos) and `public/logo-small.webp` (headers/footers), with `*-still.webp` served via `<picture>` to `prefers-reduced-motion` users; static `public/favicon.png` and `public/apple-touch-icon.png`. All cut from the crystal tennis-ball GIF as transparent circles
-- Email templates: `api/email.py` (all 10 templates with inline styles)
+- Email templates: `api/email.py` (all 11 templates with inline styles)
 
 ### To add a player:
 Players self-register via join page → immediately active → can log in right away
@@ -47,7 +47,7 @@ Players self-register via join page → immediately active → can log in right 
 - `api/pairings.py` - Pairing orchestration, validation, and match emails
 - `api/matching.py` - General-graph maximum-weight pairing solver
 - `api/ratings.py` - Deterministic uncertainty-aware ratings from valid two-set results
-- `api/email.py` - Resend API sender + 10 email templates (including admin alerts, monthly report, signup notice); `ORGANIZER_EMAILS` = Natalie + Ashley
+- `api/email.py` - Resend API sender + 11 email templates (including admin alerts, monthly report, signup notice); `ORGANIZER_EMAILS` = Natalie + Ashley
 - `api/email_delivery.py` - Canonical delivery ledger and stable-key reconciliation
 - `api/email_policy.py` - Disabled-by-default delivery and protected-action policy
 - `api/join.py` - Player registration (handles re-registration of inactive accounts)
@@ -59,7 +59,7 @@ Players self-register via join page → immediately active → can log in right 
 - `.github/workflows/biweekly-emails.yml` - Scheduled email automation
 - `.github/workflows/daily-health-check.yml` - Daily read-only health check
 - `.github/workflows/monthly-report.yml` - Monthly report email to Natalie + Ashley (kept separate from pairing automation)
-- `.github/workflows/keep-alive.yml` - Pings Supabase every 5 days so the free tier never pauses
+- `.github/workflows/keep-alive.yml` - Every 5 days: pings Supabase so the free tier never pauses, and re-enables scheduled workflows so GitHub's 60-day shutoff never lands
 - `.github/workflows/tests.yml` - CI/CD test runner
 - (Removed Sept 2026: `backup.yml` - it never saved anything and, in this public repo, would have published member PII. Do not reintroduce a backup that commits data to the repo.)
 - `supabase-final-setup.sql` - Database schema, triggers, and functions
