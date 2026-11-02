@@ -1,5 +1,7 @@
 # networth repository plan
 
+Historical, October 11, 2026. Issues #34 and #35 are closed and PRs #28 and #29 are merged. `TODO.md` holds current work.
+
 ## Repository work reconciliation — October 11, 2026
 
 You own this repository plan. G2K executes its admitted native jobs. [Coordinator #34](https://github.com/Khamel83/networth/issues/34) tracks this plan and remains parked. Docs and todo.khamel.com publish projections.

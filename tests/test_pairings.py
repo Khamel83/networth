@@ -277,54 +277,6 @@ class TestExhaustionAlgorithm:
             assert p['player2']['id'] != 2
 
 
-class TestAdminFlexRotation:
-    """Odd-count pairing must rotate the admin skip predictably."""
-
-    def test_ashley_plays_in_august_when_count_is_odd(self):
-        players = [
-            make_player(1, 'Ashley Kaufman', email='ashleybrooke.kaufman@gmail.com'),
-            make_player(2, 'Natalie Coffen', email='nmcoffen@gmail.com'),
-            make_player(3, 'C'),
-            make_player(4, 'D'),
-            make_player(5, 'E'),
-        ]
-
-        pairings, skipped, _ = generate_pairings(
-            players, [], [], [], period_label='August 2026'
-        )
-
-        assert [p['email'] for p in skipped] == ['nmcoffen@gmail.com']
-        assert any(
-            'ashleybrooke.kaufman@gmail.com' in [
-                pairing['player1']['email'], pairing['player2']['email']
-            ]
-            for pairing in pairings
-        )
-
-    def test_admin_skip_alternates_for_the_following_month(self):
-        players = [
-            make_player(1, 'Ashley Kaufman', email='ashleybrooke.kaufman@gmail.com'),
-            make_player(2, 'Natalie Coffen', email='nmcoffen@gmail.com'),
-            make_player(3, 'C'),
-            make_player(4, 'D'),
-            make_player(5, 'E'),
-        ]
-
-        pairings, skipped, _ = generate_pairings(
-            players, [], [], [], period_label='September 2026'
-        )
-
-        assert [p['email'] for p in skipped] == ['ashleybrooke.kaufman@gmail.com']
-        assert all(
-            'ashleybrooke.kaufman@gmail.com' not in [
-                pairing['player1']['email'], pairing['player2']['email']
-            ]
-            for pairing in pairings
-        )
-
-
-# ─── Pre-Send Validation Gate ────────────────────────────────────────────────
-
 class TestValidationGate:
     """
     Test the validation checks in do_POST before insert/email.
@@ -508,17 +460,55 @@ def _rotation_roster():
     ]
 
 
-def _sits_out(period):
+def _sits_out(period, history=()):
     from api.pairings import generate_pairings
-    _, skipped, _ = generate_pairings(_rotation_roster(), [], [], [], period_label=period)
+    assignments = [
+        {'player1_id': first, 'player2_id': second, 'period_label': month}
+        for month, first, second in history
+    ]
+    _, skipped, _ = generate_pairings(_rotation_roster(), [], assignments, [], period_label=period)
     return [p['name'] for p in skipped]
 
 
-def test_paused_month_does_not_use_up_an_organizer_turn():
-    assert _sits_out('October 2026') == ['Natalie']
-    assert _sits_out('November 2026') == ['Ashley']
+def test_natalie_is_next_in_january_after_ashley_sat_out_november():
     assert _sits_out('January 2027') == ['Natalie']
-    assert _sits_out('February 2027') == ['Ashley']
+
+
+def test_turn_passes_back_and_forth_however_the_months_fall():
+    # The old rule picked by calendar month. Odd counts in February, April and
+    # June would have made the same organizer sit out all three.
+    history = [('January 2027', 'a', '0')]  # Natalie sat out
+    assert _sits_out('February 2027', history) == ['Ashley']
+    history.append(('February 2027', 'n', '0'))  # Ashley sat out
+    assert _sits_out('April 2027', history) == ['Natalie']
+    history.append(('April 2027', 'a', '0'))  # Natalie sat out
+    assert _sits_out('June 2027', history) == ['Ashley']
+
+
+def test_even_month_where_both_played_keeps_the_turn():
+    history = [
+        ('January 2027', 'a', '0'),  # Natalie sat out
+        ('February 2027', 'n', '0'),
+        ('February 2027', 'a', '1'),  # Both played
+    ]
+    assert _sits_out('March 2027', history) == ['Ashley']
+
+
+def test_only_months_before_this_one_count():
+    history = [('January 2027', 'a', '0'), ('March 2027', 'n', '0')]
+    assert _sits_out('February 2027', history) == ['Ashley']
+
+
+def test_months_before_the_starting_point_are_ignored():
+    assert _sits_out('January 2027', [('October 2026', 'n', '0')]) == ['Natalie']
+
+
+def test_unavailable_organizer_cannot_be_chosen():
+    from api.pairings import generate_pairings
+    # Three players plus Ashley, plus one more to keep the count odd without Natalie.
+    roster = [p for p in _rotation_roster() if p['name'] != 'Natalie'] + [make_player('x', 'Player X')]
+    _, skipped, _ = generate_pairings(roster, [], [], [], period_label='January 2027')
+    assert [p['name'] for p in skipped] == ['Ashley']
 
 
 def _skip_notice(skipped, deliver):

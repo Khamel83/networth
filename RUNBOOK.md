@@ -21,7 +21,7 @@ Organizers decided in November 2026 that the league has no December matches and 
 
 The code sends no announcement. Organizers tell members about the pause themselves.
 
-When the player count is odd, Natalie or Ashley sits out, and that organizer gets an email. The paused month does not use up a turn: Ashley sat out November 2026, so Natalie is next in January 2027 if the count is odd.
+When the player count is odd, Natalie or Ashley sits out, and that organizer gets an email. The turn passes back and forth, whichever months are odd: whoever sat out last plays next time. Ashley sat out November 2026, so Natalie is next, in January 2027 if that count is odd. The system reads this from saved pairings: a month where only one of them was paired counts as the other one sitting out, even after a voluntary pause. Months where both or neither played, including paused months, change nothing.
 
 To pause another month, add its exact label to `PAUSED_PERIODS` on an organizer's explicit decision and add a row here. Any unlisted month without pairings is still an incident.
 
