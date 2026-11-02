@@ -6,7 +6,27 @@ on:
     - cron: '0 12 */5 * *'
   workflow_dispatch: # Manual trigger
 
+permissions:
+  contents: read
+
 jobs:
+  # GitHub turns off scheduled workflows on public repos after 60 days without
+  # activity. Re-enabling them through the API counts as activity.
+  keep-schedules-on:
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - name: Re-enable scheduled workflows
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          for workflow in biweekly-emails.yml daily-health-check.yml monthly-report.yml keep-alive.yml; do
+            gh api -X PUT "repos/$GITHUB_REPOSITORY/actions/workflows/$workflow/enable"
+            echo "Enabled $workflow"
+          done
+
   ping:
     runs-on: ubuntu-latest
     steps:

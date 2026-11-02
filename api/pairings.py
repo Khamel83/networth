@@ -13,7 +13,7 @@ from datetime import datetime, date
 from api.sentry_init import init_sentry
 from api.reliability import preflight, try_start_run, append_event, update_run
 from api.matching import build_pairing_plan
-from api.league_calendar import is_paused_period
+from api.league_calendar import is_paused_period, paused_periods_before
 from api.email_delivery import (
     build_delivery_rows,
     deliver_batch,
@@ -160,7 +160,9 @@ def generate_pairings(players, blocked_pairs, all_assignments, all_matches, peri
             (p for p in available_players if p.get('email', '').lower() == 'ashleybrooke.kaufman@gmail.com'),
             None,
         )
-        is_odd_month = _period_month(period_label) % 2 == 1
+        # A paused month has no pairings, so it must not use up a turn;
+        # otherwise the same organizer would sit out on both sides of the pause.
+        is_odd_month = (_period_month(period_label) + paused_periods_before(period_label)) % 2 == 1
         removed_player = None
         if is_odd_month:
             removed_player = ashley or natalie
@@ -184,6 +186,48 @@ def generate_pairings(players, blocked_pairs, all_assignments, all_matches, peri
     )
     skipped.extend(plan['unpaired'])
     return plan['pairings'], skipped, set(plan['forced_repeats'])
+
+
+def _send_admin_skip_notices(skipped, period_label, run_id):
+    """Tell an organizer they sit out. Never affects the pairing run's result.
+
+    The ledger row makes a failed notice visible to the daily watchdog.
+    """
+    admins = [player for player in skipped if is_admin_flex(player)]
+    if not admins:
+        return None
+    try:
+        from api.email import (
+            REPLY_TO_EMAIL,
+            SENDER_EMAIL,
+            get_admin_skip_email_html,
+            send_bulk_emails,
+        )
+        month = period_label.split()[0]
+        messages = [{
+            'from': SENDER_EMAIL,
+            'to': [admin['email']],
+            'subject': f"You're sitting out {month} (odd number of players)",
+            'html': get_admin_skip_email_html(admin['name'].split()[0], month),
+            'reply_to': REPLY_TO_EMAIL,
+        } for admin in admins]
+        logical_messages = [{
+            'logical_id': admin['id'],
+            'recipient_emails': [admin['email']],
+        } for admin in admins]
+        rows = build_delivery_rows(
+            'admin_skip_notice',
+            period_label,
+            logical_messages,
+            'admin_skip_notice',
+            delivery_idempotency_key('admin_skip_notice', period_label, 'batch:0'),
+            run_id=run_id,
+        )
+        result = deliver_batch(messages, rows, provider_sender=send_bulk_emails)
+        return result.get('outcome')
+    except Exception as e:
+        print(f"Admin skip notice failed: {e}")
+        return 'pre_send_failure'
 
 
 def _load_all_rows(table, table_name, columns, order_column, page_size=500):
@@ -685,6 +729,10 @@ class handler(BaseHTTPRequestHandler):
                 state: sum(summary.get(state, 0) for summary in delivery_summaries)
                 for state in ('pending', 'accepted', 'failed', 'unknown')
             }
+            skip_notice_outcome = None
+            if delivery_outcome == 'accepted':
+                skip_notice_outcome = _send_admin_skip_notices(skipped, period_label, self._run_id)
+
             append_event(self._run_id, 'postcheck', 'info', 'Pairings run completed', {
                 'pairings_created': len(assignments),
                 'emails_sent': emails_sent,
@@ -708,6 +756,7 @@ class handler(BaseHTTPRequestHandler):
                 'delivery_outcome': delivery_outcome,
                 'reconciliation_required': reconciliation_required,
                 'delivery_summary': combined_delivery_summary,
+                'skip_notice_outcome': skip_notice_outcome,
                 'email_errors': email_errors if email_errors else None,
                 'players_available': len([p for p in players if is_player_available(p)]),
                 'players_unavailable': len([p for p in players if not is_player_available(p)]),

@@ -21,6 +21,8 @@ Organizers decided in November 2026 that the league has no December matches and 
 
 The code sends no announcement. Organizers tell members about the pause themselves.
 
+When the player count is odd, Natalie or Ashley sits out, and that organizer gets an email. The paused month does not use up a turn: Ashley sat out November 2026, so Natalie is next in January 2027 if the count is odd.
+
 To pause another month, add its exact label to `PAUSED_PERIODS` on an organizer's explicit decision and add a row here. Any unlisted month without pairings is still an incident.
 
 ---
@@ -39,7 +41,7 @@ These processes run without any human intervention:
 | 2nd of month, 10am PT | Last month's report emailed to Natalie + Ashley | GitHub Actions (`monthly-report.yml`) |
 | Daily | Read-only health check; fails if current-month pairings are missing after the 1st | GitHub Actions |
 | Daily, 9am PT | Watchdog (Vercel, independent of GitHub) emails the owner if any job didn't run or any email failed; all-clear on the 3rd | Vercel Cron |
-| Every 5 days | Supabase keep-alive ping (free tier pauses after 7 idle days) | GitHub Actions |
+| Every 5 days | Supabase keep-alive ping (free tier pauses after 7 idle days), and scheduled workflows re-enabled to prevent GitHub's 60-day shutoff | GitHub Actions |
 | On player signup / re-join | Notice emailed to Natalie + Ashley; welcome email to the player only if `PUBLIC_TRANSACTIONAL_EMAILS=enabled` | Automatic |
 | On match score submitted | Games added to both players, pairing marked complete | Automatic (database triggers) |
 
