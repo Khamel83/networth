@@ -10,7 +10,7 @@ Stale records closed the same day: PRs #28, #29 and #39 are merged, issues #34 a
 
 Public repo cleanup, November 2, 2026: the owner asked for history to be scrubbed. `master` was rewritten with `git-filter-repo` and force-pushed; the file tree stayed identical. Removed: member spreadsheet and data files, databases, `.env.vercel`, `docs/sessions`, committed virtualenv and bytecode. Redacted everywhere: 84 emails, 42 phones, 22 full names, 3 credentials. Commit hashes in older notes predate the rewrite and no longer match `master`. GitHub still serves old commits by hash and through `refs/pull/*` until Support purges them; a request was submitted November 2, 2026. The pre-scrub backup is `~/archive/git-bundles/networth-pre-history-scrub-20261102.bundle`, and it contains the removed data. Any other clone, including the OCI janitor's, must re-clone and must not push old history back.
 
-Note: the `CRON_SECRET` from `secrets get` returned 403 from production `GET /api/pairings` on November 2, 2026, so that vault copy does not match Vercel. Scheduled runs use the GitHub secret and worked on November 1.
+Vault: use `secrets get NETWORTH_CRON_SECRET` for this project. The shared `CRON_SECRET` gets 401 from production. Vercel still lists an unused `SMTP_PASSWORD`, for the Gmail app password reported deleted.
 
 Cleanup, November 2, 2026, at the owner's request: local `master` was reset to origin, and all 6 local `auto-wip` branches and 37 remote branches were deleted. Everything, including the 3 unpublished janitor commits, is in `~/archive/git-bundles/networth-all-branches-20261102.bundle` on the Mac mini, with a ref list beside it. The janitor cron has been disabled since July 2026.
 
