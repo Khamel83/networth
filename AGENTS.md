@@ -14,6 +14,8 @@ For every pairing automation change or recovery, the completion criteria are:
 4. Fail loudly and require reconciliation for every other outcome; verify persisted assignments and provider/ledger evidence before declaring success.
 5. Keep a regression test for delayed schedule events and silent-success prevention.
 
+The only exception is an exact month in `PAUSED_PERIODS` (`api/league_calendar.py`), added on an organizer's explicit decision.
+
 ---
 
 ## OPERATORS

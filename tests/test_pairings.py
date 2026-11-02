@@ -462,3 +462,38 @@ class TestMatchHistoryPagination:
         assert response.error is None
         assert len(response.data) == 501
         assert ranges == [(0, 499), (500, 999)]
+
+
+def _post_pairings(body):
+    import io
+    import json
+    from unittest.mock import Mock, patch
+    import api.pairings as pairings
+
+    raw = json.dumps(body).encode()
+    instance = pairings.handler(Mock(), None, None)
+    instance.headers = {'Content-Length': str(len(raw))}
+    instance.rfile = io.BytesIO(raw)
+    instance.wfile = io.BytesIO()
+    instance.send_response = Mock()
+    instance.send_header = Mock()
+    instance.end_headers = Mock()
+    start_run = Mock(return_value=(None, 'stop here'))
+    with patch.object(pairings, '_is_cron_or_verified_admin', return_value=True), \
+            patch.object(pairings, 'try_start_run', start_run), \
+            patch('api.supabase_http.table', Mock()):
+        instance.do_POST()
+    return instance.send_response.call_args[0][0], json.loads(instance.wfile.getvalue()), start_run
+
+
+def test_paused_month_refuses_generation_before_any_run_starts():
+    status, payload, start_run = _post_pairings({'period_label': 'December 2026'})
+    assert status == 409
+    assert 'paused' in payload['error']
+    start_run.assert_not_called()
+
+
+def test_unpaused_month_still_reaches_generation():
+    status, _, start_run = _post_pairings({'period_label': 'January 2027'})
+    assert status == 409
+    start_run.assert_called_once()

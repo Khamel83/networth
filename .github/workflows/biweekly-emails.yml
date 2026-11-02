@@ -44,6 +44,8 @@ jobs:
       - name: Select action in Pacific time
         id: select
         shell: bash
+        env:
+          SITE_URL: ${{ secrets.SITE_URL }}
         run: |
           set -euo pipefail
           export TZ=America/Los_Angeles
@@ -70,6 +72,26 @@ jobs:
               '0 17 15 * *') ACTION=mid_month_reminder ;;
               *) ACTION=skip ;;
             esac
+          fi
+          # An organizer-declared pause is the only allowed month without
+          # pairings. Availability emails ask about the following month; every
+          # other action concerns the current month. Unreadable status fails.
+          if [ "$ACTION" != "skip" ]; then
+            AFFECTED_PERIOD="$PERIOD"
+            case "$ACTION" in
+              monthly_availability|final_availability)
+                AFFECTED_PERIOD="$(date -d "$(date +%Y-%m-01) +1 month" '+%B %Y')" ;;
+            esac
+            HTTP_STATUS=$(curl -sS -o /tmp/league-status.json -w "%{http_code}" "$SITE_URL/api/email")
+            if [ "$HTTP_STATUS" -lt 200 ] || [ "$HTTP_STATUS" -ge 300 ]; then
+              echo "::error::Unable to read the league calendar: HTTP $HTTP_STATUS"
+              exit 1
+            fi
+            if jq -e --arg period "$AFFECTED_PERIOD" 'any(.paused_periods[]?; . == $period)' /tmp/league-status.json >/dev/null; then
+              echo "::notice::$AFFECTED_PERIOD is paused; skipping $ACTION."
+              echo "- League paused for $AFFECTED_PERIOD; skipped $ACTION" >> "$GITHUB_STEP_SUMMARY"
+              ACTION=skip
+            fi
           fi
           echo "action=$ACTION" >> "$GITHUB_OUTPUT"
           echo "period=$PERIOD" >> "$GITHUB_OUTPUT"

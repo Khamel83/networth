@@ -56,8 +56,11 @@ jobs:
           # The pairing workflow must have completed by the second Pacific
           # calendar day. This catches a skipped, delayed, or no-op first-day
           # run even when the scheduled workflow itself reports success.
+          # Only an organizer-declared pause (api/league_calendar.py) exempts a month.
           DAY="$(date +%-d)"
-          if [ "$DAY" -ge 2 ] && jq -e \
+          if jq -e --arg period "$PERIOD" 'any(.paused_periods[]?; . == $period)' /tmp/health-email.json >/dev/null; then
+            echo "$PERIOD is paused; no pairings are expected."
+          elif [ "$DAY" -ge 2 ] && jq -e \
             '.success == true and (.pairings | type == "array") and (.pairings | length == 0)' \
             /tmp/health-pairings.json >/dev/null; then
             echo "::error::No pairings exist for $PERIOD after the monthly generation window"

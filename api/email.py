@@ -13,6 +13,7 @@ from datetime import datetime, timezone
 # Initialize Sentry for error tracking
 from api.sentry_init import init_sentry
 from api.reliability import preflight, try_start_run, append_event, update_run
+from api.league_calendar import PAUSED_PERIODS
 from api.email_policy import (
     CRON_PROTECTED_ACTIONS,
     DISABLED_PUBLIC_ACTIONS,
@@ -980,6 +981,7 @@ class handler(BaseHTTPRequestHandler):
         self._send_success({
             "status": "ready" if resend_configured else "not_configured",
             "delivery_mode": delivery_mode(),
+            "paused_periods": sorted(PAUSED_PERIODS),
             "sender": SENDER_EMAIL,
             "reply_to": REPLY_TO_EMAIL,
             "message": "Email system ready (Resend)" if resend_configured else "RESEND_API_KEY not set in environment"
