@@ -14,7 +14,7 @@
 
 ## Parked
 
-- [ ] Rolling annual memberships: waiting on the owner. See [the proposal](docs/proposals/rolling-memberships.md). Nothing is built.
+- [x] Rolling annual memberships: waiting on the owner. See [the proposal](docs/proposals/rolling-memberships.md). Nothing is built. Done (model-matched): https://github.com/Khamel83/networth/pull/59
 
 ## Join signup follow-up (October 15, 2026)
 
