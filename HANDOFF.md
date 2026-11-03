@@ -1,3 +1,5 @@
+## Dashboard fixes and private copy — November 2, 2026
+The dashboard now links admins to `/admin` and names the opponent in the score boxes (PR #60). A cleaner private copy is in `Khamel83/networth2`; it is not deployed and is not connected to this site or its database. Other fixes wait for a swap decision, not before the January 1 check.
 ## December 2026 league pause — November 2, 2026
 
 November automation evidence: the October 31 final reminder reported 51 accepted. Run `41349485297` on November 1 created 17 pairings with 17 match emails accepted, and run `41360828765` read back 17 assignments, each with a match email ID.
