@@ -909,6 +909,7 @@
         <a href="/" class="logo"><picture><source srcset="/logo-small-still.webp" media="(prefers-reduced-motion: reduce)"><img src="/logo-small.webp" alt="net worth" class="logo-img" width="44" height="44"></picture></a>
         <div class="user-menu">
             <span class="user-name" id="player-name">Loading...</span>
+            <a id="admin-link" class="btn-logout" href="/admin" style="display: none; text-decoration: none; margin-right: 0.5rem;">Admin</a>
             <button class="btn-logout" onclick="logout()">Sign Out</button>
         </div>
     </header>
@@ -2180,8 +2181,16 @@
         }
 
         // Score Modal
+        function setScoreLabels(opponentName) {
+            const label = (opponentName || '').split(' ')[0] || 'Opponent';
+            ['set1-them', 'set2-them'].forEach(id => {
+                document.getElementById(id).placeholder = label;
+            });
+        }
+
         function openScoreModal(assignment) {
             currentAssignment = assignment;
+            setScoreLabels(assignment.opponent.name);
             // Show opponent name, hide picker (regular paired match)
             document.getElementById('modal-opponent-display').style.display = '';
             document.getElementById('opponent-picker-group').style.display = 'none';
@@ -2219,6 +2228,7 @@
                 opponent: { id: null, name: null }
             };
 
+            setScoreLabels(null);
             // Hide the static opponent name, show the pickers
             document.getElementById('modal-opponent-display').style.display = 'none';
             document.getElementById('opponent-picker-group').style.display = 'block';
@@ -2378,6 +2388,20 @@
             el.className = `message ${type}`;
             el.classList.remove('hidden');
             setTimeout(() => el.classList.add('hidden'), 4000);
+        }
+
+        document.getElementById('opponent-select').addEventListener('change', (event) => {
+            const option = event.target.selectedOptions[0];
+            setScoreLabels(event.target.value ? option.textContent : null);
+        });
+
+        // Admins get a link to the admin page.
+        try {
+            if (JSON.parse(localStorage.getItem('networth_player') || '{}').is_admin) {
+                document.getElementById('admin-link').style.display = 'inline-block';
+            }
+        } catch (_error) {
+            // No saved player: leave the link hidden.
         }
 
         function logout() {
