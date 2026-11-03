@@ -77,7 +77,7 @@ Players self-register via join page → immediately active → can log in right 
 - **Generate Pairings**: Manual trigger for monthly pairing generation
 
 ### Admin score rules:
-- Admin entries accept 0–7 per set so matches that ended early or were forfeited can be recorded as-is; players still must enter a rules-valid score
+- Players and admins both accept any real score, 0–7 per set, so a match cut short by a court reservation is recorded as-is (owner decision, November 3, 2026: the league is a community, not a ratings contest). Only obvious typos are rejected: a number outside 0–7 or a blank 0-0, 0-0. A set that did not end 6-0 to 6-4, 7-5 or 6-6 saves, and the player gets a friendly notice (`has_unfinished_set` in `api/ratings.py`); it counts in the standings and the ratings
 - `record_score` inserts a match (the INSERT trigger adds games) and closes the pairing
 - `update_score` edits a match and applies the games difference to both players (the trigger only fires on INSERT). It only runs through the `admin_update_match_score` Postgres function (one transaction, row-locked; `migrations/06_admin_update_match_score.sql`). There is deliberately no REST fallback — until the migration is applied, edits return 503 and change nothing
 - Pairings are validated (players + month) before any score is written; a retry after a half-finished save closes the still-pending pairing instead of getting stuck

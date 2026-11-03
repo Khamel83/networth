@@ -624,3 +624,44 @@ def test_signup_notice_escapes_names():
     html = get_new_signup_email_html({'name': '<img src=x onerror=alert(1)>', 'email': 'a@b.co'})
     assert '<img src=x' not in html
     assert '&lt;img' in html
+
+
+def _player_submit(db, **scores):
+    import api.matches as matches
+    with patch('api.supabase_http.table', db), \
+            patch('api.auth.verify_session', return_value='a@example.net'):
+        return make_handler(matches, 'do_POST', {
+            'assignment_id': 'as1', 'player1_id': 'a', 'player2_id': 'c',
+            'period_label': 'August 2026', **scores,
+        }, path='/api/matches')
+
+
+def test_player_can_log_a_match_cut_short_by_the_court_reservation():
+    # Owner decision, November 2026: a real score is always accepted.
+    tables = seed()
+    tables['players'][0]['is_admin'] = False
+    db = FakeDB(tables)
+    status, data = _player_submit(db, set1_p1=7, set1_p2=5, set2_p1=5, set2_p2=1)
+    assert status == 201 and data['success'] is True
+    assert data['notice']  # friendly heads-up, not an error
+    assert data['games_added'] == {'player1': 12, 'player2': 6}
+    assert tables['match_assignments'][0]['status'] != 'pending'
+
+
+def test_finished_match_gets_no_unfinished_notice():
+    tables = seed()
+    tables['players'][0]['is_admin'] = False
+    status, data = _player_submit(FakeDB(tables), set1_p1=6, set1_p2=4, set2_p1=6, set2_p2=3)
+    assert status == 201 and data['notice'] is None
+
+
+def test_player_blank_or_impossible_scores_are_still_rejected():
+    for scores in (
+        dict(set1_p1=0, set1_p2=0, set2_p1=0, set2_p2=0),
+        dict(set1_p1=9, set1_p2=2, set2_p1=6, set2_p2=3),
+    ):
+        tables = seed()
+        tables['players'][0]['is_admin'] = False
+        status, data = _player_submit(FakeDB(tables), **scores)
+        assert status == 400 and data['success'] is False
+        assert tables['match_assignments'][0]['status'] == 'pending'

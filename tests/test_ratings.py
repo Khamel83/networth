@@ -2,6 +2,7 @@
 
 from api.ratings import (
     canonicalize_matches,
+    has_unfinished_set,
     is_valid_rating_match,
     rebuild_ratings,
 )
@@ -97,18 +98,36 @@ def test_pending_incomplete_and_disputed_matches_do_not_update_ratings():
     pending = make_match(1, 2, status="pending")
     incomplete = make_match(1, 3, set2_p1=None, set2_p2=None)
     disputed = make_match(1, 4, status="disputed")
-    unfinished_set = make_match(1, 5, set1_p1=6, set1_p2=5)
+    blank = make_match(1, 5, set1_p1=0, set1_p2=0, set2_p1=0, set2_p2=0)
+    impossible = make_match(1, 6, set1_p1=9, set1_p2=2)
 
     assert is_valid_rating_match(pending) is False
     assert is_valid_rating_match(incomplete) is False
     assert is_valid_rating_match(disputed) is False
-    assert is_valid_rating_match(unfinished_set) is False
+    assert is_valid_rating_match(blank) is False
+    assert is_valid_rating_match(impossible) is False
 
     ratings = rebuild_ratings(
-        [pending, incomplete, disputed],
-        player_roster=[{"id": 1}, {"id": 2}, {"id": 3}, {"id": 4}, {"id": 5}],
+        [pending, incomplete, disputed, blank, impossible],
+        player_roster=[{"id": i} for i in range(1, 7)],
     )
     assert all(state["valid_results"] == 0 for state in ratings.values())
+
+
+def test_match_cut_short_is_accepted_and_counts():
+    # Owner decision: a court reservation ending mid-set is a real result.
+    cut_short = make_match(1, 2, set1_p1=7, set1_p2=5, set2_p1=5, set2_p2=1)
+
+    assert is_valid_rating_match(cut_short) is True
+    assert has_unfinished_set(cut_short) is True
+    ratings = rebuild_ratings([cut_short], player_roster=[{"id": 1}, {"id": 2}])
+    assert ratings[1]["valid_results"] == 1
+    assert ratings[1]["rating"] > ratings[2]["rating"]
+
+
+def test_finished_matches_get_no_unfinished_notice():
+    assert has_unfinished_set(make_match(1, 2)) is False
+    assert has_unfinished_set(make_match(1, 2, set1_p1=7, set1_p2=5, set2_p1=6, set2_p2=6)) is False
 
 
 def test_rebuild_is_order_independent_and_a_correction_replaces_the_result():

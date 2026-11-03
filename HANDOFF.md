@@ -1,3 +1,6 @@
+## Early-ended scores accepted — November 3, 2026
+Cause: a member could not log 7-5, 5-1 because the court reservation ended. Players were rejected for any set not finished 6-0 to 6-4, 7-5 or 6-6 (`api/ratings.py`), while admins could enter it. Owner decision: any real score is accepted; only a number outside 0-7 or a blank 0-0, 0-0 is rejected. An unfinished set saves, counts in the standings and ratings, and shows the player a friendly notice. The dashboard also warns while typing. Source: tests pass (222), no pairing, email or ranking-formula change. Runtime and downstream effect: see the verification line below. The October score for that pair was not entered by me; Ashley is logging it from `/admin`.
+
 ## Dashboard fixes and private copy — November 2, 2026
 The dashboard now links admins to `/admin` and names the opponent in the score boxes (PR #60). A cleaner private copy is in `Khamel83/networth2`; it is not deployed and is not connected to this site or its database. Other fixes wait for a swap decision, not before the January 1 check.
 ## December 2026 league pause — November 2, 2026

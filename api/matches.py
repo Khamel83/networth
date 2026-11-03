@@ -15,7 +15,7 @@ from datetime import datetime, timezone
 
 # Initialize Sentry for error tracking
 from api.sentry_init import init_sentry
-from api.ratings import is_valid_rating_match
+from api.ratings import has_unfinished_set, is_valid_rating_match
 init_sentry()
 
 
@@ -48,9 +48,13 @@ def calculate_two_set_games(set1_p1, set1_p2, set2_p1, set2_p2):
 
 
 INVALID_SCORE_MESSAGE = (
-    "That score doesn't match league rules. Each set must end 6-0 through 6-4, "
-    "7-5, or 6-6 (no tiebreakers). If your match ended early or was a forfeit, "
-    "ask Ashley or Natalie to record it from the admin page."
+    "That score doesn't look right. Please enter each set's games (0-7) for "
+    "both players. If you're stuck, ask Ashley or Natalie to record it."
+)
+
+UNFINISHED_SET_NOTICE = (
+    "Saved! One of your sets wasn't finished, which is totally fine. "
+    "We counted the games you played. We just wanted you to know."
 )
 
 
@@ -557,7 +561,8 @@ class handler(BaseHTTPRequestHandler):
                 "games_added": {
                     "player1": player1_games,
                     "player2": player2_games
-                }
+                },
+                "notice": UNFINISHED_SET_NOTICE if has_unfinished_set(match_data) else None
             }).encode())
 
         except Exception as e:

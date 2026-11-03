@@ -136,20 +136,37 @@ def _two_set_games(match: Dict[str, Any]) -> Optional[Tuple[int, int]]:
 
     set1 = (values["set1_p1"], values["set1_p2"])
     set2 = (values["set2_p1"], values["set2_p2"])
+    # Owner decision (November 2026): Net Worth is a community, so any real
+    # score is accepted, including a match cut short by the court reservation.
+    # Only obvious typos are rejected: a number outside 0-7, or a blank 0-0 form.
     for player1_games, player2_games in (set1, set2):
-        # A two-set match records finished sets only.  This rejects blank
-        # forms (0-0), ties, and impossible values without overfitting to a
-        # particular tiebreak scoring convention.
         if not (0 <= player1_games <= 7 and 0 <= player2_games <= 7):
             return None
-        high, low = max(player1_games, player2_games), min(player1_games, player2_games)
-        # Net Worth has no tiebreakers: a set may finish 6-0 through 6-4,
-        # finish 7-5, or finish 6-6 as a draw.
-        valid_set = (high == 6 and low <= 4) or (high == 6 and low == 6) or (high == 7 and low == 5)
-        if not valid_set:
-            return None
+    if not any(set1 + set2):
+        return None
 
     return set1[0] + set2[0], set1[1] + set2[1]
+
+
+def is_finished_set(player1_games: int, player2_games: int) -> bool:
+    """Whether a set ended the way a complete Net Worth set does.
+
+    No tiebreakers: 6-0 through 6-4, 7-5, or 6-6. Used only to decide whether
+    to tell a player that a set looks unfinished; it never rejects a score.
+    """
+    high, low = max(player1_games, player2_games), min(player1_games, player2_games)
+    return (high == 6 and low <= 4) or (high == 6 and low == 6) or (high == 7 and low == 5)
+
+
+def has_unfinished_set(match: Dict[str, Any]) -> bool:
+    """Whether either set of a score looks unfinished (see is_finished_set)."""
+    for a, b in (("set1_p1", "set1_p2"), ("set2_p1", "set2_p2")):
+        first, second = _score_value(match, a), _score_value(match, b)
+        if first is None or second is None:
+            return False
+        if not is_finished_set(first, second):
+            return True
+    return False
 
 
 def _rating_games(match: Dict[str, Any]) -> Optional[Tuple[int, int]]:

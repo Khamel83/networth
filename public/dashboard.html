@@ -1264,6 +1264,10 @@
                     </div>
                 </div>
 
+                <p id="unfinished-hint" class="score-section-help" style="display: none; margin: -0.5rem 0 1rem;">
+                    Looks like a set wasn't finished. That's totally fine, we'll count the games you played.
+                </p>
+
                 <div class="form-group">
                     <label>Court (optional)</label>
                     <select id="court-select" class="form-group select" style="width: 100%; padding: 0.875rem; background: rgba(255,255,255,0.1); border: 1px solid var(--card-border); border-radius: 12px; color: var(--text-white); font-size: 1rem;">
@@ -2201,6 +2205,7 @@
             ['set1-me', 'set1-them', 'set2-me', 'set2-them'].forEach(id => {
                 document.getElementById(id).value = '';
             });
+            updateUnfinishedHint();
             document.getElementById('court-select').value = '';
             document.querySelector('input[name="would-play-again"][value="true"]').checked = true;
         }
@@ -2277,6 +2282,7 @@
             ['set1-me', 'set1-them', 'set2-me', 'set2-them'].forEach(id => {
                 document.getElementById(id).value = '';
             });
+            updateUnfinishedHint();
             document.getElementById('court-select').value = '';
             document.querySelector('input[name="would-play-again"][value="true"]').checked = true;
         }
@@ -2351,7 +2357,7 @@
 
                 const data = await response.json();
                 if (data.success) {
-                    showMessage('Score submitted! Games added to your total.', 'success');
+                    showMessage(data.notice || 'Score submitted! Games added to your total.', 'success', data.notice ? 9000 : 4000);
                     closeScoreModal();
                     loadScoreGrid();
                     loadOutstandingMatches();
@@ -2368,6 +2374,26 @@
             }
         }
 
+        // Gentle heads-up when a set looks unfinished. Never blocks submitting.
+        function isFinishedSet(a, b) {
+            const high = Math.max(a, b), low = Math.min(a, b);
+            return (high === 6 && low <= 4) || (high === 6 && low === 6) || (high === 7 && low === 5);
+        }
+        function updateUnfinishedHint() {
+            const sets = [['set1-me', 'set1-them'], ['set2-me', 'set2-them']];
+            let unfinished = false;
+            for (const [meId, themId] of sets) {
+                const me = document.getElementById(meId).value;
+                const them = document.getElementById(themId).value;
+                if (me === '' || them === '') continue;
+                if (!isFinishedSet(parseInt(me), parseInt(them))) unfinished = true;
+            }
+            document.getElementById('unfinished-hint').style.display = unfinished ? 'block' : 'none';
+        }
+        ['set1-me', 'set1-them', 'set2-me', 'set2-them'].forEach(id => {
+            document.getElementById(id).addEventListener('input', updateUnfinishedHint);
+        });
+
         // Modal events
         document.getElementById('score-modal').addEventListener('click', (e) => {
             if (e.target.id === 'score-modal') {
@@ -2382,12 +2408,12 @@
         });
 
         // Utilities
-        function showMessage(text, type) {
+        function showMessage(text, type, duration = 4000) {
             const el = document.getElementById('message');
             el.textContent = text;
             el.className = `message ${type}`;
             el.classList.remove('hidden');
-            setTimeout(() => el.classList.add('hidden'), 4000);
+            setTimeout(() => el.classList.add('hidden'), duration);
         }
 
         document.getElementById('opponent-select').addEventListener('change', (event) => {
