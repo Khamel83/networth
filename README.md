@@ -68,6 +68,7 @@ Migrations (run in the Supabase SQL Editor; all applied in production as of Sept
 - `migrations/04_match_history_integrity.sql` (run after resolving any existing duplicate pair/period match rows)
 - `migrations/05_reported_paid.sql` - saves the join page's "I paid" checkbox
 - `migrations/06_admin_update_match_score.sql` - atomic admin score corrections (edits return 503 without it)
+- `migrations/08_admin_delete_match_score.sql` - atomic admin score removal (delete returns 503 without it)
 - `migrations/07_close_pairing_on_match_insert.sql` - closes a pairing in the same transaction as its score
 
 ## Tech Stack

@@ -375,6 +375,8 @@ class handler(BaseHTTPRequestHandler):
                 return self._record_score(data)
             if action == 'update_score':
                 return self._update_score(data)
+            if action == 'delete_score':
+                return self._delete_score(data)
 
             if not player_id:
                 self._send_error(400, "player_id required")
@@ -595,11 +597,11 @@ class handler(BaseHTTPRequestHandler):
         })
         if result.error:
             print(f"admin_update_match_score failed: {result.error}")
-            if is_missing_function_error(result.error):
+            if 'P0002' in str(result.error) or 'match not found' in str(result.error):
+                self._send_error(404, "Match not found")
+            elif is_missing_function_error(result.error):
                 self._send_error(503, "Editing scores needs a one-time database update: run "
                                       "migrations/06_admin_update_match_score.sql in Supabase. Nothing was changed.")
-            elif 'P0002' in str(result.error) or 'match not found' in str(result.error):
-                self._send_error(404, "Match not found")
             else:
                 self._send_error(500, "Failed to update match; nothing was changed")
             return
@@ -608,6 +610,37 @@ class handler(BaseHTTPRequestHandler):
             return
 
         self._send_success({'message': 'Score updated', 'match': _match_view(result.data[0])})
+
+    def _delete_score(self, data):
+        """Admin removes a recorded score (not the pairing).
+
+        Takes both players' games and match count back, reopens the pairing,
+        and recalculates rankings, all inside admin_delete_match_score()
+        (migrations/08_admin_delete_match_score.sql). No REST fallback.
+        """
+        from api.supabase_http import rpc, is_missing_function_error
+
+        match_id = data.get('match_id')
+        if not match_id:
+            self._send_error(400, "match_id required")
+            return
+
+        result = rpc('admin_delete_match_score', {'p_match_id': match_id})
+        if result.error:
+            print(f"admin_delete_match_score failed: {result.error}")
+            if 'P0002' in str(result.error) or 'match not found' in str(result.error):
+                self._send_error(404, "Score not found (it may already be removed)")
+            elif is_missing_function_error(result.error):
+                self._send_error(503, "Removing scores needs a one-time database update: run "
+                                      "migrations/08_admin_delete_match_score.sql in Supabase. Nothing was changed.")
+            else:
+                self._send_error(500, "Failed to remove the score; nothing was changed")
+            return
+        if len(result.data or []) != 1:
+            self._send_error(500, "Failed to remove the score")
+            return
+
+        self._send_success({'message': 'Score removed', 'match': _match_view(result.data[0])})
 
     def _send_success(self, data):
         self.send_response(200)

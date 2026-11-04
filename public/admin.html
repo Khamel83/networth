@@ -1041,6 +1041,7 @@
                 </div>
                 <p class="score-hint hidden" id="score-error" role="alert" style="color: var(--text-white); font-weight: 600;"></p>
                 <button class="btn" id="score-save-btn" onclick="saveScore()">Save Score</button>
+                <button class="btn btn-danger hidden" id="score-delete-btn" onclick="deleteScore()" style="margin-top: 0.75rem;">Delete Score</button>
             </div>
         </div>
     </div>
@@ -1716,7 +1717,36 @@
             document.getElementById('score-set2-p1').value = m ? (m.set2_p1 ?? '') : '';
             document.getElementById('score-set2-p2').value = m ? (m.set2_p2 ?? '') : '';
             scoreError('');
+            document.getElementById('score-delete-btn').classList.toggle('hidden', !m);
             document.getElementById('score-modal').classList.remove('hidden');
+        }
+
+        async function deleteScore() {
+            if (!scoreContext || !scoreContext.match) return;
+            const names = `${scoreContext.player1_name || 'Player 1'} and ${scoreContext.player2_name || 'Player 2'}`;
+            if (!confirm(`Delete the ${scoreContext.period} score for ${names}? Their game totals go back down and the pairing reopens so a score can be entered again.`)) return;
+            const btn = document.getElementById('score-delete-btn');
+            btn.disabled = true;
+            btn.textContent = 'Deleting...';
+            try {
+                const response = await fetch('/api/admin', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
+                    body: JSON.stringify({ action: 'delete_score', match_id: scoreContext.match.id })
+                });
+                const data = await response.json();
+                if (!data.success) throw new Error(data.error || 'Failed to delete score');
+                showMessage(data.message || 'Score removed', 'success');
+                closeScoreModal();
+                loadPairings();
+                loadPlayers();
+                loadReport();
+            } catch (err) {
+                scoreError(err.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Delete Score';
+            }
         }
 
         function scoreError(text) {

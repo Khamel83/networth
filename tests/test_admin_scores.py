@@ -393,6 +393,37 @@ def test_update_score_without_migration_changes_nothing():
     assert tables['matches'][0]['player1_games'] == 12
 
 
+def test_delete_score_calls_atomic_database_function():
+    tables = _seed_with_match()
+    deleted = tables['matches'][0]
+    status, data = call_admin(FakeDB(tables), 'do_POST', {
+        'action': 'delete_score', 'match_id': 'm1',
+    }, rpc_result=FakeResult(data=[deleted], error=None))
+    assert status == 200, data
+    name, params = call_admin.rpc_calls.call_args[0]
+    assert name == 'admin_delete_match_score'
+    assert params == {'p_match_id': 'm1'}
+    assert data['message'] == 'Score removed'
+
+
+def test_delete_score_without_migration_changes_nothing():
+    tables = _seed_with_match()
+    status, data = call_admin(FakeDB(tables), 'do_POST', {'action': 'delete_score', 'match_id': 'm1'})
+    assert status == 503
+    assert '08_admin_delete_match_score' in data['error']
+    assert len(tables['matches']) == 1
+    assert tables['players'][0]['total_games'] == 10
+
+
+def test_delete_score_requires_match_id_and_reports_missing_match():
+    db = FakeDB(_seed_with_match())
+    status, _ = call_admin(db, 'do_POST', {'action': 'delete_score'})
+    assert status == 400
+    status, _ = call_admin(db, 'do_POST', {'action': 'delete_score', 'match_id': 'nope'},
+                           rpc_result=FakeResult(data=[], error='HTTP 404: {"code":"P0002","message":"match not found"}'))
+    assert status == 404
+
+
 def test_player_period_limits():
     from datetime import datetime
     from api.matches import validate_player_period
