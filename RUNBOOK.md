@@ -297,3 +297,18 @@ If secrets mismatch, scheduled jobs will fail by design.
 - The monthly pairing engine prioritizes non-repeat pairings.
 - It uses the general-graph maximum-weight solver, not a size-based greedy fallback; the supported target is 2–100 players.
 - If repeat pairs appear, treat that as a bug and investigate immediately (do not assume expected behavior).
+
+## Database access and applying migrations (agents do this; never ask the owner to)
+
+Agents apply Supabase migrations and data fixes themselves. Do not hand SQL to the owner.
+
+- **Project ref:** `kqhvmcbbquejzbsfkdjs` (project "Net Worth"). It is the host of the production `SUPABASE_URL`.
+- **Trap:** the vault's `SUPABASE_URL` and `SUPABASE_PROJECT_REF` (`services.env`) point at a different, inactive project (`oneshot-web`, `rkhvyldjbtwvtpwcbipj`). Do not use them. The vault `VERCEL_TOKEN` is invalid; use the Vercel connector (project `prj_6XtuizJD5SBBJRigXYAdyynaCAJs`, team `team_a4K2ERnkMFkgQDlfDQXYOF1z`) to read the real `SUPABASE_URL` if this ever changes.
+- **Credential:** `secrets get SUPABASE_ACCESS_TOKEN` (a Supabase account token; it works for this project). Never print it.
+- **Run SQL** (no psql or Supabase CLI needed). Build the JSON with Python so quoting is safe, then:
+  `curl -X POST https://api.supabase.com/v1/projects/kqhvmcbbquejzbsfkdjs/database/query -H "Authorization: Bearer $(secrets get SUPABASE_ACCESS_TOKEN)" -H "Content-Type: application/json" --data '{"query": "<sql>"}'`
+  It returns `[]` with HTTP 201 for DDL. Use `begin; ...; commit;` for data fixes so they are all or nothing.
+- **Verify after DDL:** `select proname from pg_proc where proname = '<function>'`.
+- **Move a score to another month:** inside one transaction run `select admin_delete_match_score('<match id>')`, then insert the match in the right month (the insert trigger credits games and closes the pairing).
+- Applied so far: 06, 07 (earlier), 08 `admin_delete_match_score` (November 3, 2026).
+
