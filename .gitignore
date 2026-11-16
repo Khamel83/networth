@@ -71,3 +71,4 @@ docs/sessions/
 *.dump
 *.bak
 supabase-export*
+.worktrees/
