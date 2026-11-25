@@ -262,6 +262,50 @@ def test_gate_needs_the_pause_list_to_skip_november_27(tmp_path):
     assert outputs['action'] == 'monthly_availability'
 
 
+def _run_step():
+    _, parsed = _workflow('biweekly-emails.yml')
+    job = parsed['jobs']['run-automation']
+    step = next(s for s in job['steps'] if s.get('name') == 'Execute automation action')
+    return job, step['run']
+
+
+def test_run_job_posts_the_gate_period_as_period_label():
+    job, script = _run_step()
+    assert job['env']['ACTION'] == '${{ needs.gate-check.outputs.action }}'
+    assert job['env']['PERIOD'] == '${{ needs.gate-check.outputs.period }}'
+    assert '--arg action "$EMAIL_ACTION" --arg period "$PERIOD"' in script
+    assert "'{action:$action,period_label:$period}'" in script
+
+
+@pytest.mark.parametrize('now, schedule, paused', [
+    ('2026-11-27 09:00', '0 17 27 * *', 'December 2026'),
+    ('2026-11-30 09:00', '0 17 28-31 * *', 'December 2026'),
+    ('2026-12-15 09:00', '0 17 15 * *', 'December 2026'),
+    ('2026-11-15 09:00', '0 17 15 * *', None),
+    ('2026-12-27 09:00', '0 17 27 * *', None),
+    ('2026-12-31 09:00', '0 17 28-31 * *', None),
+])
+def test_site_check_refuses_exactly_what_the_gate_skips(tmp_path, now, schedule, paused):
+    """Let the gate through with an empty pause list, then build the body the
+    run job would post. The site's own check must still catch paused runs."""
+    import re
+    import sys
+
+    sys.path.insert(0, str(ROOT))
+    from api.league_calendar import paused_month_for_league_email
+
+    result, outputs, _, _ = _run_gate(
+        tmp_path, now, schedule,
+        status_body={'success': True, 'delivery_mode': 'live', 'paused_periods': []},
+    )
+    assert result.returncode == 0, result.stderr
+
+    _, script = _run_step()
+    email_actions = dict(re.findall(r'(\w+)\) EMAIL_ACTION=(\w+) ;;', script))
+    email_action = email_actions[outputs['action']]
+    assert paused_month_for_league_email(email_action, outputs['period']) == paused
+
+
 def test_gate_fails_closed_when_the_calendar_is_unreadable(tmp_path):
     result, outputs, _, _ = _run_gate(tmp_path, '2026-11-27 09:00', '0 17 27 * *', status_code=503)
     assert result.returncode != 0
