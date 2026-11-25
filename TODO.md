@@ -2,7 +2,7 @@
 
 - [x] Production `GET /api/email` returns `paused_periods: ["December 2026"]`. Evidence: PR #43, merge `5a4e6a7`, checked November 2, 2026.
 - [ ] November 27: confirm the scheduled run skips with a notice and sends nothing.
-- [x] Before November 27: merge and deploy the second pause check (branch `claude/project-thread-mrfoyt`). The site refuses paused-month league emails and reconciles of them, the gate fails if the paused list is missing, and tests run the real gate script for each pause date. Done (model-matched): https://github.com/Khamel83/networth/pull/66
+- [ ] Before November 27: merge and deploy the second pause check (branch `claude/project-thread-mrfoyt`). The site refuses paused-month league emails and reconciles of them, the gate fails if the paused list is missing, and tests run the real gate script for each pause date.
 - [ ] January 1, 2027: confirm January pairings and match-email counts match, and that scheduled workflows stayed on. GitHub's 60-day shutoff was the risk the keep-alive now addresses. If the count is odd, confirm Natalie sat out and got the skip email, and that Ashley is next.
 - [x] Vault `NETWORTH_CRON_SECRET` holds the production value, read from Vercel and accepted by production (November 2, 2026). Vercel and GitHub values unchanged. The older shared `CRON_SECRET` in `services.env` is not this project's: use the new key.
 
