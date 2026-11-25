@@ -87,6 +87,12 @@ jobs:
               echo "::error::Unable to read the league calendar: HTTP $HTTP_STATUS"
               exit 1
             fi
+            # A reply without the list would read as "nothing paused" and
+            # email the league about a paused month, so it fails instead.
+            if ! jq -e '.paused_periods | type == "array"' /tmp/league-status.json >/dev/null; then
+              echo "::error::League calendar reply has no paused_periods list"
+              exit 1
+            fi
             if jq -e --arg period "$AFFECTED_PERIOD" 'any(.paused_periods[]?; . == $period)' /tmp/league-status.json >/dev/null; then
               echo "::notice::$AFFECTED_PERIOD is paused; skipping $ACTION."
               echo "- League paused for $AFFECTED_PERIOD; skipped $ACTION" >> "$GITHUB_STEP_SUMMARY"
@@ -241,6 +247,10 @@ jobs:
 
           case "$OUTCOME" in
             accepted|already_complete)
+              exit 0 ;;
+            paused)
+              # The site refused because the month is paused; nothing was sent.
+              echo "::notice::The site reports $PERIOD's $ACTION is paused; nothing was sent."
               exit 0 ;;
             accepted_needs_reconciliation|unknown_needs_reconciliation|manual_review_required|delivery_disabled)
               echo "::warning::Outcome requires reconciliation or manual review: $OUTCOME"

@@ -764,7 +764,7 @@ class TestEmailReliability:
         mock_handler.end_headers = Mock()
         mock_handler.wfile = Mock()
 
-        body = json.dumps({'action': 'send_final_reminder'}).encode()
+        body = json.dumps({'action': 'send_final_reminder', 'period_label': 'October 2026'}).encode()
         mock_handler.headers = Mock()
         mock_handler.headers.get = Mock(side_effect=lambda key, default=None: {
             'Content-Length': str(len(body)),
@@ -853,7 +853,7 @@ class TestEmailReliability:
         mock_handler.end_headers = Mock()
         mock_handler.wfile = Mock()
 
-        body = json.dumps({'action': 'send_midmonth_reminders'}).encode()
+        body = json.dumps({'action': 'send_midmonth_reminders', 'period_label': 'October 2026'}).encode()
         mock_handler.headers = Mock()
         mock_handler.headers.get = Mock(side_effect=lambda key, default=None: {
             'Content-Length': str(len(body)),
@@ -942,7 +942,7 @@ class TestEmailReliability:
         mock_handler.end_headers = Mock()
         mock_handler.wfile = Mock()
 
-        body = json.dumps({'action': 'send_midmonth_reminders'}).encode()
+        body = json.dumps({'action': 'send_midmonth_reminders', 'period_label': 'October 2026'}).encode()
         mock_handler.headers = Mock()
         mock_handler.headers.get = Mock(side_effect=lambda key, default=None: {
             'Content-Length': str(len(body)),

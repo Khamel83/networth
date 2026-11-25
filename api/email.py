@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 # Initialize Sentry for error tracking
 from api.sentry_init import init_sentry
 from api.reliability import preflight, try_start_run, append_event, update_run
-from api.league_calendar import PAUSED_PERIODS
+from api.league_calendar import PAUSED_PERIODS, paused_month_for_league_email
 from api.email_policy import (
     CRON_PROTECTED_ACTIONS,
     DISABLED_PUBLIC_ACTIONS,
@@ -1039,6 +1039,29 @@ class handler(BaseHTTPRequestHandler):
                     410,
                     'Deprecated. Use reconcile_email_delivery with the original action and period.',
                 )
+                return
+
+            # Second line of defence behind the workflow gate: never email the
+            # league about a month the organizers paused. A reconcile resends
+            # the original action's email, so it is checked as that action.
+            guard_action = action
+            if action == 'reconcile_email_delivery':
+                guard_action = data.get('email_action') or data.get('target_action')
+            try:
+                paused_month = paused_month_for_league_email(guard_action, self._run_period)
+            except ValueError:
+                self._send_error(400, "period_label must look like 'November 2026'")
+                return
+            if paused_month:
+                self._send_success({
+                    "message": f"{paused_month} is paused; no league email was sent.",
+                    "paused_period": paused_month,
+                    "outcome": "paused",
+                    "sent": 0,
+                    "failed": 0,
+                    "reconciliation_required": False,
+                    "delivery_summary": {},
+                })
                 return
 
             if action == 'send_monthly_report' and not data.get('period_label'):
