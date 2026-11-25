@@ -33,3 +33,7 @@ Runtime: Vercel production deployment for `02472f0` succeeded, and the live `/jo
 No email, workflow, or player-record action was taken. The owner asked that no emails be sent.
 The owner retested signup and handled Natalie's test signup (November 2, 2026). Jessica and Mae need no follow-up (owner, November 2, 2026).
 Temporary worktree `.worktrees/venmo-return-note` was removed after the merge.
+
+## Paused-month checks — November 25, 2026
+
+The owner-provided session handoff calls for observing both the November 27 `monthly_availability` skip and the November 30 `final_availability` skip. The guard tests above use simulated dates; they do not prove either scheduled run skipped or that no mail was sent. Check the natural workflow records after each run. Do not dispatch the workflow or send a test email.
