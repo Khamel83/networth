@@ -139,3 +139,54 @@ def test_paused_check_still_requires_the_cron_secret():
     status, payload = _response(instance)
     assert status == 401
     assert 'paused_period' not in payload
+
+
+@pytest.mark.parametrize('field,email_action,period,paused', [
+    ('email_action', 'send_availability_check', 'November 2026', 'December 2026'),
+    ('email_action', 'send_availability_check_paused_only', 'November 2026', 'December 2026'),
+    ('email_action', 'send_final_reminder', 'November 2026', 'December 2026'),
+    ('email_action', 'send_midmonth_reminders', 'December 2026', 'December 2026'),
+    ('target_action', 'send_availability_check', 'November 2026', 'December 2026'),
+])
+def test_reconcile_of_paused_month_league_email_sends_nothing(field, email_action, period, paused):
+    """A reconcile resends the original email, so it gets the same check."""
+    forbidden = AssertionError('a paused month must not be reconciled')
+    with patch('api.email.find_reconciliation_required', side_effect=forbidden) as find_rows:
+        instance, start_run = _run({
+            'action': 'reconcile_email_delivery',
+            field: email_action,
+            'period_label': period,
+        })
+
+    status, payload = _response(instance)
+    assert status == 200
+    assert payload['outcome'] == 'paused'
+    assert payload['paused_period'] == paused
+    assert payload['sent'] == 0
+    assert payload['reconciliation_required'] is False
+    find_rows.assert_not_called()
+    start_run.assert_not_called()
+
+
+@pytest.mark.parametrize('email_action,period', [
+    ('send_availability_check', 'December 2026'),
+    ('send_final_reminder', 'October 2026'),
+    ('send_midmonth_reminders', 'November 2026'),
+    ('send_monthly_report', 'December 2026'),
+    ('generate_pairings', 'November 2026'),
+])
+def test_reconcile_of_unpaused_month_still_runs(email_action, period):
+    instance = _post({
+        'action': 'reconcile_email_delivery',
+        'email_action': email_action,
+        'period_label': period,
+    })
+    nothing_pending = {'success': True, 'rows': [], 'summary': {}}
+    with patch.dict(os.environ, {'CRON_SECRET': 'test-cron-secret'}):
+        with patch('api.email.find_reconciliation_required', return_value=nothing_pending) as find_rows:
+            instance.do_POST()
+
+    find_rows.assert_called_once_with(action=email_action, period_label=period)
+    status, payload = _response(instance)
+    assert status == 200
+    assert payload['outcome'] == 'already_complete'

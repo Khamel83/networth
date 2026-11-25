@@ -1042,9 +1042,13 @@ class handler(BaseHTTPRequestHandler):
                 return
 
             # Second line of defence behind the workflow gate: never email the
-            # league about a month the organizers paused.
+            # league about a month the organizers paused. A reconcile resends
+            # the original action's email, so it is checked as that action.
+            guard_action = action
+            if action == 'reconcile_email_delivery':
+                guard_action = data.get('email_action') or data.get('target_action')
             try:
-                paused_month = paused_month_for_league_email(action, self._run_period)
+                paused_month = paused_month_for_league_email(guard_action, self._run_period)
             except ValueError:
                 self._send_error(400, "period_label must look like 'November 2026'")
                 return
