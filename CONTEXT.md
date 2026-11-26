@@ -76,3 +76,7 @@ _Avoid_: skipped player, exception player
 - **Pending verification**: Confirm admin emails (monthly report + sign-ups) are sent to both admins.
 - **Pending verification**: Verify atomic score corrections work end-to-end via the DB function.
 <!-- janitor:end:recent -->
+
+## Rolling annual memberships declined — November 25, 2026
+
+Decision: the owner (Omar) answered "No" to the rolling annual memberships proposal on November 25, 2026. The proposal `docs/proposals/rolling-memberships.md` is declined and kept as parked, not deleted. Nothing is built, and no member data is kept in this public repo.
