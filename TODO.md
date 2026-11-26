@@ -20,7 +20,7 @@
 
 ## Parked
 
-- [ ] Rolling annual memberships: waiting on the owner. See [the proposal](docs/proposals/rolling-memberships.md). Nothing is built.
+- [x] ~~Rolling annual memberships~~: declined by the owner (Omar, "No") on November 25, 2026. Reason: owner decision. See [the proposal](docs/proposals/rolling-memberships.md), kept as parked, not deleted. Nothing is built.
 
 ## Join signup follow-up (October 15, 2026)
 
