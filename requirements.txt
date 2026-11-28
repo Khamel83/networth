@@ -1,5 +1,5 @@
 # Vercel serverless functions use the lightweight Supabase REST client.
 httpx==0.28.1
-resend==2.35.0
-sentry-sdk==2.66.1
-networkx==3.4.2
+resend==2.55.0
+sentry-sdk==3.0.0
+networkx==3.7
